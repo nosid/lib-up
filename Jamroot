@@ -1,0 +1,35 @@
+project
+    : requirements
+      <threading>multi
+      # common
+      <cflags>-Wall
+      <cflags>-Wextra
+      <cflags>-Werror
+      <cflags>-march=native
+      <cxxflags>-std=c++1y
+      # Workaround: Clang no longer supports -finline-functions (enabled on inlining=full
+      <variant>release:<inlining>on
+      # GCC
+      <toolset>gcc:<cflags>-Wsuggest-attribute=noreturn
+      <toolset>gcc:<cflags>-Wunused-but-set-parameter
+      <toolset>gcc:<cflags>-Wunused-but-set-variable
+      <toolset>gcc:<cflags>-fdiagnostics-color
+      <toolset>gcc:<cflags>-flto
+      <toolset>gcc:<cflags>-grecord-gcc-switches
+      <toolset>gcc:<cxxflags>-Wnoexcept
+      <toolset>gcc:<cxxflags>-Wzero-as-null-pointer-constant
+      <toolset>gcc:<cxxflags>-Wnon-virtual-dtor
+      <toolset>gcc:<linkflags>-Wsuggest-final-types
+      <toolset>gcc:<linkflags>-Wsuggest-final-methods
+      <toolset>gcc:<linkflags>-Wodr
+      <toolset>gcc:<cflags>-include\ workaround_gcc.hpp
+      # CLANG
+      <toolset>clang:<cxxflags>-stdlib=libc++
+      <toolset>clang:<linkflags>-stdlib=libc++
+      <toolset>clang:<cflags>-fdiagnostics-color
+      <toolset>clang:<cflags>-include\ workaround_clang.hpp
+    : build-dir bin/
+    ;
+
+build-project src ;
+build-project examples ;

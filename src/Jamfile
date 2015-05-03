@@ -1,0 +1,54 @@
+lib ssl ;
+
+lib z ;
+
+lib xml2 : : : : <include>/usr/include/libxml2 ;
+
+lib xslt ;
+
+lib up
+    :
+    up_buffer.cpp
+    up_buffer_adapter.cpp
+    up_char_cast.cpp
+    up_chrono.cpp
+    up_chunk.cpp
+    up_defer.cpp
+    up_exception.cpp
+    up_fabric.cpp
+    up_fs.cpp
+    up_hash.cpp
+    up_iconv.cpp
+    up_impl_ptr.cpp
+    up_include.cpp
+    up_inet.cpp
+    up_integral_cast.cpp
+    up_istring.cpp
+    up_json.cpp
+    up_linked_map.cpp
+    up_optional.cpp
+    up_out.cpp
+    up_pack.cpp
+    up_secure_hash.cpp
+    up_source_location.cpp
+    up_stream.cpp
+    up_string_literal.cpp
+    up_swap.cpp
+    up_terminate.cpp
+    up_terse_map.cpp
+    up_tls.cpp
+    up_to_string.cpp
+    up_utility.cpp
+    up_variadic.cpp
+    up_vlq.cpp
+    up_xml.cpp
+    up_zlib.cpp
+    :
+    :
+    <library>ssl
+    <library>xml2
+    <library>xslt
+    <library>z
+    :
+    <include>.
+    ;

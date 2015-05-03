@@ -1,0 +1,3 @@
+exe test : test.cpp ../src//up ;
+
+exe inet : inet_main.cpp ../src//up ;
