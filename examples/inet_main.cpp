@@ -20,12 +20,12 @@ namespace
         for (;;) {
             auto buffer = up::buffer();
             auto now = up::steady_clock::now();
-            auto connection = listener.accept(up::stream::steady_await(now, 3s));
+            auto stream = listener.accept(up::stream::steady_await(now, 3s));
             auto deadline = up::stream::deadline_await(now + 30s);
-            while (auto count = connection.read_some(buffer.reserve(1 << 14), deadline)) {
+            while (auto count = stream.read_some(buffer.reserve(1 << 14), deadline)) {
                 buffer.produce(count);
                 while (buffer.available()) {
-                    buffer.consume(connection.write_some(buffer, deadline));
+                    buffer.consume(stream.write_some(buffer, deadline));
                 }
             }
         }
@@ -40,15 +40,15 @@ namespace
     }
 
     __attribute__((unused))
-    void http_get(up::tcp::connection connection, up::stream::await& await)
+    void http_get(up::stream stream, up::stream::await& await)
     {
         std::string request("GET / HTTP/1.0\r\n\r\n");
-        connection.write_some(request, await);
+        stream.write_some(request, await);
         auto buffer = up::buffer();
-        while (auto count = connection.read_some(buffer.reserve(1 << 14), await)) {
+        while (auto count = stream.read_some(buffer.reserve(1 << 14), await)) {
             buffer.produce(count);
         }
-        connection.graceful_close(await);
+        stream.graceful_close(await);
     }
 
 }
@@ -76,11 +76,11 @@ int main()
         //     std::cerr << "ip address: " << address.to_string() << '\n';
         //     // skip IPv6 addresses
         //     if (address.version() == up::ip::version::v6) continue;
-        //     auto connection = connect(address, "http", deadline);
-        //     // connection.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
+        //     auto stream = connect(address, "http", deadline);
+        //     // stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
         //     //         return tls.make_engine(std::move(engine), deadline);
         //     //     });
-        //     http_get(std::move(connection), deadline);
+        //     http_get(std::move(stream), deadline);
         // }
 
     } catch (...) {
