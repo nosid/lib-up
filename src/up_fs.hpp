@@ -329,6 +329,8 @@ namespace up_fs
         auto write_some(up::chunk::from chunk, off_t offset) const -> std::size_t;
         auto read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t;
         auto write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t;
+        void write_all(up::chunk::from chunk, off_t offset) const;
+        void write_all(up::chunk::from_bulk_t&& chunks, off_t offset) const;
         void posix_fallocate(off_t offset, off_t length) const;
         void posix_fadvise(off_t offset, off_t length, int advice) const;
         void linkto(const path& target) const;

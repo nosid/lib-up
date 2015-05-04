@@ -172,20 +172,18 @@ void up_stream::stream::write_all(up::chunk::from chunk, await& awaiting) const
      * implementation is similar to write_some. */
     check_state(_engine);
     do {
-        auto count = blocking(*_engine, awaiting, &engine::write_some, chunk);
-        chunk.drain(count);
+        auto n = blocking(*_engine, awaiting, &engine::write_some, chunk);
+        chunk.drain(n);
     } while (chunk.size());
 }
 
 void up_stream::stream::write_all(up::chunk::from_bulk_t&& chunks, await& awaiting) const
 {
-    /* A do-while loop is used, so that the function on the underlying engine
-     * is called at least once. This is intentionally, so that the
-     * implementation is similar to write_some. */
+    /* See above regarding the use of a do-while loop. */
     check_state(_engine);
     do {
-        auto count = blocking(*_engine, awaiting, &engine::write_some_bulk, chunks);
-        chunks.drain(count);
+        auto n = blocking(*_engine, awaiting, &engine::write_some_bulk, chunks);
+        chunks.drain(n);
     } while (chunks.total());
 }
 

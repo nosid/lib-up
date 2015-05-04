@@ -337,6 +337,40 @@ namespace
 
     constexpr mode_t ignored_mode = 0;
 
+
+    template <typename Function, typename Chunk>
+    auto do_io(Function&& function, int fd, Chunk&& chunk, off_t offset, up::string_literal message)
+        -> std::size_t
+    {
+        for (;;) {
+            ssize_t rv = function(fd, chunk.data(), chunk.size(), offset);
+            if (rv != -1) {
+                return up::integral_caster(rv);
+            } else if (errno == EINTR) {
+                // continue
+            } else {
+                check(rv, message, fd, chunk.size(), offset);
+            }
+        }
+    }
+
+    template <typename Function, typename Chunks>
+    auto do_iov(Function&& function, int fd, Chunks&& chunks, off_t offset, up::string_literal message)
+        -> std::size_t
+    {
+        for (;;) {
+            ssize_t rv = function(fd, chunks.template as<iovec>(),
+                up::integral_caster(chunks.count()), offset);
+            if (rv != -1) {
+                return up::integral_caster(rv);
+            } else if (errno == EINTR) {
+                // continue
+            } else {
+                check(rv, message, fd, chunks.count(), chunks.total(), offset);
+            }
+        }
+    }
+
 }
 
 
@@ -1204,61 +1238,45 @@ void up_fs::fs::file::truncate(off_t length) const
 auto up_fs::fs::file::read_some(up::chunk::into chunk, off_t offset) const
     -> std::size_t
 {
-    for (;;) {
-        ssize_t rv = ::pread(_impl->fd(), chunk.data(), chunk.size(), offset);
-        if (rv != -1) {
-            return rv;
-        } else if (errno == EINTR) {
-            // continue
-        } else {
-            check(rv, "fs-read-error"_s, _impl->fd(), chunk.size(), offset);
-        }
-    }
+    return do_io(::pread, _impl->fd(), std::move(chunk), offset, "fs-read-error"_s);
 }
 
 auto up_fs::fs::file::write_some(up::chunk::from chunk, off_t offset) const
     -> std::size_t
 {
-    for (;;) {
-        ssize_t rv = ::pwrite(_impl->fd(), chunk.data(), chunk.size(), offset);
-        if (rv != -1) {
-            return rv;
-        } else if (errno == EINTR) {
-            // continue
-        } else {
-            check(rv, "fs-write-error"_s, _impl->fd(), chunk.size(), offset);
-        }
-    }
+    return do_io(::pwrite, _impl->fd(), std::move(chunk), offset, "fs-write-error"_s);
 }
 
 auto up_fs::fs::file::read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
-    for (;;) {
-        ssize_t rv = ::preadv(_impl->fd(), chunks.as<iovec>(),
-            up::integral_caster(chunks.count()), offset);
-        if (rv != -1) {
-            return rv;
-        } else if (errno == EINTR) {
-            // continue
-        } else {
-            check(rv, "fs-readv-error"_s, _impl->fd(), chunks.count(), chunks.total(), offset);
-        }
-    }
+    return do_iov(::preadv, _impl->fd(), std::move(chunks), offset, "fs-readv-error"_s);
 }
 
 auto up_fs::fs::file::write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
-    for (;;) {
-        ssize_t rv = ::pwritev(_impl->fd(), chunks.as<iovec>(),
-            up::integral_caster(chunks.count()), offset);
-        if (rv != -1) {
-            return rv;
-        } else if (errno == EINTR) {
-            // continue
-        } else {
-            check(rv, "fs-writev-error"_s, _impl->fd(), chunks.count(), chunks.total(), offset);
-        }
-    }
+    return do_iov(::pwritev, _impl->fd(), std::move(chunks), offset, "fs-writev-error"_s);
+}
+
+void up_fs::fs::file::write_all(up::chunk::from chunk, off_t offset) const
+{
+    /* A do-while loop is used, so that the function on the underlying engine
+     * is called at least once. This is intentionally, so that the
+     * implementation is similar to write_some. */
+    do {
+        auto n = do_io(::pwrite, _impl->fd(), chunk, offset, "fs-write-all-error"_s);
+        chunk.drain(n);
+        offset += n;
+    } while (chunk.size());
+}
+
+void up_fs::fs::file::write_all(up::chunk::from_bulk_t&& chunks, off_t offset) const
+{
+    /* See above regarding the use of a do-while loop. */
+    do {
+        auto n = do_iov(::pwritev, _impl->fd(), chunks, offset, "fs-writev-all-error"_s);
+        chunks.drain(n);
+        offset += n;
+    } while (chunks.total());
 }
 
 void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
