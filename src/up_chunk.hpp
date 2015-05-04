@@ -105,7 +105,7 @@ namespace up_chunk
     public: // --- life ---
         template <typename... Chunks>
         explicit into_bulk_n(Chunks&&... chunks)
-            : _into(convert(std::forward<Chunks>(chunks))...)
+            : _into{convert(std::forward<Chunks>(chunks))...}
         { }
     private: // --- operations ---
         auto _count() const -> std::size_t override
@@ -216,7 +216,7 @@ namespace up_chunk
     public: // --- life ---
         template <typename... Chunks>
         explicit from_bulk_n(Chunks&&... chunks)
-            : _from(convert(std::forward<Chunks>(chunks))...)
+            : _from{convert(std::forward<Chunks>(chunks))...}
         { }
     private: // --- operations ---
         auto _count() const -> std::size_t override
