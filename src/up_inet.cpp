@@ -938,7 +938,7 @@ private:
             [&]() { return ::send(_socket->_fd, chunk.data(), chunk.size(), MSG_NOSIGNAL); },
             "tcp-connection-write-error"_s, _remote, chunk.size());
     }
-    auto readv(up::chunk::into_bulk_t& chunks) const -> std::size_t override
+    auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t override
     {
         return do_transfer<up::stream::engine::unreadable>(
             [&]() {
@@ -955,7 +955,7 @@ private:
             },
             "tcp-connection-readv-error"_s, _remote, chunks.count(), chunks.total());
     }
-    auto writev(up::chunk::from_bulk_t& chunks) const -> std::size_t override
+    auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t override
     {
         return do_transfer<up::stream::engine::unwritable>(
             [&]() {

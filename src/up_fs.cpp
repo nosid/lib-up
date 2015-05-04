@@ -1231,7 +1231,7 @@ auto up_fs::fs::file::write_some(up::chunk::from chunk, off_t offset) const
     }
 }
 
-auto up_fs::fs::file::readv(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t
+auto up_fs::fs::file::read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
     for (;;) {
         ssize_t rv = ::preadv(_impl->fd(), chunks.as<iovec>(),
@@ -1246,7 +1246,7 @@ auto up_fs::fs::file::readv(up::chunk::into_bulk_t&& chunks, off_t offset) const
     }
 }
 
-auto up_fs::fs::file::writev(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t
+auto up_fs::fs::file::write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
     for (;;) {
         ssize_t rv = ::pwritev(_impl->fd(), chunks.as<iovec>(),

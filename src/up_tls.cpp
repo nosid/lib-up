@@ -417,7 +417,7 @@ namespace
             return _handle_io_result(
                 ::SSL_write(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), false);
         }
-        auto readv(up::chunk::into_bulk_t& chunks) const -> std::size_t override
+        auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t override
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */
@@ -429,7 +429,7 @@ namespace
             }
             UP_RAISE(runtime, "tls-bad-read-chunks"_s, chunks.total(), chunks.count());
         }
-        auto writev(up::chunk::from_bulk_t& chunks) const -> std::size_t override
+        auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t override
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */

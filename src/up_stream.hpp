@@ -58,15 +58,15 @@ namespace up_stream
         {
             return write_some(std::move(chunk), awaiting);
         }
-        auto readv(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t;
-        auto readv(up::chunk::into_bulk_t&& chunks, await&& awaiting) const -> std::size_t
+        auto read_some(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t;
+        auto read_some(up::chunk::into_bulk_t&& chunks, await&& awaiting) const -> std::size_t
         {
-            return readv(std::move(chunks), awaiting);
+            return read_some(std::move(chunks), awaiting);
         }
-        auto writev(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t;
-        auto writev(up::chunk::from_bulk_t&& chunks, await&& awaiting) const -> std::size_t
+        auto write_some(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t;
+        auto write_some(up::chunk::from_bulk_t&& chunks, await&& awaiting) const -> std::size_t
         {
-            return writev(std::move(chunks), awaiting);
+            return write_some(std::move(chunks), awaiting);
         }
         void upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform);
     protected:
@@ -185,8 +185,8 @@ namespace up_stream
         virtual void hard_close() const = 0; // hard close, not graceful
         virtual auto read_some(up::chunk::into chunk) const -> std::size_t = 0;
         virtual auto write_some(up::chunk::from chunk) const -> std::size_t = 0;
-        virtual auto readv(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
-        virtual auto writev(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
+        virtual auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
+        virtual auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
         virtual auto get_underlying_engine() const -> const engine* = 0;
         virtual auto get_native_handle() const -> native_handle = 0;
     protected:

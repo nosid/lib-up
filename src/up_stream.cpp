@@ -157,12 +157,12 @@ auto up_stream::stream::write_some(up::chunk::from chunk, await& awaiting) const
     }
 }
 
-auto up_stream::stream::readv(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t
+auto up_stream::stream::read_some(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
     for (;;) {
         try {
-            return _engine->readv(chunks);
+            return _engine->read_some(chunks);
         } catch (const up::exception<engine::unreadable>&) {
             awaiting(_engine->get_native_handle(), await::operation::read);
         } catch (const up::exception<engine::unwritable>&) {
@@ -171,12 +171,12 @@ auto up_stream::stream::readv(up::chunk::into_bulk_t&& chunks, await& awaiting) 
     }
 }
 
-auto up_stream::stream::writev(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t
+auto up_stream::stream::write_some(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
     for (;;) {
         try {
-            return _engine->writev(chunks);
+            return _engine->write_some(chunks);
         } catch (const up::exception<engine::unreadable>&) {
             awaiting(_engine->get_native_handle(), await::operation::read);
         } catch (const up::exception<engine::unwritable>&) {
