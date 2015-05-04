@@ -68,6 +68,16 @@ namespace up_stream
         {
             return write_some(std::move(chunks), awaiting);
         }
+        void write_all(up::chunk::from chunk, await& awaiting) const;
+        void write_all(up::chunk::from chunk, await&& awaiting) const
+        {
+            write_all(std::move(chunk), awaiting);
+        }
+        void write_all(up::chunk::from_bulk_t&& chunks, await& awaiting) const;
+        void write_all(up::chunk::from_bulk_t&& chunks, await&& awaiting) const
+        {
+            write_all(std::move(chunks), awaiting);
+        }
         void upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform);
     protected:
         auto get_underlying_engine() const -> const engine*;
@@ -185,8 +195,8 @@ namespace up_stream
         virtual void hard_close() const = 0; // hard close, not graceful
         virtual auto read_some(up::chunk::into chunk) const -> std::size_t = 0;
         virtual auto write_some(up::chunk::from chunk) const -> std::size_t = 0;
-        virtual auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
-        virtual auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
+        virtual auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
+        virtual auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
         virtual auto get_underlying_engine() const -> const engine* = 0;
         virtual auto get_native_handle() const -> native_handle = 0;
     protected:

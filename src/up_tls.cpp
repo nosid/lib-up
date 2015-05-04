@@ -417,29 +417,17 @@ namespace
             return _handle_io_result(
                 ::SSL_write(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), false);
         }
-        auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t override
+        auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t override
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */
-            for (std::size_t i = 0, j = chunks.count(); i != j; ++i) {
-                auto&& chunk = chunks[i];
-                if (chunk.size()) {
-                    return read_some(chunk);
-                } // else: check next
-            }
-            UP_RAISE(runtime, "tls-bad-read-chunks"_s, chunks.total(), chunks.count());
+            return read_some(chunks.head());
         }
-        auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t override
+        auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t override
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */
-            for (std::size_t i = 0, j = chunks.count(); i != j; ++i) {
-                auto&& chunk = chunks[i];
-                if (chunk.size()) {
-                    return write_some(chunk);
-                } // else: check next
-            }
-            UP_RAISE(runtime, "tls-bad-write-chunks"_s, chunks.total(), chunks.count());
+            return write_some(chunks.head());
         }
         auto get_underlying_engine() const -> const engine* override
         {

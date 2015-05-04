@@ -43,7 +43,7 @@ namespace
     void http_get(up::stream stream, up::stream::await& await)
     {
         std::string request("GET / HTTP/1.0\r\n\r\n");
-        stream.write_some(request, await); // XXX:BUG
+        stream.write_all(request, await);
         auto buffer = up::buffer();
         while (auto count = stream.read_some(buffer.reserve(1 << 14), await)) {
             buffer.produce(count);

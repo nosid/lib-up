@@ -24,6 +24,26 @@ namespace
         }
     }
 
+    struct
+    {
+        using engine = up_stream::stream::engine;
+        using await = up_stream::stream::await;
+        template <typename Result, typename... Params, typename... Args>
+        auto operator()(const engine& engine, await& awaiting,
+            Result (engine::* fn)(Params...) const, Args&&... args) -> Result
+        {
+            for (;;) {
+                try {
+                    return (engine.*fn)(args...);
+                } catch (const up::exception<engine::unreadable>&) {
+                    awaiting(engine.get_native_handle(), await::operation::read);
+                } catch (const up::exception<engine::unwritable>&) {
+                    awaiting(engine.get_native_handle(), await::operation::write);
+                }
+            }
+        }
+    } blocking;
+
     void close_aux(int& fd)
     {
         if (fd != -1) {
@@ -96,15 +116,7 @@ up_stream::stream::stream(up::impl_ptr<engine> engine)
 void up_stream::stream::shutdown(await& awaiting) const
 {
     check_state(_engine);
-    for (;;) {
-        try {
-            return _engine->shutdown();
-        } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
-        }
-    }
+    return blocking(*_engine, awaiting, &engine::shutdown);
 }
 
 void up_stream::stream::graceful_close(await& awaiting) const
@@ -132,57 +144,49 @@ void up_stream::stream::graceful_close(await& awaiting) const
 auto up_stream::stream::read_some(up::chunk::into chunk, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
-    for (;;) {
-        try {
-            return _engine->read_some(chunk);
-        } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
-        }
-    }
+    return blocking(*_engine, awaiting, &engine::read_some, std::move(chunk));
 }
 
 auto up_stream::stream::write_some(up::chunk::from chunk, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
-    for (;;) {
-        try {
-            return _engine->write_some(chunk);
-        } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
-        }
-    }
+    return blocking(*_engine, awaiting, &engine::write_some, std::move(chunk));
 }
 
 auto up_stream::stream::read_some(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
-    for (;;) {
-        try {
-            return _engine->read_some(chunks);
-        } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
-        }
-    }
+    return blocking(*_engine, awaiting, &engine::read_some_bulk, std::move(chunks));
 }
 
 auto up_stream::stream::write_some(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t
 {
     check_state(_engine);
-    for (;;) {
-        try {
-            return _engine->write_some(chunks);
-        } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
-        }
-    }
+    return blocking(*_engine, awaiting, &engine::write_some_bulk, std::move(chunks));
+}
+
+void up_stream::stream::write_all(up::chunk::from chunk, await& awaiting) const
+{
+    /* A do-while loop is used, so that the function on the underlying engine
+     * is called at least once. This is intentionally, so that the
+     * implementation is similar to write_some. */
+    check_state(_engine);
+    do {
+        auto count = blocking(*_engine, awaiting, &engine::write_some, chunk);
+        chunk.drain(count);
+    } while (chunk.size());
+}
+
+void up_stream::stream::write_all(up::chunk::from_bulk_t&& chunks, await& awaiting) const
+{
+    /* A do-while loop is used, so that the function on the underlying engine
+     * is called at least once. This is intentionally, so that the
+     * implementation is similar to write_some. */
+    check_state(_engine);
+    do {
+        auto count = blocking(*_engine, awaiting, &engine::write_some_bulk, chunks);
+        chunks.drain(count);
+    } while (chunks.total());
 }
 
 void up_stream::stream::upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform)

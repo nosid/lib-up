@@ -938,7 +938,7 @@ private:
             [&]() { return ::send(_socket->_fd, chunk.data(), chunk.size(), MSG_NOSIGNAL); },
             "tcp-connection-write-error"_s, _remote, chunk.size());
     }
-    auto read_some(up::chunk::into_bulk_t& chunks) const -> std::size_t override
+    auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t override
     {
         return do_transfer<up::stream::engine::unreadable>(
             [&]() {
@@ -955,7 +955,7 @@ private:
             },
             "tcp-connection-readv-error"_s, _remote, chunks.count(), chunks.total());
     }
-    auto write_some(up::chunk::from_bulk_t& chunks) const -> std::size_t override
+    auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t override
     {
         return do_transfer<up::stream::engine::unwritable>(
             [&]() {
@@ -1136,7 +1136,7 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::awai
                 // restart
             } else if (errno == EINPROGRESS) {
                 awaiting(_impl->get_native_handle(), up::stream::await::operation::write);
-                int error(0);
+                int error = 0;
                 socklen_t length = sizeof(error);
                 int rv = ::getsockopt(_impl->_fd, SOL_SOCKET, SO_ERROR, &error, &length);
                 if (rv != 0) {

@@ -36,6 +36,7 @@ namespace up_chunk
     public: // --- operations ---
         auto data() const -> auto { return _data; }
         auto size() const { return _size; }
+        auto drain(std::size_t n) -> std::size_t;
     };
 
 
@@ -50,22 +51,12 @@ namespace up_chunk
         into_bulk_t(const self& rhs) = default;
         into_bulk_t(self&& rhs) noexcept = default;
     public: // --- operations ---
-        auto count() const
+        auto count() const -> std::size_t;
+        auto total() const -> std::size_t;
+        auto head() const -> const into&;
+        auto drain(std::size_t n) -> std::size_t
         {
-            return _count();
-        }
-        auto total() const
-        {
-            std::size_t result(0);
-            auto chunks = _chunks();
-            for (std::size_t i = 0, j = _count(); i != j; ++i) {
-                result += chunks[i].size();
-            }
-            return result;
-        }
-        auto operator[](std::size_t index) const
-        {
-            return _chunks()[index];
+            return _drain(n);
         }
         template <typename Type>
         auto as() -> Type*
@@ -74,8 +65,11 @@ namespace up_chunk
             static_assert(std::is_trivially_destructible<Type>::value, "non-trivial type");
             auto chunks = _chunks();
             Type* result = static_cast<Type*>(_raw_storage());
-            for (std::size_t i = 0, j = _count(); i != j; ++i) {
-                new (result + i) Type{chunks[i].data(), chunks[i].size()};
+            for (std::size_t i = 0, j = _count(), k = 0; i != j; ++i) {
+                if (chunks[i].size()) {
+                    new (result + k) Type{chunks[i].data(), chunks[i].size()};
+                    ++k;
+                }
             }
             return result;
         }
@@ -85,6 +79,7 @@ namespace up_chunk
     private:
         virtual auto _count() const -> std::size_t = 0;
         virtual auto _chunks() const -> const into* = 0;
+        virtual auto _drain(std::size_t n) -> std::size_t = 0;
         virtual auto _raw_storage() -> void* = 0;
     };
 
@@ -101,6 +96,7 @@ namespace up_chunk
         }
     private: // --- state ---
         into _into[Count];
+        std::size_t _offset = 0;
         alignas(alignof(std::max_align_t)) char _storage[Count * Size];
     public: // --- life ---
         template <typename... Chunks>
@@ -110,11 +106,21 @@ namespace up_chunk
     private: // --- operations ---
         auto _count() const -> std::size_t override
         {
-            return Count;
+            return Count - _offset;
         }
         auto _chunks() const -> const into* override
         {
-            return _into;
+            return _into + _offset;
+        }
+        auto _drain(std::size_t n) -> std::size_t override
+        {
+            for (std::size_t i = _offset; n && i != Count; ++i) {
+                n = _into[i].drain(n);
+            }
+            while (_offset != Count && _into[_offset].size() == 0) {
+                ++_offset;
+            }
+            return n;
         }
         auto _raw_storage() -> void* override
         {
@@ -147,6 +153,7 @@ namespace up_chunk
     public: // --- operations ---
         auto data() const { return _data; }
         auto size() const { return _size; }
+        auto drain(std::size_t n) -> std::size_t;
     };
 
 
@@ -161,22 +168,12 @@ namespace up_chunk
         from_bulk_t(const self& rhs) = default;
         from_bulk_t(self&& rhs) noexcept = default;
     public: // --- operations ---
-        auto count() const
+        auto count() const -> std::size_t;
+        auto total() const -> std::size_t;
+        auto head() const -> const from&;
+        auto drain(std::size_t n) -> std::size_t
         {
-            return _count();
-        }
-        auto total() const
-        {
-            std::size_t result(0);
-            auto chunks = _chunks();
-            for (std::size_t i = 0, j = _count(); i != j; ++i) {
-                result += chunks[i].size();
-            }
-            return result;
-        }
-        auto operator[](std::size_t index) const
-        {
-            return _chunks()[index];
+            return _drain(n);
         }
         template <typename Type>
         auto as() -> Type*
@@ -185,8 +182,11 @@ namespace up_chunk
             static_assert(std::is_trivially_destructible<Type>::value, "non-trivial type");
             auto chunks = _chunks();
             Type* result = static_cast<Type*>(_raw_storage());
-            for (std::size_t i = 0, j = _count(); i != j; ++i) {
-                new (result + i) Type{const_cast<char*>(chunks[i].data()), chunks[i].size()};
+            for (std::size_t i = 0, j = _count(), k = 0; i != j; ++i) {
+                if (chunks[i].size()) {
+                    new (result + k) Type{const_cast<char*>(chunks[i].data()), chunks[i].size()};
+                    ++k;
+                }
             }
             return result;
         }
@@ -196,6 +196,7 @@ namespace up_chunk
     private:
         virtual auto _count() const -> std::size_t = 0;
         virtual auto _chunks() const -> const from* = 0;
+        virtual auto _drain(std::size_t n) -> std::size_t = 0;
         virtual auto _raw_storage() -> void* = 0;
     };
 
@@ -212,6 +213,7 @@ namespace up_chunk
         }
     private: // --- state ---
         from _from[Count];
+        std::size_t _offset = 0;
         alignas(alignof(std::max_align_t)) char _storage[Count * Size];
     public: // --- life ---
         template <typename... Chunks>
@@ -221,11 +223,21 @@ namespace up_chunk
     private: // --- operations ---
         auto _count() const -> std::size_t override
         {
-            return Count;
+            return Count - _offset;
         }
         auto _chunks() const -> const from* override
         {
-            return _from;
+            return _from + _offset;
+        }
+        auto _drain(std::size_t n) -> std::size_t override
+        {
+            for (std::size_t i = _offset; n && i != Count; ++i) {
+                n = _from[i].drain(n);
+            }
+            while (_offset != Count && _from[_offset].size() == 0) {
+                ++_offset;
+            }
+            return n;
         }
         auto _raw_storage() -> void* override
         {
