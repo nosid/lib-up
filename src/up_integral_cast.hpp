@@ -91,7 +91,6 @@ namespace up_integral_cast
     template <typename Source>
     class integral_caster_t final
     {
-
     private: // --- state ---
         Source _value;
     public: // --- life ---
