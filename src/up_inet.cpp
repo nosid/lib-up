@@ -972,6 +972,10 @@ private:
             },
             "tcp-connection-writev-error"_s, _remote, chunks.count(), chunks.total());
     }
+    auto downgrade() -> up::impl_ptr<up::stream::engine> override
+    {
+        UP_RAISE(runtime, "tcp-bad-downgrade-error"_s);
+    }
     auto get_underlying_engine() const -> const engine* override
     {
         return this;

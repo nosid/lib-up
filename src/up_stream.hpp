@@ -79,6 +79,11 @@ namespace up_stream
             write_all(std::move(chunks), awaiting);
         }
         void upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform);
+        void downgrade(await& awaiting);
+        void downgrade(await&& awaiting)
+        {
+            downgrade(awaiting);
+        }
     protected:
         auto get_underlying_engine() const -> const engine*;
     };
@@ -197,6 +202,7 @@ namespace up_stream
         virtual auto write_some(up::chunk::from chunk) const -> std::size_t = 0;
         virtual auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
         virtual auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
+        virtual auto downgrade() -> up::impl_ptr<engine> = 0;
         virtual auto get_underlying_engine() const -> const engine* = 0;
         virtual auto get_native_handle() const -> native_handle = 0;
     protected:

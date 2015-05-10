@@ -380,24 +380,8 @@ namespace
         void shutdown() const override
         {
             sentry sentry(this, state::shutdown_in_progress);
-            openssl_thread::instance();
-            while (int result = ::SSL_shutdown(_ssl.get()) != 1) {
-                if (result == 0) {
-                    // restart
-                } else {
-                    auto error = ::SSL_get_error(_ssl.get(), result);
-                    if (error == SSL_ERROR_WANT_READ) {
-                        UP_RAISE(unreadable, "unreadable-tls-stream"_s);
-                    } else if (error == SSL_ERROR_WANT_WRITE) {
-                        UP_RAISE(unwritable, "unwritable-tls-stream"_s);
-                    } else {
-                        _state = state::bad;
-                        raise_ssl_error("bad-ssl-io-error"_s, result, error);
-                    }
-                }
-            }
+            _graceful_shutdown();
             _underlying->shutdown();
-            _state = state::good;
         }
         void hard_close() const override
         {
@@ -429,6 +413,12 @@ namespace
              * we only process the first non-empty buffer. */
             return write_some(chunks.head());
         }
+        auto downgrade() -> up::impl_ptr<engine> override
+        {
+            sentry sentry(this, state::shutdown_in_progress);
+            _graceful_shutdown();
+            return std::move(_underlying);
+        }
         auto get_underlying_engine() const -> const engine* override
         {
             return _underlying->get_underlying_engine();
@@ -436,6 +426,26 @@ namespace
         auto get_native_handle() const -> up::stream::native_handle override
         {
             return _underlying->get_native_handle();
+        }
+        void _graceful_shutdown() const
+        {
+            openssl_thread::instance();
+            while (int result = ::SSL_shutdown(_ssl.get()) != 1) {
+                if (result == 0) {
+                    // restart
+                } else {
+                    auto error = ::SSL_get_error(_ssl.get(), result);
+                    if (error == SSL_ERROR_WANT_READ) {
+                        UP_RAISE(unreadable, "unreadable-tls-stream"_s);
+                    } else if (error == SSL_ERROR_WANT_WRITE) {
+                        UP_RAISE(unwritable, "unwritable-tls-stream"_s);
+                    } else {
+                        _state = state::bad;
+                        raise_ssl_error("bad-ssl-io-error"_s, result, error);
+                    }
+                }
+            }
+            _state = state::bad; // unusable due to shutdown
         }
         auto _handle_io_result(int result, bool allow_clean_shutdown) const -> std::size_t
         {

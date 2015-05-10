@@ -42,6 +42,20 @@ namespace
                 }
             }
         }
+        template <typename Result, typename... Params, typename... Args>
+        auto operator()(engine& engine, await& awaiting,
+            Result (engine::* fn)(Params...), Args&&... args) -> Result
+        {
+            for (;;) {
+                try {
+                    return (engine.*fn)(args...);
+                } catch (const up::exception<engine::unreadable>&) {
+                    awaiting(engine.get_native_handle(), await::operation::read);
+                } catch (const up::exception<engine::unwritable>&) {
+                    awaiting(engine.get_native_handle(), await::operation::write);
+                }
+            }
+        }
     } blocking;
 
     void close_aux(int& fd)
@@ -191,6 +205,12 @@ void up_stream::stream::upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<
 {
     check_state(_engine);
     _engine = transform(std::move(_engine));
+}
+
+void up_stream::stream::downgrade(await& awaiting)
+{
+    check_state(_engine);
+    _engine = blocking(*_engine, awaiting, &engine::downgrade);
 }
 
 auto up_stream::stream::get_underlying_engine() const -> const engine*
