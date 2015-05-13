@@ -23,7 +23,7 @@ namespace
     public: // --- state ---
         z_stream _z_stream;
         up::buffer _buffer;
-    public: // --- life ---
+    protected: // --- life ---
         explicit processor()
         {
             static_assert(Z_NULL == 0, "Z_NULL is legacy null pointer constant");
@@ -35,7 +35,6 @@ namespace
         }
         processor(const self& rhs) = delete;
         processor(self&& rhs) noexcept = delete;
-    protected:
         ~processor() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
