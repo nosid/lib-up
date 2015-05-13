@@ -25,13 +25,12 @@ namespace up_linked_map
     public: // --- state ---
         self* _list_prev;
         self* _list_next;
-    public: // --- life ---
+    protected: // --- life ---
         explicit list_node(self* list_prev, self* list_next)
             : _list_prev(list_prev), _list_next(list_next)
         { }
         list_node(const self& rhs) = delete;
         list_node(self&& rhs) noexcept = delete;
-    protected:
         ~list_node() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
@@ -62,13 +61,12 @@ namespace up_linked_map
     public: // --- state ---
         self* _hash_prev;
         self* _hash_next;
-    public: // --- life ---
+    protected: // --- life ---
         explicit hash_node(self* hash_prev, self* hash_next)
             : _hash_prev(hash_prev), _hash_next(hash_next)
         { }
         hash_node(const self& rhs) = delete;
         hash_node(self&& rhs) noexcept = delete;
-    protected:
         ~hash_node() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
