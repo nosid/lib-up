@@ -1146,44 +1146,43 @@ public: // --- operations ---
 up_fs::fs::file::file(const path& path, options options)
     : _impl(nullptr)
 {
-    using o = up_fs::fs::file::option;
     int flags = 0;
-    if (options.all(o::read, o::write)) {
+    if (options.all(option::read, option::write)) {
         flags |= O_RDWR;
-    } else if (options.all(o::read)) {
+    } else if (options.all(option::read)) {
         flags |= O_RDONLY;
-    } else if (options.all(o::write)) {
+    } else if (options.all(option::write)) {
         flags |= O_WRONLY;
     } // else: ignore
-    if (options.all(o::append)) {
+    if (options.all(option::append)) {
         flags |= O_APPEND;
     }
-    if (options.all(o::create)) {
+    if (options.all(option::create)) {
         flags |= O_CREAT;
     }
-    if (options.all(o::exclusive)) {
+    if (options.all(option::exclusive)) {
         flags |= O_EXCL;
     }
-    if (options.all(o::tmpfile)) {
+    if (options.all(option::tmpfile)) {
         flags |= O_TMPFILE;
     }
-    if (options.all(o::truncate)) {
+    if (options.all(option::truncate)) {
         flags |= O_TRUNC;
     }
     mode_t mode = S_IRUSR | S_IWUSR;
-    if (options.all(o::executable)) {
+    if (options.all(option::executable)) {
         mode |= S_IXUSR;
     }
-    if (options.all(o::group)) {
+    if (options.all(option::group)) {
         mode |= S_IRGRP | S_IWGRP;
     }
-    if (options.all(o::group, o::executable)) {
+    if (options.all(option::group, option::executable)) {
         mode |= S_IXGRP;
     }
-    if (options.all(o::others)) {
+    if (options.all(option::others)) {
         mode |= S_IROTH | S_IWOTH;
     }
-    if (options.all(o::others, o::executable)) {
+    if (options.all(option::others, option::executable)) {
         mode |= S_IXOTH;
     }
     auto&& p = path.get_impl();
