@@ -43,6 +43,8 @@ int main(int argc, char* argv[])
 {
     try {
 
+        std::ios::sync_with_stdio(false);
+
         class xxx final
         {
         public:

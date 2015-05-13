@@ -32,6 +32,33 @@ namespace
     }
 
     __attribute__((unused))
+    void tls_echo_server(up::tcp::endpoint endpoint)
+    {
+        using o = up::tcp::socket::option;
+        std::string pathname = "/usr/share/doc/libssl-doc/demos/bio/server.pem";
+        up::tls::server_context tls(
+            up::nullopt /* up::tls::authority::system() */,
+            up::tls::identity(pathname, pathname),
+            {});
+        auto listener = up::tcp::socket(std::move(endpoint), {o::reuseaddr}).listen(1);
+        for (;;) {
+            auto now = up::steady_clock::now();
+            auto deadline = up::stream::deadline_await(now + 30s);
+            auto stream = listener.accept(deadline);
+            stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
+                    return tls.upgrade(std::move(engine), deadline, up::nullopt, up::nullopt);
+                });
+            auto buffer = up::buffer();
+            while (auto count = stream.read_some(buffer.reserve(1 << 14), deadline)) {
+                buffer.produce(count);
+                while (buffer.available()) {
+                    buffer.consume(stream.write_some(buffer, deadline));
+                }
+            }
+        }
+    }
+
+    __attribute__((unused))
     auto connect(up::ip::endpoint address, const std::string& port, up::stream::await& await)
         -> up::tcp::connection
     {
@@ -53,35 +80,49 @@ namespace
 
 }
 
-int main()
+int main(int argc, char* argv[])
 {
     try {
 
+        std::ios::sync_with_stdio(false);
+
         // echo_server(up::tcp::endpoint(up::ipv4::endpoint::any, up::tcp::resolve_port("http-alt")));
 
+        if (argc == 2 && std::string(argv[1]) == "server") {
+            tls_echo_server(up::tcp::endpoint(up::ipv4::endpoint::any, up::tcp::resolve_port("http-alt")));
+        }
+
         auto now = up::steady_clock::now();
-        auto deadline = up::stream::deadline_await(now + 3000ms);
+        auto deadline = up::stream::deadline_await(now + 30s);
 
         for (auto&& address : up::ip::resolve_endpoints("www.heise.de.")) {
             // skip IPv6 addresses
             if (address.version() == up::ip::version::v6) continue;
             http_get(connect(address, "http", deadline), deadline);
+            return EXIT_SUCCESS;
         }
 
-        // up::tls::context tls(
-        //     up::tls::authority::system(),
-        //     up::tls::identity("XXX", "XXX"));
+        up::tls::client_context tls(
+            /*up::nullopt*/ up::tls::authority::system(),
+            up::nullopt,
+            {});
 
-        // for (auto&& address : up::ip::resolve_endpoints("www.heise.de.")) {
-        //     std::cerr << "ip address: " << address.to_string() << '\n';
-        //     // skip IPv6 addresses
-        //     if (address.version() == up::ip::version::v6) continue;
-        //     auto stream = connect(address, "http", deadline);
-        //     // stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
-        //     //         return tls.make_engine(std::move(engine), deadline);
-        //     //     });
-        //     http_get(std::move(stream), deadline);
-        // }
+        std::string hostname = "www.google.com";
+        for (auto&& address : up::ip::resolve_endpoints(hostname)) {
+            auto stream = up::tcp::socket(address.version())
+                .connect(up::tcp::endpoint(address, up::tcp::port(443)), deadline);
+            stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
+                    return tls.upgrade(std::move(engine), deadline, hostname,
+                        [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
+                            auto cn = certificate.common_name();
+                            std::cerr << "VERIFY:" << preverified << ':' << depth << '[' << (cn ? *cn : "none") << "]\n";
+                            return preverified
+                                && (depth != 0 || certificate.matches_hostname(hostname));
+                        });
+                });
+            http_get(std::move(stream), deadline);
+            return EXIT_SUCCESS;
+        }
 
     } catch (...) {
         up::log_current_exception(std::cerr, "ERROR: ");

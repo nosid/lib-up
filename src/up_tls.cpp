@@ -10,8 +10,11 @@
 #include "openssl/engine.h"
 #include "openssl/err.h"
 #include "openssl/ssl.h"
+#include "openssl/x509v3.h"
 
 #include "up_buffer_adapter.hpp"
+#include "up_char_cast.hpp"
+#include "up_defer.hpp"
 #include "up_exception.hpp"
 #include "up_integral_cast.hpp"
 #include "up_utility.hpp"
@@ -22,6 +25,8 @@ namespace
     using namespace up::literals;
 
     struct runtime { };
+
+    struct already_shutdown { };
 
 
     class openssl_process final
@@ -60,6 +65,7 @@ namespace
         }
     private: // --- state ---
         std::unique_ptr<std::mutex[]> _mutexes;
+        int _ssl_ex_data_index = -1;
     public: // --- life ---
         explicit openssl_process()
             : _mutexes(std::make_unique<std::mutex[]>(CRYPTO_num_locks()))
@@ -71,8 +77,18 @@ namespace
              * ERR_load_crypto_strings(). */
             ::SSL_load_error_strings();
             ::OpenSSL_add_all_algorithms();
+            /* Allocate an index in the SSL* structure, which can be used
+             * (solely) by this framework. */
+            _ssl_ex_data_index = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+            if (_ssl_ex_data_index < 0) {
+                UP_RAISE(runtime, "tls-external-data-error"_s);
+            }
             // required for multi-threaded programs
             ::CRYPTO_THREADID_set_callback(&_thread_id_callback);
+            /* It is important that the callback is installed last. Otherwise,
+             * a deadlock might occur, because the locking callback is invoked
+             * and tries to access the singleton, which is still locked as
+             * long as it is instantiated. */
             ::CRYPTO_set_locking_callback(&_locking_callback);
         }
         ~openssl_process() noexcept
@@ -91,6 +107,28 @@ namespace
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
         auto operator=(self&& rhs) & noexcept -> self& = delete;
+        template <typename Type>
+        void ssl_put_ptr(SSL* ssl, Type* ptr)
+        {
+            if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, ptr) != 1) {
+                UP_RAISE(runtime, "tls-external-data-error"_s);
+            }
+        }
+        void ssl_reset_ptr(SSL* ssl)
+        {
+            if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, nullptr) != 1) {
+                UP_RAISE(runtime, "tls-external-data-error"_s);
+            }
+        }
+        template <typename Type>
+        auto ssl_get_ptr(SSL* ssl) -> Type*
+        {
+            if (auto* ptr = ::SSL_get_ex_data(ssl, _ssl_ex_data_index)) {
+                return static_cast<Type*>(ptr);
+            } else {
+                UP_RAISE(runtime, "tls-external-data-error"_s);
+            }
+        }
     };
 
 
@@ -153,7 +191,7 @@ namespace
         {
             _ptr = ::PEM_read_X509(up::buffer_adapter::reader(buffer), nullptr, nullptr, nullptr);
             if (_ptr == nullptr) {
-                raise_ssl_error("bad-tls-certificate-error"_s);
+                raise_ssl_error("tls-bad-certificate-error"_s);
             }
         }
         x509(const self& rhs) = delete;
@@ -186,8 +224,7 @@ namespace
             engine* stream = static_cast<engine*>(bio->ptr);
             try {
                 ::BIO_clear_retry_flags(bio);
-                return up::integral_caster(
-                    stream->write_some({data, up::integral_caster(size)}));
+                return up::integral_caster(stream->write_some({data, up::integral_caster(size)}));
             } catch (const up::exception<engine::unreadable>&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
@@ -204,8 +241,7 @@ namespace
             engine* stream = static_cast<engine*>(bio->ptr);
             try {
                 ::BIO_clear_retry_flags(bio);
-                return up::integral_caster(
-                    stream->read_some({data, up::integral_caster(size)}));
+                return up::integral_caster(stream->read_some({data, up::integral_caster(size)}));
             } catch (const up::exception<engine::unreadable>&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
@@ -232,6 +268,9 @@ namespace
                 return 1;
             case BIO_CTRL_FLUSH:
                 return 1;
+            case BIO_CTRL_PUSH:
+            case BIO_CTRL_POP:
+                return 0; // ignore (optional, nothing to do)
             default:
                 return 0;
             }
@@ -255,7 +294,7 @@ namespace
 
     BIO_METHOD bio_adapter::methods = {
         0x42 | BIO_TYPE_SOURCE_SINK, // arbitrary, unused type
-        "tls bio adapter", // name
+        "tls-bio-adapter", // name
         &_bwrite,
         &_bread,
         &_bputs,
@@ -291,12 +330,12 @@ namespace
     };
 
 
-    class tls_stream final : public up::stream::engine
+    class base_engine : public up::stream::engine
     {
-    public: // --- scope ---
-        using self = tls_stream;
+    protected: // --- scope ---
+        using self = base_engine;
         using await = up::stream::await;
-        enum class state { good, bad, read_in_progress, write_in_progress, shutdown_in_progress, };
+        enum class state { good, bad, read_in_progress, write_in_progress, shutdown_in_progress, shutdown_completed, };
         /* The OpenSSL functions behave a bit strange when it comes to errors.
          * Apparently, even if a function returns with an error, the function
          * call might have changed something. According to the documentation,
@@ -308,29 +347,34 @@ namespace
         public: // -- scope ---
             using self = sentry;
         private: // --- state ---
-            const tls_stream* _owner;
+            const base_engine* _owner;
             spin_lock _lock;
         public: // --- life ---
-            explicit sentry(const tls_stream* owner, state expected)
+            explicit sentry(const base_engine* owner, state expected)
                 : _owner(owner), _lock(_owner->_lock)
             {
-                if (_owner->_state != state::good && _owner->_state != expected) {
+                if (_owner->_state == state::good) {
+                    _owner->_state = expected;
+                } else if (_owner->_state == expected) {
+                    // nothing
+                } else if (_owner->_state == state::shutdown_completed) {
+                    UP_RAISE(already_shutdown, "tls-stream-already-shutdown"_s);
+                } else {
                     UP_RAISE(runtime, "tls-bad-state"_s,
                         up::to_underlying_type(_owner->_state),
                         up::to_underlying_type(expected));
-                } else {
-                    _owner->_state = expected;
                 }
             }
         };
+        using ssl_ptr = std::unique_ptr<SSL, decltype(&::SSL_free)>;
         static auto make_ssl(SSL_CTX* ctx)
         {
             openssl_thread::instance();
-            return std::unique_ptr<SSL, decltype(&::SSL_free)>{::SSL_new(ctx), &::SSL_free};
+            return ssl_ptr(::SSL_new(ctx), &::SSL_free);
         }
-    private: // --- state ---
+    protected: // --- state ---
+        ssl_ptr _ssl;
         up::impl_ptr<engine> _underlying;
-        std::unique_ptr<SSL, decltype(&::SSL_free)> _ssl;
         /* Spin lock: Apparently, OpenSSL is not thread-safe in the same way
          * as POSIX socket. That means, you can't read from and write to the
          * same TLS stream at the same time. The lock is used to protect
@@ -338,21 +382,22 @@ namespace
          * should not be used that way, so it causes basically no overhead. */
         mutable std::atomic_flag _lock = ATOMIC_FLAG_INIT;
         mutable state _state = state::bad;
-    public: // --- life ---
-        explicit tls_stream(SSL_CTX* ctx, up::impl_ptr<engine> underlying, await& awaiting)
-            : _underlying(std::move(underlying)), _ssl(make_ssl(ctx))
+    protected: // --- life ---
+        explicit base_engine(
+            ssl_ptr ssl, up::impl_ptr<engine> underlying, await& awaiting, int handshake(SSL*))
+            : _ssl(std::move(ssl)), _underlying(std::move(underlying))
         {
             if (_ssl == nullptr) {
-                raise_ssl_error("bad-tls-error"_s);
+                raise_ssl_error("tls-ssl-error"_s);
             }
-            /* User-defined BIO. Note that if the BIO is associated with
-             * SSL, it is automatically freed in SSL_free. */
+            /* User-defined BIO. Note that if the BIO is associated with SSL,
+             * it is automatically freed in SSL_free. */
             BIO* bio = ::BIO_new(&bio_adapter::methods);
             bio->ptr = _underlying.get();
             bio->init = 1;
             ::SSL_set_bio(_ssl.get(), bio, bio);
             for (;;) {
-                auto result = ::SSL_connect(_ssl.get()); // XXX: support accept mode with ::SSL_accept(...)
+                auto result = handshake(_ssl.get());
                 if (result == 1) {
                     /* OK. The TLS/SSL handshake was successfully completed, a
                      * TLS/SSL connection has been established. */
@@ -370,29 +415,42 @@ namespace
                     } else if (error == SSL_ERROR_WANT_WRITE) {
                         awaiting(_underlying->get_native_handle(), await::operation::write);
                     } else {
-                        raise_ssl_error("bad-ssl-io-error"_s, result, error);
+                        raise_ssl_error("tls-io-error"_s, result, error);
                     }
                 }
             }
             _state = state::good;
         }
+        ~base_engine() noexcept = default;
     private: // --- operations ---
         void shutdown() const override
         {
-            sentry sentry(this, state::shutdown_in_progress);
-            _graceful_shutdown();
+            try {
+                sentry sentry(this, state::shutdown_in_progress);
+                _graceful_shutdown();
+            } catch (const up::exception<already_shutdown>&) {
+                /* Nothing, i.e. simulate the behavior of a regular socket
+                 * that has been uni-directionally shutdown. */
+            }
             _underlying->shutdown();
         }
         void hard_close() const override
         {
+            _state = state::bad;
             _underlying->hard_close();
         }
         auto read_some(up::chunk::into chunk) const -> std::size_t override
         {
-            sentry sentry(this, state::read_in_progress);
-            openssl_thread::instance();
-            return _handle_io_result(
-                ::SSL_read(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), true);
+            try {
+                sentry sentry(this, state::read_in_progress);
+                openssl_thread::instance();
+                return _handle_io_result(
+                    ::SSL_read(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), true);
+            } catch (const up::exception<already_shutdown>&) {
+                /* Simulate behavior of a regular socket that has been
+                 * uni-directionally shutdown. */
+                return 0;
+            }
         }
         auto write_some(up::chunk::from chunk) const -> std::size_t override
         {
@@ -430,33 +488,52 @@ namespace
         void _graceful_shutdown() const
         {
             openssl_thread::instance();
-            while (int result = ::SSL_shutdown(_ssl.get()) != 1) {
-                if (result == 0) {
-                    // restart
-                } else {
+            for (;;) {
+                int result = ::SSL_shutdown(_ssl.get());
+                if (result == 1) {
+                    // The shutdown was successfully completed.
+                    break;
+                } else if (result == 0) {
+                    /* restart: SSL_shutdown must be called again to complete
+                     * the bidirectional shutdown handshake. */
+                } else if (result < 0) {
                     auto error = ::SSL_get_error(_ssl.get(), result);
                     if (error == SSL_ERROR_WANT_READ) {
                         UP_RAISE(unreadable, "unreadable-tls-stream"_s);
                     } else if (error == SSL_ERROR_WANT_WRITE) {
                         UP_RAISE(unwritable, "unwritable-tls-stream"_s);
+                    } else if (error == SSL_ERROR_SYSCALL && errno == 0) {
+                        /* According to the OpenSSL documentation, an
+                         * erroneous SSL_ERROR_SYSCALL may be flagged even
+                         * though no error occurred. */
+                        break;
                     } else {
                         _state = state::bad;
-                        raise_ssl_error("bad-ssl-io-error"_s, result, error);
+                        raise_ssl_error("tls-io-error"_s, result, error);
                     }
+                } else {
+                    _state = state::bad;
+                    raise_ssl_error("tls-io-error"_s, result);
                 }
             }
-            _state = state::bad; // unusable due to shutdown
+            _state = state::shutdown_completed;
         }
-        auto _handle_io_result(int result, bool allow_clean_shutdown) const -> std::size_t
+        auto _handle_io_result(int result, bool allow_shutdown) const -> std::size_t
         {
             auto error = ::SSL_get_error(_ssl.get(), result);
             if (result > 0) {
                 _state = state::good;
                 return up::integral_caster(std::make_unsigned_t<decltype(result)>(result));
-            } else if (result == 0 && error == SSL_ERROR_ZERO_RETURN && allow_clean_shutdown) {
+            } else if (allow_shutdown && result == 0 && error == SSL_ERROR_ZERO_RETURN) {
                 /* Clean ssl shutdown; however, note that the socket might
                  * still be open. */
-                _state = state::good;
+                _state = state::shutdown_completed;
+                return 0;
+            } else if (allow_shutdown && result == 0 && error == SSL_ERROR_SYSCALL && errno == 0) {
+                /* Apparently this case happens when the other side closes the
+                 * connection without a correct shutdown. Because it happens
+                 * with many servers, this issue is silently ignored. */
+                _state = state::shutdown_completed;
                 return 0;
             } else if (result < 0 && error == SSL_ERROR_WANT_READ) {
                 UP_RAISE(unreadable, "unreadable-tls-stream"_s);
@@ -464,7 +541,7 @@ namespace
                 UP_RAISE(unwritable, "unwritable-tls-stream"_s);
             } else {
                 _state = state::bad;
-                raise_ssl_error("bad-ssl-io-error"_s, result, error);
+                raise_ssl_error("tls-io-error"_s, result, error);
             }
         }
     };
@@ -509,7 +586,8 @@ public: // --- life ---
 private: // --- operations ---
     void _apply(SSL_CTX* ctx) const override
     {
-        if (int rv = ::SSL_CTX_set_default_verify_paths(ctx) != 1) {
+        int rv = ::SSL_CTX_set_default_verify_paths(ctx);
+        if (rv != 1) {
             raise_ssl_error("tls-system-authority-error"_s, rv);
         }
     }
@@ -527,7 +605,8 @@ public: // --- life ---
 private: // --- operations ---
     void _apply(SSL_CTX* ctx) const override
     {
-        if (int rv = ::SSL_CTX_load_verify_locations(ctx, nullptr, _pathname.c_str()) != 1) {
+        int rv = ::SSL_CTX_load_verify_locations(ctx, nullptr, _pathname.c_str());
+        if (rv != 1) {
             raise_ssl_error("tls-directory-authority-error"_s, rv, _pathname);
         }
     }
@@ -545,7 +624,8 @@ public: // --- life ---
 private: // --- operations ---
     void _apply(SSL_CTX* ctx) const override
     {
-        if (int rv = ::SSL_CTX_load_verify_locations(ctx, _pathname.c_str(), nullptr) != 1) {
+        int rv = ::SSL_CTX_load_verify_locations(ctx, _pathname.c_str(), nullptr);
+        if (rv != 1) {
             raise_ssl_error("tls-file-authority-error"_s, rv, _pathname);
         }
     }
@@ -564,7 +644,8 @@ private: // --- operations ---
     void _apply(SSL_CTX* ctx) const override
     {
         if (auto store = ::SSL_CTX_get_cert_store(ctx)) {
-            if (int rv = ::X509_STORE_add_cert(store, _certificate.native_handle()) != 1) {
+            int rv = ::X509_STORE_add_cert(store, _certificate.native_handle());
+            if (rv != 1) {
                 raise_ssl_error("tls-bad-certificate-error"_s, rv);
             } // else: ok
         } else {
@@ -621,14 +702,18 @@ public: // --- operations ---
         /* The SSL_CTX also contains functions to add private key and
          * certificate from a memory buffer. However, there is no
          * corresponding function for the certificate chain. */
-        if (int rv = ::SSL_CTX_use_PrivateKey_file(ctx, _private_key_pathname.c_str(), SSL_FILETYPE_PEM) != 1) {
+        int rv;
+        rv = ::SSL_CTX_use_PrivateKey_file(ctx, _private_key_pathname.c_str(), SSL_FILETYPE_PEM);
+        if (rv != 1) {
             raise_ssl_error("tls-private-key-error"_s, rv);
         }
-        if (int rv = ::SSL_CTX_use_certificate_file(ctx, _certificate_pathname.c_str(), SSL_FILETYPE_PEM) != 1) {
+        rv = ::SSL_CTX_use_certificate_file(ctx, _certificate_pathname.c_str(), SSL_FILETYPE_PEM);
+        if (rv != 1) {
             raise_ssl_error("tls-certificate-error"_s, rv);
         }
         if (_certificate_chain_pathname) {
-            if (int rv = ::SSL_CTX_use_certificate_chain_file(ctx, _certificate_chain_pathname->c_str()) != 1) {
+            rv = ::SSL_CTX_use_certificate_chain_file(ctx, _certificate_chain_pathname->c_str());
+            if (rv != 1) {
                 raise_ssl_error("tls-certificate-chain-error"_s, rv);
             }
         }
@@ -642,7 +727,7 @@ up_tls::tls::identity::identity(
     : _impl(std::make_shared<const impl>(
             std::move(private_key_pathname),
             std::move(certificate_pathname),
-            up::optional<std::string>{}))
+            up::optional<std::string>()))
 { }
 
 up_tls::tls::identity::identity(
@@ -656,58 +741,368 @@ up_tls::tls::identity::identity(
 { }
 
 
-class up_tls::tls::context::impl final
+class up_tls::tls::certificate::impl final
 {
-public: // --- scope ---
-    using self = impl;
+public: // --- state ---
+    X509* _x509;
+public: // --- life ---
+    explicit impl(X509* x509)
+        : _x509(x509)
+    { }
+};
+
+
+auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
+{
+    X509_NAME* subject = ::X509_get_subject_name(_impl._x509);
+    int pos = -1;
+    X509_NAME_ENTRY* entry = nullptr;
+    while ((pos = ::X509_NAME_get_index_by_NID(subject, NID_commonName, pos)) != -1) {
+        entry = ::X509_NAME_get_entry(subject, pos);
+    }
+    if (entry) {
+        unsigned char* buffer;
+        int rv = ::ASN1_STRING_to_UTF8(&buffer, ::X509_NAME_ENTRY_get_data(entry));
+        if (rv >= 0) {
+            UP_DEFER { ::OPENSSL_free(buffer); };
+            return std::string(up::char_cast<char>(buffer), up::integral_cast<std::size_t>(rv));
+        } else {
+            UP_RAISE(runtime, "tls-bad-common-name"_s);
+        }
+    } else {
+        return up::nullopt;
+    }
+}
+
+bool up_tls::tls::certificate::matches_hostname(const std::string& hostname) const
+{
+    int rv = ::X509_check_host(_impl._x509, hostname.data(), hostname.size(), 0, nullptr);
+    if (rv == 1) {
+        return true;
+    } else if (rv == 0) {
+        return false;
+    } else {
+        UP_RAISE(runtime, "tls-bad-hostname-check"_s, hostname);
+    }
+}
+
+
+class up_tls::tls::context
+{
+protected: // --- scope ---
+    using self = context;
+    using ssl_ctx_ptr = std::unique_ptr<SSL_CTX, decltype(&::SSL_CTX_free)>;
+    using authority_ptr = std::shared_ptr<const up_tls::tls::authority::impl>;
+    using identity_ptr = std::shared_ptr<const up_tls::tls::identity::impl>;
     static auto make_ssl_ctx(const SSL_METHOD* method)
     {
         openssl_thread::instance();
-        return std::unique_ptr<SSL_CTX, decltype(&::SSL_CTX_free)>{
-            ::SSL_CTX_new(method), &::SSL_CTX_free};
+        return ssl_ctx_ptr(::SSL_CTX_new(method), &::SSL_CTX_free);
     }
-public: // --- state ---
-    std::unique_ptr<SSL_CTX, decltype(&::SSL_CTX_free)> _ctx;
-    std::shared_ptr<const identity::impl> _identity;
-public: // --- life ---
-    explicit impl(const std::shared_ptr<const authority::impl>& authority, std::shared_ptr<const identity::impl>&& identity)
-        : _ctx(make_ssl_ctx(SSLv23_client_method())) // XXX: add support for server mode
-        , _identity(std::move(identity))
+protected: // --- state ---
+    ssl_ctx_ptr _ssl_ctx;
+    authority_ptr _authority;
+    identity_ptr _identity;
+protected: // --- life ---
+    explicit context(
+        ssl_ctx_ptr&& ssl_ctx,
+        up::optional<authority>&& authority,
+        up::optional<identity>&& identity)
+        : _ssl_ctx(std::move(ssl_ctx))
+        , _authority(authority ? std::move(authority->_impl) : authority_ptr())
+        , _identity(identity ? std::move(identity->_impl) : identity_ptr())
     {
-        if (_ctx == nullptr) {
-            raise_ssl_error("bad-ssl-context-error"_s);
+        if (_ssl_ctx == nullptr) {
+            raise_ssl_error("tls-bad-context-error"_s);
         }
-        ::SSL_CTX_set_options(_ctx.get(), SSL_OP_NO_SSLv2);
-        ::SSL_CTX_set_options(_ctx.get(), SSL_OP_NO_SSLv3);
-        ::SSL_CTX_set_options(_ctx.get(), SSL_OP_NO_TLSv1);
-        ::SSL_CTX_set_options(_ctx.get(), SSL_OP_NO_TLSv1_1);
-        ::SSL_CTX_set_mode(_ctx.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
+        /* Disable compression, because there have been some security issues
+         * with compression in the past, and apparently compression will be
+         * removed from TLSv1.3 at all.*/
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_COMPRESSION);
+        /* Disable some obsolete protocol versions completely. */
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv2);
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SSLv3);
+        /* Recommended security improvements. */
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_SINGLE_DH_USE);
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_SINGLE_ECDH_USE);
+        /* Disable support for stateless session resumption with RFC4507bis
+         * tickets, because clients should use connections efficiently instead
+         * of optimizing connection setup. */
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TICKET);
+        /* Completely disable session caching, because clients should use
+         * connections efficiently instead of optimizing connection setup. */
+        ::SSL_CTX_set_session_cache_mode(_ssl_ctx.get(), SSL_SESS_CACHE_OFF);
+        /* Allow SSL_write to return when only some data has been written,
+         * similar to the default behavior of write(2). */
+        ::SSL_CTX_set_mode(_ssl_ctx.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
         /* OpenSSL DOC (not sure what that really means): Make it possible to
          * retry SSL_write() with changed buffer location (the buffer contents
          * must stay the same). This is not the default to avoid the
          * misconception that non-blocking SSL_write() behaves like
          * non-blocking write(). */
-        ::SSL_CTX_set_mode(_ctx.get(), SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
-        /* The following option might save memory per
-         * connection. Unfortunately, the documentation doesn't mention the
-         * drawbacks, so it's unclear if the options is really useful. */
-        ::SSL_CTX_set_mode(_ctx.get(), SSL_MODE_RELEASE_BUFFERS);
-        if (authority) {
-            authority->apply(_ctx.get());
+        ::SSL_CTX_set_mode(_ssl_ctx.get(), SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+        /* The following option might save memory per connection.
+         * Unfortunately, the documentation doesn't mention the drawbacks, so
+         * it's unclear if the options is really useful. */
+        ::SSL_CTX_set_mode(_ssl_ctx.get(), SSL_MODE_RELEASE_BUFFERS);
+    }
+    ~context() noexcept = default;
+public: // --- operations ---
+    auto get_underlying_ssl_ctx() -> SSL_CTX*
+    {
+        return _ssl_ctx.get();
+    }
+};
+
+
+class up_tls::tls::server_context::impl final : public context
+{
+public: // --- scope ---
+    class server_engine;
+    class auxiliary
+    {
+    public: // --- state ---
+        const up::optional<verify_callback>& _verify_callback;
+    protected: // --- life ---
+        explicit auxiliary(const up::optional<verify_callback>& verify_callback)
+            : _verify_callback(verify_callback)
+        { }
+        ~auxiliary() noexcept = default;
+    };
+private:
+    static int _verify_callback(int preverified, X509_STORE_CTX* x509_store)
+    {
+        auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
+        if (index < 0) {
+            raise_ssl_error("tls-internal-certificate-error"_s);
         }
-        if (_identity) {
-            _identity->apply(_ctx.get());
+        if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
+            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
+            if (callback) {
+                auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
+                X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
+                try {
+                    certificate::impl impl(x509);
+                    return (*callback)(preverified == 1, depth, certificate(impl));
+                } catch (...) {
+                    ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
+                    return 0;
+                }
+            } else {
+                return 0; // always reject if no callback is provided
+            }
+        } else {
+            raise_ssl_error("tls-internal-certificate-error"_s);
+        }
+    }
+public: // --- life ---
+    explicit impl(up::optional<authority>&& authority, identity&& identity, options&& options)
+        : context(make_ssl_ctx(SSLv23_server_method()), std::move(authority), std::move(identity))
+    {
+        if (options.none(option::tls_v10)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1);
+        }
+        if (options.none(option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_1);
+        }
+        if (options.none(option::tls_v12) && options.any(option::tls_v10, option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_2);
+        }
+        if (options.all(option::workarounds)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_ALL);
+        }
+        if (options.all(option::cipher_server_preference)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
+        }
+        /* A peer certificate is requested and verified, if and only if an
+         * authority is given. However, it is possible to pass an empty
+         * authority and use the verify_callback to override the result. */
+        if (_authority) {
+            _authority->apply(_ssl_ctx.get());
+            /* XXX: The server must provide a list of expected CAs to the
+             * client. The functions SSL_CTX_set_client_CA_list and
+             * SSL_CTX_add_client_CA can be used for this purpose. However, in
+             * this implementation the list should be the same as the
+             * authority. */
+            ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
+        } else {
+            ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, nullptr);
+        }
+        _identity->apply(_ssl_ctx.get());
+    }
+public: // --- operations ---
+    bool has_authority() const
+    {
+        return static_cast<bool>(_authority);
+    }
+};
+
+
+class up_tls::tls::server_context::impl::server_engine final : private auxiliary, public base_engine
+{
+private: // --- scope ---
+    static auto prepare(SSL_CTX* ssl_ctx, auxiliary* auxiliary) -> ssl_ptr
+    {
+        ssl_ptr ssl = make_ssl(ssl_ctx);
+        openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
+        return ssl;
+    }
+public: // --- life ---
+    explicit server_engine(
+        SSL_CTX* ssl_ctx,
+        up::impl_ptr<engine> underlying,
+        await& awaiting,
+        const up::optional<verify_callback>& verify_callback,
+        bool requires_peer_certificate)
+        : auxiliary(verify_callback)
+        , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
+    {
+        openssl_process::instance().ssl_reset_ptr(_ssl.get());
+        if (requires_peer_certificate) {
+            // sanity checks; should have already been done by OpenSSL library
+            if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
+                ::X509_free(x509);
+            } else {
+                UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
+            }
+            if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
+                UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
+            }
         }
     }
 };
 
 
-up_tls::tls::context::context(const authority& authority, identity identity)
-    : _impl(std::make_shared<const impl>(authority._impl, std::move(identity._impl)))
+up_tls::tls::server_context::server_context(
+    up::optional<authority> authority, identity identity, options options)
+    : _impl(up::make_impl<impl>(std::move(authority), std::move(identity), std::move(options)))
 { }
 
-auto up_tls::tls::context::make_engine(up::impl_ptr<up::stream::engine> engine, up::stream::await& awaiting)
+auto up_tls::tls::server_context::upgrade(
+    up::impl_ptr<up::stream::engine> engine,
+    up::stream::await& awaiting,
+    const up::optional<hostname_callback>& hostname_callback __attribute__((unused)) /* XXX: dispatch on hostname */,
+    const up::optional<verify_callback>& verify_callback)
     -> up::impl_ptr<up::stream::engine>
 {
-    return up::make_impl<tls_stream>(_impl->_ctx.get(), std::move(engine), awaiting);
+    return up::make_impl<impl::server_engine>(
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting,
+        verify_callback, _impl->has_authority());
+}
+
+
+class up_tls::tls::client_context::impl final : public context
+{
+public: // --- scope ---
+    class client_engine;
+    class auxiliary
+    {
+    public: // --- state ---
+        const verify_callback& _verify_callback;
+    protected: // --- life ---
+        explicit auxiliary(const verify_callback& verify_callback)
+            : _verify_callback(verify_callback)
+        { }
+        ~auxiliary() noexcept = default;
+    };
+private:
+    static int _verify_callback(int preverified, X509_STORE_CTX* x509_store)
+    {
+        auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
+        if (index < 0) {
+            raise_ssl_error("tls-internal-certificate-error"_s);
+        }
+        if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
+            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
+            auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
+            X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
+            try {
+                certificate::impl impl(x509);
+                return callback(preverified == 1, depth, certificate(impl));
+            } catch (...) {
+                ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
+                return 0;
+            }
+        } else {
+            raise_ssl_error("tls-internal-certificate-error"_s);
+        }
+    }
+public: // --- life ---
+    explicit impl(authority&& authority, up::optional<identity>&& identity, options&& options)
+        : context(make_ssl_ctx(SSLv23_client_method()), std::move(authority), std::move(identity))
+    {
+        if (options.none(option::tls_v10)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1);
+        }
+        if (options.none(option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_1);
+        }
+        if (options.none(option::tls_v12) && options.any(option::tls_v10, option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_2);
+        }
+        if (options.all(option::workarounds)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_ALL);
+        }
+        _authority->apply(_ssl_ctx.get());
+        ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER, &_verify_callback);
+        if (_identity) {
+            _identity->apply(_ssl_ctx.get());
+        }
+    }
+};
+
+
+class up_tls::tls::client_context::impl::client_engine final : private auxiliary, public base_engine
+{
+private: // --- scope ---
+    static auto prepare(
+        SSL_CTX* ssl_ctx,
+        const up::optional<std::string>& hostname,
+        auxiliary* auxiliary) -> ssl_ptr
+    {
+        ssl_ptr ssl = make_ssl(ssl_ctx);
+        if (hostname && !SSL_set_tlsext_host_name(ssl.get(), hostname->c_str())) {
+            UP_RAISE(runtime, "tls-hostname-error"_s);
+        }
+        openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
+        return ssl;
+    }
+public: // --- life ---
+    explicit client_engine(
+        SSL_CTX* ssl_ctx,
+        up::impl_ptr<engine> underlying,
+        await& awaiting,
+        const up::optional<std::string>& hostname,
+        const verify_callback& verify_callback)
+        : auxiliary(verify_callback)
+        , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), awaiting, ::SSL_connect)
+    {
+        openssl_process::instance().ssl_reset_ptr(_ssl.get());
+        // sanity checks; should have already been done by OpenSSL library
+        if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
+            ::X509_free(x509);
+        } else {
+            UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
+        }
+        if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
+            UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
+        }
+    }
+};
+
+
+up_tls::tls::client_context::client_context(
+    authority authority, up::optional<identity> identity, options options)
+    : _impl(up::make_impl<impl>(std::move(authority), std::move(identity), std::move(options)))
+{ }
+
+auto up_tls::tls::client_context::upgrade(
+    up::impl_ptr<up::stream::engine> engine,
+    up::stream::await& awaiting,
+    const up::optional<std::string>& hostname,
+    const verify_callback& verify_callback)
+    -> up::impl_ptr<up::stream::engine>
+{
+    return up::make_impl<impl::client_engine>(
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, hostname, verify_callback);
 }
