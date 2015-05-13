@@ -89,10 +89,26 @@ namespace up_utility
         template <typename... Tail>
         bool all(Enum value, Tail... tail) const
         {
+            return _is_set(value) && all(tail...);
+        }
+        bool any() const { return false; }
+        template <typename... Tail>
+        bool any(Enum value, Tail... tail) const
+        {
+            return _is_set(value) || any(tail...);
+        }
+        bool none() const { return true; }
+        template <typename... Tail>
+        bool none(Enum value, Tail... tail) const
+        {
+            return !_is_set(value) && none(tail...);
+        }
+    private:
+        bool _is_set(Enum value) const
+        {
             auto digits = std::numeric_limits<underlying_type>::digits;
             return static_cast<underlying_type>(value) < digits
-                && (_bits & (underlying_type(1) << static_cast<underlying_type>(value)))
-                && all(tail...);
+                && (_bits & (underlying_type(1) << static_cast<underlying_type>(value)));
         }
     };
 
