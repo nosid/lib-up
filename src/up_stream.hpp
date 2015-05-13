@@ -4,6 +4,7 @@
 #include "up_chunk.hpp"
 #include "up_impl_ptr.hpp"
 #include "up_swap.hpp"
+#include "up_utility.hpp"
 
 
 namespace up_stream
@@ -26,7 +27,7 @@ namespace up_stream
         explicit stream(up::impl_ptr<engine> engine);
         stream(const self& rhs) = delete;
         stream(self&& rhs) noexcept = default;
-        ~stream() noexcept = default;
+        virtual ~stream() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
         auto operator=(self&& rhs) & noexcept -> self& = default;
