@@ -213,6 +213,3 @@ namespace up
     __attribute__((unused)) \
     decltype(::up_utility::context_frame_deduce_type(__VA_ARGS__)) \
     UP_CONTEXT_FRAME_CONCATENATE(UP_CONTEXT_FRAME_STATE_, __COUNTER__){UP_SOURCE_LOCATION(), __VA_ARGS__}
-
-#define UP_LOG(...) \
-    ::up_utility::log(UP_SOURCE_LOCATION(), __VA_ARGS__)
