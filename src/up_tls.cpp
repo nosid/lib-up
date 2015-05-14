@@ -883,6 +883,9 @@ protected: // --- life ---
          * tickets, because clients should use connections efficiently instead
          * of optimizing connection setup. */
         ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TICKET);
+        /* The default maximum depth is 100. This value seems to be way to
+         * high for real use cases. Be a bit more restrictive. */
+        ::SSL_CTX_set_verify_depth(_ssl_ctx.get(), 7);
         /* Completely disable session caching, because clients should use
          * connections efficiently instead of optimizing connection setup. */
         ::SSL_CTX_set_session_cache_mode(_ssl_ctx.get(), SSL_SESS_CACHE_OFF);
