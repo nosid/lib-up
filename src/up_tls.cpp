@@ -969,6 +969,8 @@ public: // --- life ---
         if (options.all(option::cipher_server_preference)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
         }
+        /* Reduce the possibilities to resume sessions. */
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
         ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, nullptr);
         _identity->apply(_ssl_ctx.get());
         ::SSL_CTX_set_tlsext_servername_callback(_ssl_ctx.get(), &_hostname_callback);
@@ -1075,6 +1077,8 @@ public: // --- life ---
         if (options.all(option::cipher_server_preference)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
         }
+        /* Reduce the possibilities to resume sessions. */
+        ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
         /* A peer certificate is requested and verified in all cases, even if
          * the authority is empty. The verify_callback should be used for
          * additional checks and can be used to override the default
