@@ -913,6 +913,40 @@ class up_tls::tls::server_context::impl final : public context
 {
 public: // --- scope ---
     class server_engine;
+    class auxiliary
+    {
+    public: // --- state ---
+        const up::optional<hostname_callback>& _callback;
+    protected: // --- life ---
+        explicit auxiliary(const up::optional<hostname_callback>& callback)
+            : _callback(callback)
+        { }
+        ~auxiliary() noexcept = default;
+    };
+private:
+    static int _hostname_callback(SSL* ssl, int*, void*)
+    {
+        auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
+        if (!callback) {
+            return SSL_TLSEXT_ERR_OK;
+        } else if (auto servername = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name)) {
+            try {
+                auto&& other = (*callback)(std::string(servername));
+                ::SSL_set_SSL_CTX(ssl, other._impl->_ssl_ctx.get());
+                return SSL_TLSEXT_ERR_OK;
+            } catch (const up::exception<accept_hostname>&) {
+                return SSL_TLSEXT_ERR_OK;
+            } catch (const up::exception<reject_hostname>&) {
+                return SSL_TLSEXT_ERR_NOACK;
+            } catch (...) {
+                return SSL_TLSEXT_ERR_ALERT_FATAL;
+            }
+        } else {
+            /* In this case the client didn't send a hostname. The handshake
+             * will be continued with the current SSL_CTX. */
+            return SSL_TLSEXT_ERR_OK;
+        }
+    }
 public: // --- life ---
     explicit impl(identity&& identity, options&& options)
         : context(make_ssl_ctx(::SSLv23_server_method()), up::optional<authority>(), std::move(identity))
@@ -934,22 +968,31 @@ public: // --- life ---
         }
         ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, nullptr);
         _identity->apply(_ssl_ctx.get());
+        ::SSL_CTX_set_tlsext_servername_callback(_ssl_ctx.get(), &_hostname_callback);
     }
 };
 
 
-class up_tls::tls::server_context::impl::server_engine final : public base_engine
+class up_tls::tls::server_context::impl::server_engine final : private auxiliary, public base_engine
 {
 private: // --- scope ---
-    static auto prepare(SSL_CTX* ssl_ctx) -> ssl_ptr
+    static auto prepare(SSL_CTX* ssl_ctx, auxiliary* auxiliary) -> ssl_ptr
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
+        openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
         return ssl;
     }
 public: // --- life ---
-    explicit server_engine(SSL_CTX* ssl_ctx, up::impl_ptr<engine> underlying, await& awaiting)
-        : base_engine(prepare(ssl_ctx), std::move(underlying), awaiting, ::SSL_accept)
-    { }
+    explicit server_engine(
+        SSL_CTX* ssl_ctx,
+        up::impl_ptr<engine> underlying,
+        await& awaiting,
+        const up::optional<hostname_callback>& callback)
+        : auxiliary(callback)
+        , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
+    {
+        openssl_process::instance().ssl_reset_ptr(_ssl.get());
+    }
 };
 
 
@@ -960,11 +1003,11 @@ up_tls::tls::server_context::server_context(identity identity, options options)
 auto up_tls::tls::server_context::upgrade(
     up::impl_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
-    const up::optional<hostname_callback>& hostname_callback __attribute__((unused)) /* XXX: dispatch on hostname */)
+    const up::optional<hostname_callback>& callback)
     -> up::impl_ptr<up::stream::engine>
 {
     return up::make_impl<impl::server_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
 }
 
 
@@ -975,10 +1018,10 @@ public: // --- scope ---
     class auxiliary
     {
     public: // --- state ---
-        const verify_callback& _verify_callback;
+        const verify_callback& _callback;
     protected: // --- life ---
-        explicit auxiliary(const verify_callback& verify_callback)
-            : _verify_callback(verify_callback)
+        explicit auxiliary(const verify_callback& callback)
+            : _callback(callback)
         { }
         ~auxiliary() noexcept = default;
     };
@@ -990,7 +1033,7 @@ private:
             raise_ssl_error("tls-internal-certificate-error"_s);
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
-            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
+            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
             auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
             X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
             try {
@@ -1068,8 +1111,8 @@ public: // --- life ---
         SSL_CTX* ssl_ctx,
         up::impl_ptr<engine> underlying,
         await& awaiting,
-        const verify_callback& verify_callback)
-        : auxiliary(verify_callback)
+        const verify_callback& callback)
+        : auxiliary(callback)
         , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
@@ -1093,11 +1136,11 @@ up_tls::tls::secure_context::secure_context(authority authority, identity identi
 auto up_tls::tls::secure_context::upgrade(
     up::impl_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
-    const verify_callback& verify_callback)
+    const verify_callback& callback)
     -> up::impl_ptr<up::stream::engine>
 {
     return up::make_impl<impl::secure_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, verify_callback);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
 }
 
 
@@ -1108,10 +1151,10 @@ public: // --- scope ---
     class auxiliary
     {
     public: // --- state ---
-        const verify_callback& _verify_callback;
+        const verify_callback& _callback;
     protected: // --- life ---
-        explicit auxiliary(const verify_callback& verify_callback)
-            : _verify_callback(verify_callback)
+        explicit auxiliary(const verify_callback& callback)
+            : _callback(callback)
         { }
         ~auxiliary() noexcept = default;
     };
@@ -1123,7 +1166,7 @@ private:
             raise_ssl_error("tls-internal-certificate-error"_s);
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
-            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
+            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
             auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
             X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
             try {
@@ -1189,8 +1232,8 @@ public: // --- life ---
         up::impl_ptr<engine> underlying,
         await& awaiting,
         const up::optional<std::string>& hostname,
-        const verify_callback& verify_callback)
-        : auxiliary(verify_callback)
+        const verify_callback& callback)
+        : auxiliary(callback)
         , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), awaiting, ::SSL_connect)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
@@ -1216,9 +1259,9 @@ auto up_tls::tls::client_context::upgrade(
     up::impl_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
     const up::optional<std::string>& hostname,
-    const verify_callback& verify_callback)
+    const verify_callback& callback)
     -> up::impl_ptr<up::stream::engine>
 {
     return up::make_impl<impl::client_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, hostname, verify_callback);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, hostname, callback);
 }

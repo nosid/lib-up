@@ -46,8 +46,12 @@ namespace
             auto now = up::steady_clock::now();
             auto deadline = up::stream::deadline_await(now + 30s);
             auto stream = listener.accept(deadline);
+            up::tls::server_context::hostname_callback callback = [](std::string hostname) -> up::tls::server_context& {
+                std::cerr << "HOSTNAME:" << hostname << '\n';
+                UP_RAISE(up::tls::server_context::accept_hostname, "accept"_s);
+            };
             stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
-                    return tls.upgrade(std::move(engine), deadline, up::nullopt);
+                    return tls.upgrade(std::move(engine), deadline, callback);
                     // return tls.upgrade(std::move(engine), deadline,
                     //     [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
                     //         auto cn = certificate.common_name();

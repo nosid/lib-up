@@ -131,6 +131,8 @@ namespace up_tls
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
         using options = up::enum_set<option>;
         using hostname_callback = std::function<server_context&(std::string)>;
+        class accept_hostname;
+        class reject_hostname;
     private: // --- state ---
         up::impl_ptr<impl> _impl;
     public: // --- life ---
@@ -150,7 +152,7 @@ namespace up_tls
         auto upgrade(
             up::impl_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
-            const up::optional<hostname_callback>& hostname_callback)
+            const up::optional<hostname_callback>& callback)
             -> up::impl_ptr<up::stream::engine>;
     };
 
@@ -195,7 +197,7 @@ namespace up_tls
         auto upgrade(
             up::impl_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
-            const verify_callback& verify_callback)
+            const verify_callback& callback)
             -> up::impl_ptr<up::stream::engine>;
     };
 
@@ -241,7 +243,7 @@ namespace up_tls
             up::impl_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
             const up::optional<std::string>& hostname,
-            const verify_callback& verify_callback)
+            const verify_callback& callback)
             -> up::impl_ptr<up::stream::engine>;
     };
 
