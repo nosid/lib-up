@@ -36,17 +36,24 @@ namespace
     {
         using o = up::tcp::socket::option;
         std::string pathname = "/usr/share/doc/libssl-doc/demos/bio/server.pem";
-        up::tls::server_context tls(
-            up::nullopt /* up::tls::authority::system() */,
-            up::tls::identity(pathname, pathname),
-            {});
+        up::tls::server_context tls(up::tls::identity(pathname, pathname), {});
+        // up::tls::secure_context tls(
+        //     up::tls::authority::system(),
+        //     up::tls::identity(pathname, pathname),
+        //     {});
         auto listener = up::tcp::socket(std::move(endpoint), {o::reuseaddr}).listen(1);
         for (;;) {
             auto now = up::steady_clock::now();
             auto deadline = up::stream::deadline_await(now + 30s);
             auto stream = listener.accept(deadline);
             stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
-                    return tls.upgrade(std::move(engine), deadline, up::nullopt, up::nullopt);
+                    return tls.upgrade(std::move(engine), deadline, up::nullopt);
+                    // return tls.upgrade(std::move(engine), deadline,
+                    //     [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
+                    //         auto cn = certificate.common_name();
+                    //         std::cerr << "VERIFY:" << preverified << ':' << depth << '[' << (cn ? *cn : "none") << "]\n";
+                    //         return preverified;
+                    //     });
                 });
             auto buffer = up::buffer();
             while (auto count = stream.read_some(buffer.reserve(1 << 14), deadline)) {

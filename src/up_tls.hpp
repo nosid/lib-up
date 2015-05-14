@@ -17,6 +17,7 @@ namespace up_tls
         class certificate;
         class context;
         class server_context;
+        class secure_context;
         class client_context;
     };
 
@@ -115,6 +116,13 @@ namespace up_tls
     };
 
 
+    /**
+     * The server_context supports server name indication (SNI), but does not
+     * support client certificates. The latter is supported by the
+     * secure_context. The rationale for not supporting both is that it might
+     * be too complex for the application developer to use both correct at the
+     * same time.
+     */
     class tls::server_context final
     {
     public: // --- scope ---
@@ -122,18 +130,11 @@ namespace up_tls
         class impl;
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
         using options = up::enum_set<option>;
-        using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
         using hostname_callback = std::function<server_context&(std::string)>;
     private: // --- state ---
         up::impl_ptr<impl> _impl;
     public: // --- life ---
-        /**
-         * The authority is used to verify client certificates. A client
-         * certificate is requested and verified if and only if an authority
-         * is given.
-         */
-        explicit server_context(
-            up::optional<authority> authority, identity identity, options options);
+        explicit server_context(identity identity, options options);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -145,18 +146,56 @@ namespace up_tls
         }
         /**
          * The hostname_callback is used for server name indication (SNI).
-         *
-         * The verify_callback is only used if an authority was given to the
-         * constructor. If there is an authority and no verify_callback, then
-         * all certificates will be rejected. The verify_callback is invoked
-         * for each certificate in the certificate chain provided by the
-         * client.
          */
         auto upgrade(
             up::impl_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
-            const up::optional<hostname_callback>& hostname_callback,
-            const up::optional<verify_callback>& verify_callback)
+            const up::optional<hostname_callback>& hostname_callback)
+            -> up::impl_ptr<up::stream::engine>;
+    };
+
+
+    /**
+     * The secure_context requests and verifies client certificates, but does
+     * not support server name indication (SNI). The latter is supported by
+     * the server_context. The rationale for not supporting both is that it
+     * might be too complex for the application developer to use both correct
+     * at the same time.
+     */
+    class tls::secure_context final
+    {
+    public: // --- scope ---
+        using self = secure_context;
+        class impl;
+        enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
+        using options = up::enum_set<option>;
+        using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
+    private: // --- state ---
+        up::impl_ptr<impl> _impl;
+    public: // --- life ---
+        /**
+         * The authority is used to verify client certificates. A client
+         * certificate is requested and verified in all cases, even if the
+         * authority is empty.
+         */
+        explicit secure_context(authority authority, identity identity, options options);
+    public: // --- operations ---
+        void swap(self& rhs) noexcept
+        {
+            up::swap_noexcept(_impl, rhs._impl);
+        }
+        friend void swap(self& lhs, self& rhs) noexcept
+        {
+            lhs.swap(rhs);
+        }
+        /**
+         * The verify_callback is invoked for each certificate in the
+         * certificate chain provided by the client.
+         */
+        auto upgrade(
+            up::impl_ptr<up::stream::engine> engine,
+            up::stream::await& awaiting,
+            const verify_callback& verify_callback)
             -> up::impl_ptr<up::stream::engine>;
     };
 

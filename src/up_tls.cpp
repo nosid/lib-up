@@ -565,15 +565,42 @@ protected: // --- life ---
     { }
     ~impl() noexcept = default;
 public: // --- operations ---
-    void apply(SSL_CTX* ctx) const
+    void apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const
     {
         if (_parent) {
-            _parent->apply(ctx);
+            _parent->apply(ctx, names);
         }
-        _apply(ctx);
+        _apply(ctx, names);
     }
 private:
-    virtual void _apply(SSL_CTX* ctx) const = 0;
+    virtual void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const = 0;
+protected:
+    bool _load_directory(SSL_CTX* ctx, STACK_OF(X509_NAME)* names, const char* pathname) const
+    {
+        int rv = ::SSL_CTX_load_verify_locations(ctx, nullptr, pathname);
+        if (rv != 1) {
+            return rv;
+        } else if (names == nullptr) {
+            return rv; // nothing else to do
+        } else if ((rv = ::SSL_add_dir_cert_subjects_to_stack(names, pathname)) == 1) {
+            return rv;
+        } else {
+            raise_ssl_error("tls-internal-authority-error"_s, rv, std::string(pathname));
+        }
+    }
+    bool _load_file(SSL_CTX* ctx, STACK_OF(X509_NAME)* names, const char* pathname) const
+    {
+        int rv = ::SSL_CTX_load_verify_locations(ctx, pathname, nullptr);
+        if (rv != 1) {
+            return rv;
+        } else if (names == nullptr) {
+            return rv; // nothing else to do
+        } else if ((rv = ::SSL_add_file_cert_subjects_to_stack(names, pathname)) == 1) {
+            return rv;
+        } else {
+            raise_ssl_error("tls-internal-authority-error"_s, rv, std::string(pathname));
+        }
+    }
 };
 
 
@@ -584,12 +611,24 @@ public: // --- life ---
      * constructor and a non-empty class (e.g. vtable). */
     explicit system(std::nullptr_t dummy __attribute__((unused))) { }
 private: // --- operations ---
-    void _apply(SSL_CTX* ctx) const override
+    void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
-        int rv = ::SSL_CTX_set_default_verify_paths(ctx);
-        if (rv != 1) {
-            raise_ssl_error("tls-system-authority-error"_s, rv);
+        auto file = _lookup(::X509_get_default_cert_file_env(), ::X509_get_default_cert_file());
+        auto directory = _lookup(::X509_get_default_cert_dir_env(), ::X509_get_default_cert_dir());
+        int rv = _load_file(ctx, names, file);
+        int rw = _load_directory(ctx, names, directory);
+        /* This function mimics the behavior of
+         * SSL_CTX_set_default_verify_paths, i.e. it only fails if both file
+         * and directory lookup fail. */
+        if (rv != 1 && rw != 1) {
+            raise_ssl_error("tls-system-authority-error"_s,
+                std::string(file), rv, std::string(directory), rw);
         }
+    }
+    auto _lookup(const char* name, const char* fallback) const -> const char*
+    {
+        const char* result = std::getenv(name);
+        return result ? result : fallback;
     }
 };
 
@@ -603,12 +642,12 @@ public: // --- life ---
         : impl(std::move(parent)), _pathname(std::move(pathname))
     { }
 private: // --- operations ---
-    void _apply(SSL_CTX* ctx) const override
+    void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
-        int rv = ::SSL_CTX_load_verify_locations(ctx, nullptr, _pathname.c_str());
+        int rv = _load_directory(ctx, names, _pathname.c_str());
         if (rv != 1) {
             raise_ssl_error("tls-directory-authority-error"_s, rv, _pathname);
-        }
+        } // else: OK
     }
 };
 
@@ -622,12 +661,12 @@ public: // --- life ---
         : impl(std::move(parent)), _pathname(std::move(pathname))
     { }
 private: // --- operations ---
-    void _apply(SSL_CTX* ctx) const override
+    void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
-        int rv = ::SSL_CTX_load_verify_locations(ctx, _pathname.c_str(), nullptr);
+        int rv = _load_file(ctx, names, _pathname.c_str());
         if (rv != 1) {
             raise_ssl_error("tls-file-authority-error"_s, rv, _pathname);
-        }
+        } // else: OK
     }
 };
 
@@ -641,13 +680,28 @@ public: // --- life ---
         : impl(std::move(parent)), _certificate(buffer)
     { }
 private: // --- operations ---
-    void _apply(SSL_CTX* ctx) const override
+    void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
         if (auto store = ::SSL_CTX_get_cert_store(ctx)) {
-            int rv = ::X509_STORE_add_cert(store, _certificate.native_handle());
+            X509* x509 = _certificate.native_handle();
+            int rv = ::X509_STORE_add_cert(store, x509);
             if (rv != 1) {
                 raise_ssl_error("tls-bad-certificate-error"_s, rv);
-            } // else: ok
+            } else if (names == nullptr) {
+                // nothing else to do
+            } else if (X509_NAME* name = ::X509_get_subject_name(x509)) {
+                if (X509_NAME* dup = ::X509_NAME_dup(name)) {
+                    if (sk_X509_NAME_find(names, dup) < 0) {
+                        sk_X509_NAME_push(names, dup);
+                    } else {
+                        ::X509_NAME_free(dup);
+                    }
+                } else {
+                    raise_ssl_error("tls-bad-certificate-error"_s);
+                }
+            } else {
+                raise_ssl_error("tls-bad-certificate-error"_s);
+            }
         } else {
             raise_ssl_error("tls-bad-certificate-error"_s);
         }
@@ -767,7 +821,7 @@ auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
             UP_DEFER { ::OPENSSL_free(buffer); };
             return std::string(up::char_cast<char>(buffer), up::integral_cast<std::size_t>(rv));
         } else {
-            UP_RAISE(runtime, "tls-bad-common-name"_s);
+            raise_ssl_error("tls-bad-common-name"_s);
         }
     } else {
         return up::nullopt;
@@ -782,7 +836,7 @@ bool up_tls::tls::certificate::matches_hostname(const std::string& hostname) con
     } else if (rv == 0) {
         return false;
     } else {
-        UP_RAISE(runtime, "tls-bad-hostname-check"_s, hostname);
+        raise_ssl_error("tls-bad-hostname-check"_s, hostname);
     }
 }
 
@@ -859,45 +913,9 @@ class up_tls::tls::server_context::impl final : public context
 {
 public: // --- scope ---
     class server_engine;
-    class auxiliary
-    {
-    public: // --- state ---
-        const up::optional<verify_callback>& _verify_callback;
-    protected: // --- life ---
-        explicit auxiliary(const up::optional<verify_callback>& verify_callback)
-            : _verify_callback(verify_callback)
-        { }
-        ~auxiliary() noexcept = default;
-    };
-private:
-    static int _verify_callback(int preverified, X509_STORE_CTX* x509_store)
-    {
-        auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
-        if (index < 0) {
-            raise_ssl_error("tls-internal-certificate-error"_s);
-        }
-        if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
-            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
-            if (callback) {
-                auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
-                X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
-                try {
-                    certificate::impl impl(x509);
-                    return (*callback)(preverified == 1, depth, certificate(impl));
-                } catch (...) {
-                    ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
-                    return 0;
-                }
-            } else {
-                return 0; // always reject if no callback is provided
-            }
-        } else {
-            raise_ssl_error("tls-internal-certificate-error"_s);
-        }
-    }
 public: // --- life ---
-    explicit impl(up::optional<authority>&& authority, identity&& identity, options&& options)
-        : context(make_ssl_ctx(SSLv23_server_method()), std::move(authority), std::move(identity))
+    explicit impl(identity&& identity, options&& options)
+        : context(make_ssl_ctx(::SSLv23_server_method()), up::optional<authority>(), std::move(identity))
     {
         if (options.none(option::tls_v10)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1);
@@ -914,31 +932,129 @@ public: // --- life ---
         if (options.all(option::cipher_server_preference)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
         }
-        /* A peer certificate is requested and verified, if and only if an
-         * authority is given. However, it is possible to pass an empty
-         * authority and use the verify_callback to override the result. */
-        if (_authority) {
-            _authority->apply(_ssl_ctx.get());
-            /* XXX: The server must provide a list of expected CAs to the
-             * client. The functions SSL_CTX_set_client_CA_list and
-             * SSL_CTX_add_client_CA can be used for this purpose. However, in
-             * this implementation the list should be the same as the
-             * authority. */
-            ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
-        } else {
-            ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, nullptr);
-        }
+        ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_NONE, nullptr);
         _identity->apply(_ssl_ctx.get());
-    }
-public: // --- operations ---
-    bool has_authority() const
-    {
-        return static_cast<bool>(_authority);
     }
 };
 
 
-class up_tls::tls::server_context::impl::server_engine final : private auxiliary, public base_engine
+class up_tls::tls::server_context::impl::server_engine final : public base_engine
+{
+private: // --- scope ---
+    static auto prepare(SSL_CTX* ssl_ctx) -> ssl_ptr
+    {
+        ssl_ptr ssl = make_ssl(ssl_ctx);
+        return ssl;
+    }
+public: // --- life ---
+    explicit server_engine(SSL_CTX* ssl_ctx, up::impl_ptr<engine> underlying, await& awaiting)
+        : base_engine(prepare(ssl_ctx), std::move(underlying), awaiting, ::SSL_accept)
+    { }
+};
+
+
+up_tls::tls::server_context::server_context(identity identity, options options)
+    : _impl(up::make_impl<impl>(std::move(identity), std::move(options)))
+{ }
+
+auto up_tls::tls::server_context::upgrade(
+    up::impl_ptr<up::stream::engine> engine,
+    up::stream::await& awaiting,
+    const up::optional<hostname_callback>& hostname_callback __attribute__((unused)) /* XXX: dispatch on hostname */)
+    -> up::impl_ptr<up::stream::engine>
+{
+    return up::make_impl<impl::server_engine>(
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting);
+}
+
+
+class up_tls::tls::secure_context::impl final : public context
+{
+public: // --- scope ---
+    class secure_engine;
+    class auxiliary
+    {
+    public: // --- state ---
+        const verify_callback& _verify_callback;
+    protected: // --- life ---
+        explicit auxiliary(const verify_callback& verify_callback)
+            : _verify_callback(verify_callback)
+        { }
+        ~auxiliary() noexcept = default;
+    };
+private:
+    static int _verify_callback(int preverified, X509_STORE_CTX* x509_store)
+    {
+        auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
+        if (index < 0) {
+            raise_ssl_error("tls-internal-certificate-error"_s);
+        }
+        if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
+            auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_verify_callback;
+            auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
+            X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
+            try {
+                certificate::impl impl(x509);
+                int result = callback(preverified == 1, depth, certificate(impl));
+                if (result == 1 && preverified != 1) {
+                    ::X509_STORE_CTX_set_error(x509_store, X509_V_OK); // clear error
+                } else if (result != 1 && preverified == 1) {
+                    ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
+                } // else: nothing
+                return result;
+            } catch (...) {
+                ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
+                return 0;
+            }
+        } else {
+            raise_ssl_error("tls-internal-certificate-error"_s);
+        }
+    }
+public: // --- life ---
+    explicit impl(authority&& authority, identity&& identity, options&& options)
+        : context(make_ssl_ctx(::SSLv23_server_method()), std::move(authority), std::move(identity))
+    {
+        if (options.none(option::tls_v10)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1);
+        }
+        if (options.none(option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_1);
+        }
+        if (options.none(option::tls_v12) && options.any(option::tls_v10, option::tls_v11)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1_2);
+        }
+        if (options.all(option::workarounds)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_ALL);
+        }
+        if (options.all(option::cipher_server_preference)) {
+            ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
+        }
+        /* A peer certificate is requested and verified in all cases, even if
+         * the authority is empty. The verify_callback should be used for
+         * additional checks and can be used to override the default
+         * verification result. */
+        /* The server must provide a list of expected CAs to the client. This
+         * implementation uses all certificates from the authority. */
+        auto x509_name_cmp = [](const X509_NAME* const* a, const X509_NAME* const* b) {
+            return ::X509_NAME_cmp(*a, *b);
+        };
+        if (STACK_OF(X509_NAME)* names = sk_X509_NAME_new(x509_name_cmp)) {
+            UP_DEFER_NAMED(guard) {
+                sk_X509_NAME_pop_free(names, ::X509_NAME_free);
+            };
+            _authority->apply(_ssl_ctx.get(), names);
+            ::SSL_CTX_set_client_CA_list(_ssl_ctx.get(), names);
+            guard.disarm(); // ownership transferred to _ssl_ctx
+            ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
+        } else {
+            raise_ssl_error("tls-runtime-error"_s);
+        }
+        _identity->apply(_ssl_ctx.get());
+    }
+};
+
+
+class up_tls::tls::secure_context::impl::secure_engine final : private auxiliary, public base_engine
 {
 private: // --- scope ---
     static auto prepare(SSL_CTX* ssl_ctx, auxiliary* auxiliary) -> ssl_ptr
@@ -948,46 +1064,40 @@ private: // --- scope ---
         return ssl;
     }
 public: // --- life ---
-    explicit server_engine(
+    explicit secure_engine(
         SSL_CTX* ssl_ctx,
         up::impl_ptr<engine> underlying,
         await& awaiting,
-        const up::optional<verify_callback>& verify_callback,
-        bool requires_peer_certificate)
+        const verify_callback& verify_callback)
         : auxiliary(verify_callback)
         , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
-        if (requires_peer_certificate) {
-            // sanity checks; should have already been done by OpenSSL library
-            if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
-                ::X509_free(x509);
-            } else {
-                UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
-            }
-            if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
-                UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
-            }
+        // sanity checks; should have already been done by OpenSSL library
+        if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
+            ::X509_free(x509);
+        } else {
+            UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
+        }
+        if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
+            UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
         }
     }
 };
 
 
-up_tls::tls::server_context::server_context(
-    up::optional<authority> authority, identity identity, options options)
+up_tls::tls::secure_context::secure_context(authority authority, identity identity, options options)
     : _impl(up::make_impl<impl>(std::move(authority), std::move(identity), std::move(options)))
 { }
 
-auto up_tls::tls::server_context::upgrade(
+auto up_tls::tls::secure_context::upgrade(
     up::impl_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
-    const up::optional<hostname_callback>& hostname_callback __attribute__((unused)) /* XXX: dispatch on hostname */,
-    const up::optional<verify_callback>& verify_callback)
+    const verify_callback& verify_callback)
     -> up::impl_ptr<up::stream::engine>
 {
-    return up::make_impl<impl::server_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting,
-        verify_callback, _impl->has_authority());
+    return up::make_impl<impl::secure_engine>(
+        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, verify_callback);
 }
 
 
@@ -1018,7 +1128,13 @@ private:
             X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
             try {
                 certificate::impl impl(x509);
-                return callback(preverified == 1, depth, certificate(impl));
+                int result = callback(preverified == 1, depth, certificate(impl));
+                if (result == 1 && preverified != 1) {
+                    ::X509_STORE_CTX_set_error(x509_store, X509_V_OK); // clear error
+                } else if (result != 1 && preverified == 1) {
+                    ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
+                } // else: nothing
+                return result;
             } catch (...) {
                 ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
                 return 0;
@@ -1029,7 +1145,7 @@ private:
     }
 public: // --- life ---
     explicit impl(authority&& authority, up::optional<identity>&& identity, options&& options)
-        : context(make_ssl_ctx(SSLv23_client_method()), std::move(authority), std::move(identity))
+        : context(make_ssl_ctx(::SSLv23_client_method()), std::move(authority), std::move(identity))
     {
         if (options.none(option::tls_v10)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_NO_TLSv1);
@@ -1043,7 +1159,7 @@ public: // --- life ---
         if (options.all(option::workarounds)) {
             ::SSL_CTX_set_options(_ssl_ctx.get(), SSL_OP_ALL);
         }
-        _authority->apply(_ssl_ctx.get());
+        _authority->apply(_ssl_ctx.get(), nullptr);
         ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER, &_verify_callback);
         if (_identity) {
             _identity->apply(_ssl_ctx.get());
@@ -1062,7 +1178,7 @@ private: // --- scope ---
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
         if (hostname && !SSL_set_tlsext_host_name(ssl.get(), hostname->c_str())) {
-            UP_RAISE(runtime, "tls-hostname-error"_s);
+            raise_ssl_error("tls-hostname-error"_s, *hostname);
         }
         openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
         return ssl;
