@@ -921,9 +921,9 @@ public: // --- scope ---
     class auxiliary
     {
     public: // --- state ---
-        const up::optional<hostname_callback>& _callback;
+        const hostname_callback& _callback;
     protected: // --- life ---
-        explicit auxiliary(const up::optional<hostname_callback>& callback)
+        explicit auxiliary(const hostname_callback& callback)
             : _callback(callback)
         { }
         ~auxiliary() noexcept = default;
@@ -932,11 +932,9 @@ private:
     static int _hostname_callback(SSL* ssl, int*, void*)
     {
         auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
-        if (!callback) {
-            return SSL_TLSEXT_ERR_OK;
-        } else if (auto servername = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name)) {
+        if (auto servername = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name)) {
             try {
-                auto&& other = (*callback)(std::string(servername));
+                auto&& other = callback(std::string(servername));
                 ::SSL_set_SSL_CTX(ssl, other._impl->_ssl_ctx.get());
                 return SSL_TLSEXT_ERR_OK;
             } catch (const up::exception<accept_hostname>&) {
@@ -995,13 +993,21 @@ public: // --- life ---
         SSL_CTX* ssl_ctx,
         up::impl_ptr<engine> underlying,
         await& awaiting,
-        const up::optional<hostname_callback>& callback)
+        const hostname_callback& callback)
         : auxiliary(callback)
         , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
     }
 };
+
+
+auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
+{
+    return [](std::string hostname) -> self& {
+        UP_RAISE(accept_hostname, "tls-ignore-hostname"_s, hostname);
+    };
+}
 
 
 up_tls::tls::server_context::server_context(identity identity, options options)
@@ -1011,7 +1017,7 @@ up_tls::tls::server_context::server_context(identity identity, options options)
 auto up_tls::tls::server_context::upgrade(
     up::impl_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
-    const up::optional<hostname_callback>& callback)
+    const hostname_callback& callback)
     -> up::impl_ptr<up::stream::engine>
 {
     return up::make_impl<impl::server_engine>(
