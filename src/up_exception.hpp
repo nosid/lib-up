@@ -168,6 +168,18 @@ namespace up_exception
         log_current_exception_aux(os);
     }
 
+
+    /**
+     * This function will be called whenever an exception is suppressed
+     * because it is converted to an error code. That means the error is still
+     * signaled. However, the information from the exception is lost.
+     *
+     * The function does basically nothing. The idea is to use this function
+     * to mark all locations where exceptions are suppressed. In the future, a
+     * handler for suppressed exceptions might be registered.
+     */
+    void suppress_current_exception(up::source_location location, up::string_literal message);
+
 }
 
 namespace up
@@ -183,4 +195,10 @@ namespace up
     do { \
         using namespace up::literals; \
         ::up_exception::raise<TAG>(UP_SOURCE_LOCATION(), __VA_ARGS__); \
+    } while (false)
+
+#define UP_SUPPRESS_CURRENT_EXCEPTION(...) \
+    do { \
+        using namespace up::literals; \
+        ::up_exception::suppress_current_exception(UP_SOURCE_LOCATION(), __VA_ARGS__); \
     } while (false)

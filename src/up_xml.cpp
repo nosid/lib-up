@@ -650,6 +650,7 @@ public: // --- operations ---
                     b->produce(n);
                     return size;
                 } catch (...) {
+                    UP_SUPPRESS_CURRENT_EXCEPTION("xml-output-write-callback"_s);
                     return -1;
                 }
             },

@@ -67,3 +67,17 @@ void up_exception::log_current_exception_aux(std::ostream& os)
         up::out(os, "...\n");
     }
 }
+
+
+void up_exception::suppress_current_exception(
+    up::source_location location __attribute__((unused)),
+    up::string_literal message __attribute__((unused)))
+{
+    /* The current exception is rethrown to make sure, that the method is
+     * actually called with an active exception. */
+    try {
+        throw;
+    } catch (...) {
+        // nothing
+    }
+}

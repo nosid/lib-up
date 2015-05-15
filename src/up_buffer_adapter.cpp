@@ -129,6 +129,7 @@ public: // --- operations ---
             _buffer.produce(size);
             return up::integral_caster(size);
         } catch (...) {
+            UP_SUPPRESS_CURRENT_EXCEPTION("buffer-adapter"_s);
             return 0; // signal error (see also man page for fopencookie)
         }
     }

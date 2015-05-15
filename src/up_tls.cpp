@@ -232,6 +232,7 @@ namespace
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-write-callback"_s);
                 return -1;
             }
         }
@@ -249,6 +250,7 @@ namespace
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-read-callback"_s);
                 return -1;
             }
         }
@@ -942,6 +944,7 @@ private:
             } catch (const up::exception<reject_hostname>&) {
                 return SSL_TLSEXT_ERR_NOACK;
             } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-hostname-callback"_s);
                 return SSL_TLSEXT_ERR_ALERT_FATAL;
             }
         } else {
@@ -1051,6 +1054,7 @@ private:
                 } // else: nothing
                 return result;
             } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_s);
                 ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
                 return 0;
             }
@@ -1186,6 +1190,7 @@ private:
                 } // else: nothing
                 return result;
             } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_s);
                 ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
                 return 0;
             }
