@@ -242,7 +242,13 @@ namespace
         private:
             bool _equals(const xmlChar* lhs, const xmlChar* rhs) const
             {
-                return std::strcmp(_chars(lhs), _chars(rhs)) == 0;
+                if (lhs == nullptr) {
+                    return rhs == nullptr;
+                } else if (rhs == nullptr) {
+                    return false;
+                } else {
+                    return std::strcmp(_chars(lhs), _chars(rhs)) == 0;
+                }
             }
         };
     private: // --- state ---
