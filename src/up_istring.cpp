@@ -17,7 +17,7 @@ namespace
      * - 16-254 (medium): length of string, string is stored outline (without size)
      * - 255 (long):      string and size are stored outline
      *
-     * Index 1-7: Contains almost the first seven characters of the string,
+     * Index 1-7: Contains at most the first seven characters of the string,
      *     regardless whether it is stored inline or outline. The prefix can
      *     be used to optimize comparison also for medium and long strings.
      *
@@ -32,7 +32,8 @@ namespace
      * is always 15. For strings with capacity 16-254, the length is stored in
      * the second field, followed by the first 6 characters. For larger
      * capacities, the size and capacity are stored outline and the first
-     * seven (or six) characters inline. */
+     * seven (or six) characters are cached inline. There is also a need for a
+     * dirty flag, because the cache might get outdated. */
 
     struct runtime;
     struct out_of_range;
