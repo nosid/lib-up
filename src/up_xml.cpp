@@ -22,29 +22,12 @@
 
 // TODO: XPATH support
 
+// TODO: Use an option for Xinclude (i.e. not enabled by default)
+
 namespace
 {
 
     struct runtime;
-
-
-    auto xml_external_entity_loader(const char* URL, const char* ID, xmlParserCtxtPtr ctx __attribute__((unused)))
-        -> xmlParserInputPtr
-    {
-        /* XXX:IMPL: Right now, this is only a dummy implementation in order
-         * to test the functionality. */
-        if (URL) {
-            if (ID) {
-                UP_RAISE(runtime, "xml-external-entity"_s, std::string(URL), std::string(ID));
-            } else {
-                UP_RAISE(runtime, "xml-external-entity"_s, std::string(URL));
-            }
-        } else if (ID) {
-            UP_RAISE(runtime, "xml-external-entity"_s, std::string(ID));
-        } else {
-            UP_RAISE(runtime, "xml-external-entity"_s);
-        }
-    }
 
 
     class libxml_process final
@@ -57,6 +40,8 @@ namespace
             return instance;
         }
     private:
+        static auto _xml_load_uri(const char* URI, xmlCharEncoding encoding)
+            -> xmlParserInputBufferPtr;
         static void _xslt_generic_error(void* cookie, const char* msg, ...);
     public: // --- life ---
         explicit libxml_process()
@@ -64,7 +49,8 @@ namespace
             // libxml2
             LIBXML_TEST_VERSION;
             ::xmlInitParser();
-            ::xmlSetExternalEntityLoader(&xml_external_entity_loader);
+            ::xmlParserInputBufferCreateFilenameDefault(&_xml_load_uri);
+            ::xmlThrDefParserInputBufferCreateFilenameDefault(&_xml_load_uri);
             // libxslt1
             ::xsltInit(); // global initialization function
             // in contrast to libxml2, libxslt uses global functions
@@ -93,6 +79,31 @@ namespace
             static UP_WORKAROUND_THREAD_LOCAL self instance;
             return instance;
         }
+        class context final
+        {
+        public: // --- scope ---
+            using self = context;
+            friend libxml_thread;
+        private: // --- state ---
+            context*& _root;
+            context* _next;
+            const up_xml::xml::uri_loader& _loader;
+        public: // --- life ---
+            explicit context(const up_xml::xml::uri_loader& loader)
+                : _root(instance()._context), _next(_root), _loader(loader)
+            {
+                _root = this;
+            }
+            context(const self& rhs) = delete;
+            context(self&& rhs) noexcept = delete;
+            ~context() noexcept
+            {
+                _root = _next;
+            }
+        public: // --- operations ---
+            auto operator=(const self& rhs) & -> self& = delete;
+            auto operator=(self&& rhs) & noexcept -> self& = delete;
+        };
     private:
         class errors final
         {
@@ -135,6 +146,7 @@ namespace
         }
     private: // --- state ---
         std::vector<std::string> _errors;
+        context* _context = nullptr;
     public: // --- life ---
         explicit libxml_thread()
         {
@@ -145,6 +157,45 @@ namespace
             ::xmlSetStructuredErrorFunc(this, &_xml_structured_error);
         }
     public: // --- operations ---
+        auto load_uri(const char* url, xmlCharEncoding encoding) -> xmlParserInputBufferPtr
+        {
+            if (url == nullptr || _context == nullptr) {
+                return nullptr;
+            }
+            try {
+                auto buffer = _context->_loader(std::string(url));
+                if (auto result = ::xmlAllocParserInputBuffer(encoding)) {
+                    result->context = buffer.get();
+                    result->readcallback = [](void* context, char* buf, int len) -> int {
+                        if (context && buf && len >= 0) {
+                            auto buffer = static_cast<up::buffer*>(context);
+                            auto n = std::min(up::integral_cast<std::size_t>(len), buffer->available());
+                            std::memcpy(buf, buffer->warm(), n);
+                            buffer->consume(n);
+                            return up::integral_caster(n);
+                        } else {
+                            return -1;
+                        }
+                    };
+                    result->closecallback = [](void* context) -> int {
+                        if (context) {
+                            auto buffer = static_cast<up::buffer*>(context);
+                            delete buffer;
+                            return 0;
+                        } else {
+                            return -1;
+                        }
+                    };
+                    buffer.release();
+                    return result;
+                } else {
+                    return nullptr;
+                }
+            } catch (...) {
+                UP_SUPPRESS_CURRENT_EXCEPTION("xml-external-entity-loader"_s);
+                return nullptr;
+            }
+        }
         void flush()
         {
             _errors.clear();
@@ -175,6 +226,12 @@ namespace
         libxml_thread::instance().flush();
     }
 
+
+    auto libxml_process::_xml_load_uri(const char* URI, xmlCharEncoding encoding)
+        -> xmlParserInputBufferPtr
+    {
+        return libxml_thread::instance().load_uri(URI, encoding);
+    }
 
     void libxml_process::_xslt_generic_error(void* cookie __attribute__((unused)), const char* msg, ...)
     {
@@ -451,6 +508,13 @@ namespace
 
 }
 
+
+auto up_xml::xml::null_uri_loader() -> uri_loader
+{
+    return [](std::string) { return std::unique_ptr<up::buffer>(); };
+}
+
+
 class up_xml::xml::ns::impl final
 {
 public: // --- scope ---
@@ -567,9 +631,11 @@ public: // --- life ---
         up::chunk::from chunk,
         const up::optional<std::string>& URL,
         const up::optional<std::string>& encoding,
+        const uri_loader& loader,
         options options)
         : impl()
     {
+        libxml_thread::context context(loader);
         auto parser = ::xmlNewParserCtxt();
         if (parser == nullptr) {
             raise<runtime>("xml-new-parser-error"_s);
@@ -696,8 +762,9 @@ up_xml::xml::document::document(
     up::chunk::from chunk,
     const up::optional<std::string>& uri,
     const up::optional<std::string>& encoding,
+    const uri_loader& loader,
     options options)
-    : _impl(flush_make_shared<const impl::simple>(chunk, uri, encoding, options))
+    : _impl(flush_make_shared<const impl::simple>(chunk, uri, encoding, loader, options))
 { }
 
 up_xml::xml::document::document(const element& root)
@@ -730,9 +797,10 @@ private: // --- state ---
     std::shared_ptr<const document::impl> _document;
     xsltStylesheetPtr _ptr = nullptr;
 public: // --- life ---
-    explicit impl(std::shared_ptr<const document::impl>&& document)
+    explicit impl(std::shared_ptr<const document::impl>&& document, const uri_loader& loader)
         : _document(std::move(document))
     {
+        libxml_thread::context context(loader);
         _ptr = ::xsltParseStylesheetDoc(_document->native_handle());
         if (_ptr == nullptr) {
             raise<runtime>("xslt-parser-error"_s);
@@ -759,9 +827,13 @@ private: // --- fields ---
     std::shared_ptr<const stylesheet::impl> _stylesheet;
 public: // --- life ---
     // XSLT transformation
-    explicit result(std::shared_ptr<const stylesheet::impl> stylesheet, const document::impl& source)
+    explicit result(
+        std::shared_ptr<const stylesheet::impl> stylesheet,
+        const document::impl& source,
+        const uri_loader& loader)
         : document::impl(), _stylesheet(std::move(stylesheet))
     {
+        libxml_thread::context context(loader);
         const char** params = nullptr; // TODO: pairs of (name,value), terminated with one nullptr
         _ptr = ::xsltApplyStylesheet(_stylesheet->_ptr, source.native_handle(), params);
         if (_ptr == nullptr) {
@@ -782,11 +854,12 @@ public: // --- operations ---
 };
 
 
-up_xml::xml::stylesheet::stylesheet(document document)
-    : _impl(flush_make_shared<const impl>(std::move(document._impl)))
+up_xml::xml::stylesheet::stylesheet(document document, const uri_loader& loader)
+    : _impl(flush_make_shared<const impl>(std::move(document._impl), loader))
 { }
 
-auto up_xml::xml::stylesheet::operator()(const document& source) const -> document
+auto up_xml::xml::stylesheet::operator()(
+    const document& source, const uri_loader& loader) const -> document
 {
-    return document(flush_make_shared<impl::result>(_impl, *source._impl));
+    return document(flush_make_shared<const impl::result>(_impl, *source._impl, loader));
 }

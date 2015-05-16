@@ -16,8 +16,10 @@ namespace up_xml
         class qname;
         class attr;
         class element;
+        using uri_loader = std::function<std::unique_ptr<up::buffer>(std::string)>;
         class document;
         class stylesheet;
+        static auto null_uri_loader() -> uri_loader;
     };
 
 
@@ -159,6 +161,7 @@ namespace up_xml
             up::chunk::from chunk,
             const up::optional<std::string>& uri,
             const up::optional<std::string>& encoding,
+            const uri_loader& loader,
             options options);
         // create document from element
         explicit document(const element& root);
@@ -188,7 +191,7 @@ namespace up_xml
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         // internal
-        explicit stylesheet(document document);
+        explicit stylesheet(document document, const uri_loader& loader);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -198,7 +201,7 @@ namespace up_xml
         {
             lhs.swap(rhs);
         }
-        auto operator()(const document& source) const -> document;
+        auto operator()(const document& source, const uri_loader& loader) const -> document;
     };
 
 }
