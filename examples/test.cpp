@@ -45,25 +45,13 @@ int main(int argc, char* argv[])
 
         std::ios::sync_with_stdio(false);
 
-        class xxx final
-        {
-        public:
-            std::shared_ptr<int> _impl;
-            xxx() { }
-            void operator()() const noexcept { }
-        };
-
-        xxx x{xxx{}};
-
-        up_defer::defer<xxx>(xxx{});
-        up_defer::defer<xxx&>{x};
-
         auto origin = up::fs::context("root")();
         for (int i = 1; i < argc; ++i) {
             std::cout << "FILE: " << argv[i] << '\n';
             using o = up::fs::file::option;
             auto document = up::xml::document(
-                load(up::fs::file(origin(argv[i]), {o::read})), {}, {}, {});
+                load(up::fs::file(origin(argv[i]), {o::read})),
+                {}, {}, up::xml::null_uri_loader(), {});
             dump(std::cout, document.to_element());
             std::cout << '\n';
             // auto stylesheet = up::xml::stylesheet(document);
