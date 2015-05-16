@@ -1005,7 +1005,7 @@ public: // --- life ---
 auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 {
     return [](std::string hostname) -> self& {
-        UP_RAISE(accept_hostname, "tls-ignore-hostname"_s, hostname);
+        UP_RAISE(accept_hostname, "tls-ignore-hostname"_s, std::move(hostname));
     };
 }
 
