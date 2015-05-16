@@ -150,7 +150,7 @@ namespace up_xml
     public: // --- scope ---
         using self = document;
         class impl;
-        enum class option : uint8_t { dtd_validation, strip_blanks, };
+        enum class option : uint8_t { dtd_validation, strip_blanks, xinclude, };
         using options = up::enum_set<option>;
         friend stylesheet;
     private: // --- state ---

@@ -22,8 +22,6 @@
 
 // TODO: XPATH support
 
-// TODO: Use an option for Xinclude (i.e. not enabled by default)
-
 namespace
 {
 
@@ -649,18 +647,20 @@ public: // --- life ---
             | XML_PARSE_DTDLOAD // load the external subset
             | XML_PARSE_DTDATTR // default DTD attributes
             | XML_PARSE_PEDANTIC // pedantic error reporting
-            | XML_PARSE_XINCLUDE // Implement XInclude substitition
             | XML_PARSE_NONET // Forbid network access
             | XML_PARSE_NODICT // Do not reuse the context dictionnary
             | XML_PARSE_NSCLEAN // remove redundant namespaces declarations
             | XML_PARSE_NOCDATA // merge CDATA as text nodes
-            | XML_PARSE_NOXINCNODE // do not generate XINCLUDE START/END nodes
             ;
         if (options.all(option::dtd_validation)) {
             flags |= XML_PARSE_DTDVALID; // validate with the DTD
         }
         if (options.all(option::strip_blanks)) {
             flags |= XML_PARSE_NOBLANKS; // remove blank nodes
+        }
+        if (options.all(option::xinclude)) {
+            flags |= XML_PARSE_XINCLUDE; // Implement XInclude substitition
+            flags |= XML_PARSE_NOXINCNODE; // do not generate XINCLUDE START/END nodes
         }
         _ptr = ::xmlCtxtReadMemory(parser, chunk.data(), chunk.size(),
             as_c_str(URL), as_c_str(encoding), flags);
