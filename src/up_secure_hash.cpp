@@ -6,8 +6,15 @@
 #include "up_char_cast.hpp"
 #include "up_exception.hpp"
 
-/* TODO: Check whether there is a need for a global initialization of the
- * OpenSSL library. */
+/* Initialization of OpenSSL library: From the documentation of the OpenSSL
+ * library, it is not clear whether the digest algorithms require a library
+ * initialization before first use if used directly (in contrast to using the
+ * EVP functions).
+ *
+ * A closer look at the digest implementations revealed nothing, that
+ * indicated a need for initialization. The test programs shipped with the
+ * OpenSSL library also perform no initialization. For these reasons, this
+ * compilation unit performs no OpenSSL library initialization. */
 
 namespace
 {
