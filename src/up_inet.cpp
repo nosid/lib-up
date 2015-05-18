@@ -848,6 +848,22 @@ public: // --- life ---
 public: // --- operations ---
     auto operator=(const self& rhs) & -> self& = delete;
     auto operator=(self&& rhs) & noexcept -> self& = delete;
+    template <typename Result>
+    auto getsockopt(int level, int option) -> Result
+    {
+        Result result;
+        socklen_t length = sizeof(result);
+        int rv = ::getsockopt(_fd, level, option, &result, &length);
+        if (rv != 0) {
+            UP_RAISE(runtime, "query-network-socket-option-error"_s,
+                _fd, level, option, up::errno_info(errno));
+        } else if (length != sizeof(result)) {
+            UP_RAISE(runtime, "query-network-socket-option-size-mismatch"_s,
+                _fd, level, option, sizeof(result), length);
+        } else {
+            return result;
+        }
+    }
     template <typename Type>
     void setsockopt(int level, int option, Type&& value)
     {
@@ -1023,6 +1039,12 @@ void up_inet::tcp::connection::keepalive(std::chrono::seconds idle, std::size_t 
     socket.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, up::integral_cast<int>(interval.count()));
 }
 
+auto up_inet::tcp::connection::incoming_cpu() const -> int
+{
+    auto&& socket = *static_cast<const engine*>(get_underlying_engine())->_socket;
+    return socket.getsockopt<int>(SOL_SOCKET, SO_INCOMING_CPU);
+}
+
 
 class up_inet::tcp::listener::impl final
 {
@@ -1140,15 +1162,7 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::awai
                 // restart
             } else if (errno == EINPROGRESS) {
                 awaiting(_impl->get_native_handle(), up::stream::await::operation::write);
-                int error = 0;
-                socklen_t length = sizeof(error);
-                int rv = ::getsockopt(_impl->_fd, SOL_SOCKET, SO_ERROR, &error, &length);
-                if (rv != 0) {
-                    UP_RAISE(runtime, "tcp-socket-connect-error"_s, remote, up::errno_info(errno));
-                } else if (length != sizeof(error)) {
-                    UP_RAISE(runtime, "tcp-socket-connect-status-length-mismatch"_s,
-                        remote, length, sizeof(error));
-                } else if (error != 0) {
+                if (auto error = _impl->getsockopt<int>(SOL_SOCKET, SO_ERROR)) {
                     UP_RAISE(runtime, "tcp-socket-connect-error"_s, remote, up::errno_info(error));
                 } else {
                     return;

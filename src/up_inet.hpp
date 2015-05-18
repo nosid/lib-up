@@ -191,6 +191,7 @@ namespace up_inet
         auto remote() const -> const tcp::endpoint&;
         void qos(qos_priority priority, qos_drop drop) const;
         void keepalive(std::chrono::seconds idle, std::size_t probes, std::chrono::seconds interval) const;
+        auto incoming_cpu() const -> int;
     };
 
 
