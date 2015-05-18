@@ -823,6 +823,61 @@ public: // --- operations ---
 
 class up_xml::xml::stylesheet::impl::result final : public document::impl
 {
+private: // --- scope ---
+    class params final
+    {
+    private: // --- scope ---
+        static auto escape(const char* data, std::size_t size)
+        {
+            /* Passing string parameters to xsltApplyStylesheet is a bit
+             * weird. I have found no function to escape the parameters
+             * properly. xsltproc does it manually. Apparently there is no way
+             * to pass arbitrary strings (e.g. strings containing both "'" and
+             * "'"), and the handling of special characters is questionable
+             * (e.g. '&' can't be used as an escape character. To be on the
+             * safe side, the list of allowed characters is very restrictive,
+             * but may be relaxed in the future. */
+            std::string result;
+            result.reserve(size + 2);
+            result.push_back('"');
+            for (std::size_t i = 0; i != size; ++i) {
+                char c = data[i];
+                if (!std::isalnum(c) && c != '-' && c != '.' && c != '/' && c != ':' && c != '_') {
+                    UP_RAISE(runtime, "xslt-bad-string-parameter-character"_s, c, std::string(data, size));
+                }
+                result.push_back(c);
+            }
+            result.push_back('"');
+            return result;
+        }
+    private: // --- fields ---
+        std::vector<std::string> _values;
+        std::vector<const char*> _result;
+    public: // --- life ---
+        explicit params(const parameters& parameters)
+        {
+            auto size = parameters.size();
+            if (size) {
+                /* The XSLT library expects the parameters flattened and
+                 * terminated with a nullptr. */
+                _values.reserve(size);
+                for (auto&& parameter : parameters) {
+                    _values.push_back(escape(parameter.second.data(), parameter.second.size()));
+                }
+                _result.reserve(size + size + 1);
+                for (auto&& parameter : parameters) {
+                    _result.push_back(parameter.first.c_str());
+                    _result.push_back(_values.back().c_str());
+                }
+                _result.push_back(nullptr);
+            }
+        }
+    public: // --- operations ---
+        auto operator()() &&
+        {
+            return _result.empty() ? nullptr : &_result[0];
+        }
+    };
 private: // --- fields ---
     std::shared_ptr<const stylesheet::impl> _stylesheet;
 public: // --- life ---
@@ -830,12 +885,13 @@ public: // --- life ---
     explicit result(
         std::shared_ptr<const stylesheet::impl> stylesheet,
         const document::impl& source,
-        const uri_loader& loader)
+        const uri_loader& loader,
+        const parameters& parameters)
         : document::impl(), _stylesheet(std::move(stylesheet))
     {
         libxml_thread::context context(loader);
-        const char** params = nullptr; // TODO: pairs of (name,value), terminated with one nullptr
-        _ptr = ::xsltApplyStylesheet(_stylesheet->_ptr, source.native_handle(), params);
+        _ptr = ::xsltApplyStylesheet(
+            _stylesheet->_ptr, source.native_handle(), params(parameters)());
         if (_ptr == nullptr) {
             raise<runtime>("xslt-transformation-error"_s);
         }
@@ -859,7 +915,10 @@ up_xml::xml::stylesheet::stylesheet(document document, const uri_loader& loader)
 { }
 
 auto up_xml::xml::stylesheet::operator()(
-    const document& source, const uri_loader& loader) const -> document
+    const document& source,
+    const uri_loader& loader,
+    const parameters& parameters) const -> document
 {
-    return document(flush_make_shared<const impl::result>(_impl, *source._impl, loader));
+    return document(
+        flush_make_shared<const impl::result>(_impl, *source._impl, loader, parameters));
 }

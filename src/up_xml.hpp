@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "up_buffer.hpp"
 #include "up_istring.hpp"
 #include "up_optional.hpp"
@@ -187,6 +189,7 @@ namespace up_xml
         using self = stylesheet;
         class impl;
         friend document;
+        using parameters = std::unordered_map<std::string, std::string>;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
@@ -201,7 +204,10 @@ namespace up_xml
         {
             lhs.swap(rhs);
         }
-        auto operator()(const document& source, const uri_loader& loader) const -> document;
+        auto operator()(
+            const document& source,
+            const uri_loader& loader,
+            const parameters& parameters) const -> document;
     };
 
 }
