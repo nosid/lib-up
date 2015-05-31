@@ -5,4 +5,5 @@ run
     test_up_hash.cpp
     test_up_istring.cpp
     test_up_json.cpp
+    test_up_linked_map.cpp
     ../src//up ;
