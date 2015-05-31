@@ -41,6 +41,7 @@ namespace up_fabric
         auto details() const -> auto& { return _details; }
         auto to_fabric() const & -> auto& { return *this; }
         auto to_fabric() && -> fabric&& { return std::move(*this); }
+        void out(std::ostream& os) const;
     };
 
 
