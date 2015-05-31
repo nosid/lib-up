@@ -32,4 +32,5 @@ project
     ;
 
 build-project src ;
+build-project test ;
 build-project examples ;
