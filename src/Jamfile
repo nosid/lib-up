@@ -36,6 +36,7 @@ lib up
     up_swap.cpp
     up_terminate.cpp
     up_terse_map.cpp
+    up_test.cpp
     up_tls.cpp
     up_to_string.cpp
     up_utility.cpp
