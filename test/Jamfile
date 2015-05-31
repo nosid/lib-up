@@ -4,4 +4,5 @@ run
     main.cpp
     test_up_hash.cpp
     test_up_istring.cpp
+    test_up_json.cpp
     ../src//up ;

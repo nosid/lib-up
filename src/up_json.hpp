@@ -5,8 +5,10 @@
  * use and efficient.
  */
 
-#include "up_linked_map.hpp"
+#include <unordered_map>
+
 #include "up_optional.hpp"
+#include "up_swap.hpp"
 #include "up_terminate.hpp"
 
 namespace up_json
@@ -17,6 +19,10 @@ namespace up_json
     public: // --- scope ---
         enum class kind : uint8_t;
         class value;
+        using array = std::vector<value>;
+        // TODO: Replace with up::linked_map
+        using object = std::unordered_map<up::istring, value>;
+        class builder;
     };
 
 
@@ -57,11 +63,9 @@ namespace up_json
         // implicit
         value(const char* value);
         // implicit
-        value(std::vector<value> values);
+        value(array values);
         // implicit
-        value(std::initializer_list<value> values);
-        // implicit
-        value(up::linked_map<up::istring, value> values);
+        value(object values);
         // avoid unintentional conversions
         template <typename... Types>
         value(Types&&...) = delete;
@@ -78,8 +82,8 @@ namespace up_json
         auto get_boolean() const -> bool;
         auto get_number() const -> double;
         auto get_string() const -> const up::istring&;
-        auto get_array() const -> const std::vector<value>&;
-        auto get_object() const -> const up::linked_map<up::istring, value>&;
+        auto get_array() const -> const array&;
+        auto get_object() const -> const object&;
         template <typename Visitor>
         auto accept(Visitor&& visitor) const
         {
@@ -102,6 +106,43 @@ namespace up_json
                 UP_TERMINATE("invalid json kind"_s, k);
             }
         }
+    };
+
+
+    class json::builder final
+    {
+    public: // --- scope ---
+        class array final
+        {
+        private: // --- state ---
+            std::initializer_list<value> _values;
+        public: // --- life ---
+            array(std::initializer_list<value> values)
+                : _values(values)
+            { }
+        public: // --- operations ---
+            operator value() &&
+            {
+                return json::array(_values);
+            }
+        };
+        class object final
+        {
+        public: // --- scope ---
+            using pair = json::object::value_type;
+        private: // --- state ---
+            std::initializer_list<pair> _pairs;
+        public: // --- life ---
+            // implicit for brace initialization
+            object(std::initializer_list<pair> pairs)
+                : _pairs(pairs)
+            { }
+        public: // --- operations ---
+            operator value() &&
+            {
+                return json::object(_pairs);
+            }
+        };
     };
 
 }

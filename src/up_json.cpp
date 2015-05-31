@@ -51,9 +51,9 @@ namespace
     class impl_array : public up_json::json::value::impl
     {
     public: // --- state ---
-        std::vector<up_json::json::value> _values;
+        up_json::json::array _values;
     public: // --- life ---
-        explicit impl_array(std::vector<up_json::json::value> values)
+        explicit impl_array(up_json::json::array values)
             : impl(up_json::json::kind::array), _values(std::move(values))
         { }
     };
@@ -61,9 +61,9 @@ namespace
     class impl_object : public up_json::json::value::impl
     {
     public: // --- state ---
-        up::linked_map<up::istring, up_json::json::value> _values;
+        up_json::json::object _values;
     public: // --- life ---
-        explicit impl_object(up::linked_map<up::istring, up_json::json::value> values)
+        explicit impl_object(up_json::json::object values)
             : impl(up_json::json::kind::object), _values(std::move(values))
         { }
     };
@@ -106,15 +106,11 @@ up_json::json::value::value(const char* value)
     : _impl(std::make_shared<const impl_string>(up::istring(value)))
 { }
 
-up_json::json::value::value(std::vector<value> values)
+up_json::json::value::value(array values)
     : _impl(std::make_shared<const impl_array>(std::move(values)))
 { }
 
-up_json::json::value::value(std::initializer_list<value> values)
-    : _impl(std::make_shared<const impl_array>(values))
-{ }
-
-up_json::json::value::value(up::linked_map<up::istring, value> values)
+up_json::json::value::value(object values)
     : _impl(std::make_shared<const impl_object>(std::move(values)))
 { }
 
@@ -138,12 +134,12 @@ auto up_json::json::value::get_string() const -> const up::istring&
     return cast<impl_string>(_impl)._value;
 }
 
-auto up_json::json::value::get_array() const -> const std::vector<value>&
+auto up_json::json::value::get_array() const -> const array&
 {
     return cast<impl_array>(_impl)._values;
 }
 
-auto up_json::json::value::get_object() const -> const up::linked_map<up::istring, value>&
+auto up_json::json::value::get_object() const -> const object&
 {
     return cast<impl_object>(_impl)._values;
 }
