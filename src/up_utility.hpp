@@ -132,7 +132,7 @@ namespace up_utility
     private: // --- state ---
         context_frame_base* _parent;
     public: // --- life ---
-        context_frame_base()
+        explicit context_frame_base()
             : _parent(top)
         {
             top = this;
