@@ -64,7 +64,7 @@ namespace up_defer
     template <typename Callable>
     auto operator<<(defer_magic, Callable&& callable)
     {
-        return defer<Callable>{std::forward<Callable>(callable)};
+        return defer<Callable>(std::forward<Callable>(callable));
     }
 
 }
