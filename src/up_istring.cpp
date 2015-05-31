@@ -53,6 +53,27 @@ namespace
         return *static_cast<char*const*>(static_cast<const void*>(core + sizeof(char*)));
     }
 
+
+    // TODO: optimize all comparison functions with inline prefix
+
+    auto compare_aux(
+        const char* ldata, std::size_t lpos, std::size_t ln,
+        const char* rdata, std::size_t rpos, std::size_t rn) -> int
+    {
+        return std::lexicographical_compare(
+            ldata + lpos, ldata + lpos + ln,
+            rdata + rpos, rdata + rpos + rn);
+    }
+
+    auto tail_n(std::size_t size, std::size_t pos) -> std::size_t
+    {
+        if (pos > size) {
+            throw std::out_of_range("up::istring::compare");
+        } else {
+            return size - pos;
+        }
+    }
+
 }
 
 
@@ -171,6 +192,48 @@ auto up_istring::istring::data() const -> const char*
         // long string
         return cast_ptr(_core) + sizeof(std::size_t);
     }
+}
+
+auto up_istring::istring::compare(const self& rhs) const noexcept -> int
+{
+    return compare_aux(
+        data(), 0, size(),
+        rhs.data(), 0, rhs.size());
+}
+
+auto up_istring::istring::compare(std::size_t lhs_pos, std::size_t lhs_n, const self& rhs) const -> int
+{
+    return compare_aux(
+        data(), lhs_pos, std::min(lhs_n, tail_n(size(), lhs_pos)),
+        rhs.data(), 0, rhs.size());
+}
+
+auto up_istring::istring::compare(std::size_t lhs_pos, std::size_t lhs_n, const self& rhs, std::size_t rhs_pos, std::size_t rhs_n) const -> int
+{
+    return compare_aux(
+        data(), lhs_pos, std::min(lhs_n, tail_n(size(), lhs_pos)),
+        rhs.data(), rhs_pos, std::min(rhs_n, tail_n(rhs.size(), rhs_pos)));
+}
+
+auto up_istring::istring::compare(const char* rhs) const -> int
+{
+    return compare_aux(
+        data(), 0, size(),
+        rhs, 0, std::strlen(rhs));
+}
+
+auto up_istring::istring::compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs) const -> int
+{
+    return compare_aux(
+        data(), lhs_pos, std::min(lhs_n, tail_n(size(), lhs_pos)),
+        rhs, 0, std::strlen(rhs));
+}
+
+auto up_istring::istring::compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs, std::size_t rhs_n) const -> int
+{
+    return compare_aux(
+        data(), lhs_pos, std::min(lhs_n, tail_n(size(), lhs_pos)),
+        rhs, 0, rhs_n);
 }
 
 up_istring::istring::operator up::chunk::from() const

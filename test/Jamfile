@@ -1,3 +1,7 @@
 import testing ;
 
-run main.cpp test_up_hash.cpp ../src//up ;
+run
+    main.cpp
+    test_up_hash.cpp
+    test_up_istring.cpp
+    ../src//up ;

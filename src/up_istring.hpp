@@ -22,6 +22,7 @@ namespace up_istring
     {
     public: // --- scope ---
         using self = istring;
+        static constexpr std::size_t npos = std::size_t(-1);
         static constexpr unsigned char core_size = sizeof(char*) * 2;
     private: // --- state ---
         unsigned char _core[core_size];
@@ -44,10 +45,26 @@ namespace up_istring
         }
         auto size() const -> std::size_t;
         auto data() const -> const char*;
+        auto compare(const self& rhs) const noexcept -> int;
+        auto compare(std::size_t lhs_pos, std::size_t lhs_n, const self& rhs) const -> int;
+        auto compare(std::size_t lhs_pos, std::size_t lhs_n, const self& rhs, std::size_t rhs_pos, std::size_t rhs_n) const -> int;
+        auto compare(const char* rhs) const -> int;
+        auto compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs) const -> int;
+        auto compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs, std::size_t rhs_n) const -> int;
         operator up::chunk::from() const;
         auto to_string() const -> std::string;
         void out(std::ostream& os) const;
     };
+
+    inline bool operator==(const istring& lhs, const istring& rhs) noexcept
+    {
+        return lhs.compare(rhs) == 0;
+    }
+
+    inline bool operator!=(const istring& lhs, const istring& rhs) noexcept
+    {
+        return !(lhs == rhs);
+    }
 
 }
 
