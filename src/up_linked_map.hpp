@@ -446,8 +446,7 @@ namespace up_linked_map
         }
         auto erase(const key_type& key) -> size_type
         {
-            auto node = _find_node(_hasher(key), key);
-            if (node) {
+            if (auto node = _find_node(_hasher(key), key)) {
                 _erase_node(node);
                 return 1;
             } else {
@@ -691,8 +690,7 @@ namespace up_linked_map
         auto operator[](const key_type& key) -> mapped_type&
         {
             size_type hash = _hasher(key);
-            auto n = _find_node(hash, key);
-            if (n) {
+            if (auto n = _find_node(hash, key)) {
                 return n->_value.second;
             } else {
                 return _put_node(&_list, std::make_unique<node>(hash, std::piecewise_construct,
@@ -702,8 +700,7 @@ namespace up_linked_map
         auto operator[](key_type&& key) -> mapped_type&
         {
             size_type hash = _hasher(key);
-            auto n = _find_node(hash, key);
-            if (n) {
+            if (auto n = _find_node(hash, key)) {
                 return n->_value.second;
             } else {
                 return _put_node(&_list, std::make_unique<node>(hash, std::piecewise_construct,
@@ -712,8 +709,7 @@ namespace up_linked_map
         }
         auto at(const key_type& key) -> mapped_type&
         {
-            auto node = _find_node(_hasher(key), key);
-            if (node) {
+            if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
                 throw std::out_of_range("up::linked_map::at: key not found");
@@ -721,8 +717,7 @@ namespace up_linked_map
         }
         auto at(const key_type& key) const -> const mapped_type&
         {
-            auto node = _find_node(_hasher(key), key);
-            if (node) {
+            if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
                 throw std::out_of_range("up::linked_map::at: key not found");
@@ -805,8 +800,7 @@ namespace up_linked_map
         auto _insert_final(list_node* position, K&& key, M&& mapped) -> std::pair<iterator, bool>
         {
             size_type hash = _hasher(key);
-            auto n = _find_node(hash, key);
-            if (n) {
+            if (auto n = _find_node(hash, key)) {
                 return { iterator(n), false };
             } else {
                 return { _put_node(position, std::make_unique<node>(
@@ -839,8 +833,7 @@ namespace up_linked_map
         {
             auto temp = std::make_unique<node>(0, std::forward<Args>(args)...);
             temp->_hash = _hasher(temp->_value.first);
-            auto n = _find_node(temp->_hash, temp->_value.first);
-            if (n) {
+            if (auto n = _find_node(temp->_hash, temp->_value.first)) {
                 return { iterator(n), false };
             } else {
                 return { _put_node(position, std::move(temp)), true };
