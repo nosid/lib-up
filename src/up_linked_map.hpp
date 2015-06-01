@@ -856,7 +856,7 @@ namespace up_linked_map
             _list_link(position->_list_prev, node);
             _list_link(node, position);
             // link into hash chains (somewhere)
-            auto bucket = &_buckets[n->_hash % _bucket_count];
+            auto bucket = &_buckets[node->_hash % _bucket_count];
             _hash_link(bucket->_hash_prev, node);
             _hash_link(node, bucket);
             ++_size;
