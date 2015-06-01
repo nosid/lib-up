@@ -5,8 +5,7 @@
  * use and efficient.
  */
 
-#include <unordered_map>
-
+#include "up_linked_map.hpp"
 #include "up_optional.hpp"
 #include "up_swap.hpp"
 #include "up_terminate.hpp"
@@ -20,8 +19,7 @@ namespace up_json
         enum class kind : uint8_t;
         class value;
         using array = std::vector<value>;
-        // TODO: Replace with up::linked_map
-        using object = std::unordered_map<up::istring, value>;
+        using object = up::linked_map<up::istring, value>;
         class builder;
     };
 
