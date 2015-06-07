@@ -162,7 +162,6 @@ namespace up_swap
 namespace up
 {
 
-    using up_swap::invoke_swap;
     using up_swap::swap_noexcept;
 
 }
