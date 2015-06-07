@@ -37,7 +37,7 @@ namespace up_out
      */
     class invoke_out_aux final
     {
-    private:
+    private: // --- scope ---
         template <typename Stream, typename Head, typename... Tail>
         static auto test_member(Stream&&, Head&&, Tail&&...) noexcept
             -> decltype(std::declval<Head>().out(std::declval<Stream>(), std::declval<Tail>()...));
