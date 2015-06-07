@@ -2,8 +2,5 @@ import testing ;
 
 run
     main.cpp
-    test_up_hash.cpp
-    test_up_istring.cpp
-    test_up_json.cpp
-    test_up_linked_map.cpp
+    [ glob test_*.cpp ]
     ../src//up ;
