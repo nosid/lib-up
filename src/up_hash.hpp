@@ -13,6 +13,10 @@ namespace up_hash
      *
      * http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
      * http://www.isthe.com/chongo/tech/comp/fnv/index.html
+     *
+     * Security: The hash function is crypto-graphically weak, and an attacker
+     * might generate strings to intentionally cause collisions. This function
+     * should not be used, if the strings originate from an untrusted source.
      */
 
     auto fnv1a(const unsigned char* data, std::size_t size) noexcept -> std::size_t;
