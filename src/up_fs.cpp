@@ -8,9 +8,12 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+
+#include <linux/fs.h>
 
 #include "up_buffer.hpp"
 #include "up_defer.hpp"
@@ -52,6 +55,17 @@ namespace
             } // else: continue
         }
         UP_RAISE(runtime, "fs-getcwd-error"_s, up::errno_info(errno));
+    }
+
+
+    int syscall_renameat2(
+        int olddirfd,
+        const char* oldpath,
+        int newdirfd,
+        const char* newpath,
+        unsigned int flags)
+    {
+        return ::syscall(SYS_renameat2, olddirfd, oldpath, newdirfd, newpath, flags);
     }
 
 
@@ -868,13 +882,21 @@ public: // --- operations ---
         check(::unlinkat(_origin->dir_fd(), _pathname.c_str(), 0),
             "fs-unlink-error"_s, *this);
     }
-    void rename(const self& target) const
+    void rename(const self& target, bool replace) const
     {
-        // TODO: add support for RENAME_EXCHANGE
-        check(::renameat(
+        check(::syscall_renameat2(
                 _origin->dir_fd(), _pathname.c_str(),
-                target._origin->dir_fd(), target._pathname.c_str()),
-            "fs-rename-error"_s, *this, target);
+                target._origin->dir_fd(), target._pathname.c_str(),
+                replace ? 0 : RENAME_NOREPLACE),
+            "fs-rename-error"_s, *this, target, replace);
+    }
+    void exchange(const self& target) const
+    {
+        check(::syscall_renameat2(
+                _origin->dir_fd(), _pathname.c_str(),
+                target._origin->dir_fd(), target._pathname.c_str(),
+                RENAME_EXCHANGE),
+            "fs-exchange-error"_s, *this, target);
     }
     auto readlink() const -> std::string
     {
@@ -986,9 +1008,14 @@ void up_fs::fs::path::unlink() const
     _impl->unlink();
 }
 
-void up_fs::fs::path::rename(const path& target) const
+void up_fs::fs::path::rename(const path& target, bool replace) const
 {
-    _impl->rename(*target._impl);
+    _impl->rename(*target._impl, replace);
+}
+
+void up_fs::fs::path::exchange(const path& target) const
+{
+    _impl->exchange(*target._impl);
 }
 
 auto up_fs::fs::path::readlink() const -> std::string

@@ -236,7 +236,8 @@ namespace up_fs
         void rmdir() const;
         void link(const self& target) const;
         void unlink() const;
-        void rename(const self& target) const;
+        void rename(const self& target, bool replace) const;
+        void exchange(const self& target) const;
         auto readlink() const -> std::string;
         void symlink(const std::string& value) const;
         auto list() const -> std::vector<directory_entry>;
