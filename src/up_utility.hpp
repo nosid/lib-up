@@ -125,7 +125,7 @@ namespace up_utility
     class context_frame_base
     {
     private: // --- scope ---
-        static UP_WORKAROUND_THREAD_LOCAL context_frame_base* top;
+        static thread_local context_frame_base* top;
     public:
         using visitor = std::function<void(const up::source_location&, const up::fabrics&)>;
         static void walk(const visitor& visitor);

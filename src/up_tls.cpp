@@ -138,7 +138,7 @@ namespace
         using self = openssl_thread;
         static auto instance() -> auto&
         {
-            static UP_WORKAROUND_THREAD_LOCAL self instance;
+            static thread_local self instance;
             return instance;
         }
     public: // --- life ---
@@ -609,9 +609,7 @@ protected:
 class up_tls::tls::authority::impl::system final : public impl
 {
 public: // --- life ---
-    /* WORKAROUND: Compilation with Clang and libc++ fails with a default
-     * constructor and a non-empty class (e.g. vtable). */
-    explicit system(std::nullptr_t dummy __attribute__((unused))) { }
+    explicit system() = default;
 private: // --- operations ---
     void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
@@ -713,7 +711,7 @@ private: // --- operations ---
 
 auto up_tls::tls::authority::system() -> authority
 {
-    return authority(std::make_shared<const impl::system>(nullptr));
+    return authority(std::make_shared<const impl::system>());
 }
 
 up_tls::tls::authority::authority(std::shared_ptr<const impl> impl)

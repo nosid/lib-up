@@ -74,7 +74,7 @@ void up_utility::raise_enum_set_runtime_error(up::string_literal message, up::fa
 }
 
 
-UP_WORKAROUND_THREAD_LOCAL up_utility::context_frame_base* up_utility::context_frame_base::top = nullptr;
+thread_local up_utility::context_frame_base* up_utility::context_frame_base::top = nullptr;
 
 void up_utility::context_frame_base::walk(const visitor& visitor)
 {

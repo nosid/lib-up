@@ -17,7 +17,7 @@ namespace
         using self = runner;
         using location = up_test::location;
         using test = up_test::test_case_base;
-        static UP_WORKAROUND_THREAD_LOCAL self* top;
+        static thread_local self* top;
     public:
         static void check_passed(
             location location __attribute__((unused)),
@@ -64,7 +64,7 @@ namespace
         }
     };
 
-    UP_WORKAROUND_THREAD_LOCAL runner* runner::top = nullptr;
+    thread_local runner* runner::top = nullptr;
 
 
     class process final

@@ -26,6 +26,7 @@ project
       # CLANG
       <toolset>clang:<cxxflags>-stdlib=libc++
       <toolset>clang:<linkflags>-stdlib=libc++
+      <toolset>clang:<include>/usr/include/libcxxabi
       <toolset>clang:<cflags>-fdiagnostics-color
       <toolset>clang:<cflags>-include\ workaround_clang.hpp
     : build-dir bin/

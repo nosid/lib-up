@@ -74,7 +74,7 @@ namespace
         using self = libxml_thread;
         static auto instance() -> auto&
         {
-            static UP_WORKAROUND_THREAD_LOCAL self instance;
+            static thread_local self instance;
             return instance;
         }
         class context final
