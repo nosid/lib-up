@@ -160,7 +160,7 @@ auto up_istring::istring::operator=(const self& rhs) & -> self&
 
 auto up_istring::istring::operator=(self&& rhs) & noexcept -> self&
 {
-    std::swap(_core, rhs._core);
+    swap(rhs);
     return *this;
 }
 
