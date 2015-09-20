@@ -141,7 +141,7 @@ namespace up_secure_hash
             _aux.finish(result);
             return result;
         }
-        };
+    };
 
 
     template <secure_hash_mechanism Mechanism>
