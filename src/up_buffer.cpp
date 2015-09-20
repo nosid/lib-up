@@ -137,7 +137,7 @@ up_buffer::buffer::~buffer() noexcept
 
 auto up_buffer::buffer::operator=(const self& rhs) & -> self&
 {
-    buffer(rhs).swap(*this);
+    self(rhs).swap(*this);
     return *this;
 }
 

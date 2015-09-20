@@ -154,7 +154,7 @@ up_istring::istring::~istring() noexcept
 
 auto up_istring::istring::operator=(const self& rhs) & -> self&
 {
-    istring(rhs).swap(*this);
+    self(rhs).swap(*this);
     return *this;
 }
 
