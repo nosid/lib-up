@@ -6,8 +6,8 @@
  * libc' iconv function.
  */
 
-#include "up_chunk.hpp"
 #include "up_impl_ptr.hpp"
+#include "up_string_view.hpp"
 #include "up_swap.hpp"
 
 namespace up_iconv
@@ -45,11 +45,10 @@ namespace up_iconv
          * is thrown. This operator is intentionally non-const, because it is
          * not thread-safe.
          *
-         * Hint: There is currently no support for bulk chunks, because
-         * non-consecutive buffers are not easy to use with the underlying
-         * iconv library.
+         * Hint: There is currently no bulk support, because non-consecutive
+         * buffers are not easy to use with the underlying iconv library.
          */
-        auto operator()(up::chunk::from chunk) -> std::string;
+        auto operator()(up::string_view string) -> std::string;
     };
 
 
@@ -86,11 +85,10 @@ namespace up_iconv
          * is thrown. This operator is intentionally const, because it is
          * thread-safe.
          *
-         * Hint: There is currently no support for bulk chunks, because
-         * non-consecutive buffers are not easy to use with the underlying
-         * iconv library.
+         * Hint: There is currently no bulk support, because non-consecutive
+         * buffers are not easy to use with the underlying iconv library.
          */
-        auto operator()(up::chunk::from chunk) const -> std::string;
+        auto operator()(up::string_view string) const -> std::string;
     };
 
 }

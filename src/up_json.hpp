@@ -57,7 +57,7 @@ namespace up_json
         // implicit
         value(up::istring value);
         // implicit
-        value(const std::string& value);
+        value(up::string_view value);
         // implicit
         value(const char* value);
         // implicit

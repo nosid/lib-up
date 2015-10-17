@@ -828,7 +828,7 @@ auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
     }
 }
 
-bool up_tls::tls::certificate::matches_hostname(const std::string& hostname) const
+bool up_tls::tls::certificate::matches_hostname(up::string_view hostname) const
 {
     int rv = ::X509_check_host(_impl._x509, hostname.data(), hostname.size(), 0, nullptr);
     if (rv == 1) {

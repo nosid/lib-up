@@ -1,6 +1,7 @@
 #pragma once
 
 #include "up_chunk.hpp"
+#include "up_string_view.hpp"
 
 namespace up_hash
 {
@@ -22,6 +23,7 @@ namespace up_hash
     auto fnv1a(const unsigned char* data, std::size_t size) noexcept -> std::size_t;
     auto fnv1a(const char* data, std::size_t size) noexcept -> std::size_t;
     auto fnv1a(up::chunk::from chunk) noexcept -> std::size_t;
+    auto fnv1a(up::string_view string) noexcept -> std::size_t;
 
 }
 

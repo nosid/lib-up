@@ -30,8 +30,8 @@ namespace up_istring
         istring();
         istring(const char* data, std::size_t size);
         istring(const char* data);
-        istring(up::chunk::from chunk);
-        explicit istring(const std::string& string);
+        explicit istring(up::string_view string); // explicit to avoid unintended copies
+        explicit istring(up::chunk::from chunk);
         istring(const self& rhs);
         istring(self&& rhs) noexcept;
         ~istring() noexcept;
@@ -51,7 +51,7 @@ namespace up_istring
         auto compare(const char* rhs) const -> int;
         auto compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs) const -> int;
         auto compare(std::size_t lhs_pos, std::size_t lhs_n, const char* rhs, std::size_t rhs_n) const -> int;
-        operator up::chunk::from() const;
+        operator up::string_view() const;
         auto to_string() const -> std::string;
         void out(std::ostream& os) const;
     };

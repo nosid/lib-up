@@ -121,12 +121,12 @@ up_istring::istring::istring(const char* data)
     : istring(data, std::strlen(data))
 { }
 
-up_istring::istring::istring(up::chunk::from chunk)
-    : istring(chunk.data(), chunk.size())
+up_istring::istring::istring(up::string_view string)
+    : istring(string.data(), string.size())
 { }
 
-up_istring::istring::istring(const std::string& string)
-    : istring(string.data(), string.size())
+up_istring::istring::istring(up::chunk::from chunk)
+    : istring(chunk.data(), chunk.size())
 { }
 
 up_istring::istring::istring(const self& rhs)
@@ -236,7 +236,7 @@ auto up_istring::istring::compare(std::size_t lhs_pos, std::size_t lhs_n, const 
         rhs, 0, rhs_n);
 }
 
-up_istring::istring::operator up::chunk::from() const
+up_istring::istring::operator up::string_view() const
 {
     return {data(), size()};
 }

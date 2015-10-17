@@ -1,6 +1,6 @@
 #pragma once
 
-#include "up_include.hpp"
+#include "up_string_view.hpp"
 
 namespace up_chunk
 {
@@ -142,12 +142,11 @@ namespace up_chunk
         const char* _data;
         std::size_t _size;
     public: // --- life ---
-        // implicit
+        // implicit (support brace initialization)
         from(const char* data, std::size_t size)
             : _data(std::move(data)), _size(std::move(size))
         { }
-        // implicit
-        from(const std::string& value)
+        explicit from(up::string_view value)
             : from(value.data(), value.size())
         { }
     public: // --- operations ---

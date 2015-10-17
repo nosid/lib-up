@@ -98,7 +98,7 @@ up_json::json::value::value(up::istring value)
     : _impl(std::make_shared<const impl_string>(std::move(value)))
 { }
 
-up_json::json::value::value(const std::string& value)
+up_json::json::value::value(up::string_view value)
     : _impl(std::make_shared<const impl_string>(up::istring(value)))
 { }
 

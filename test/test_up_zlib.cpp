@@ -81,7 +81,7 @@ namespace
 
     auto compress(const char* text)
     {
-        return bytes::raw(up::zlib::compress(std::string(text)));
+        return bytes::raw(up::zlib::compress(up::chunk::from(std::string(text))));
     }
 
     UP_TEST_CASE {

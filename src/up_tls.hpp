@@ -3,6 +3,7 @@
 #include "up_buffer.hpp"
 #include "up_optional.hpp"
 #include "up_stream.hpp"
+#include "up_string_view.hpp"
 #include "up_swap.hpp"
 
 
@@ -112,7 +113,7 @@ namespace up_tls
     public: // --- operations ---
         // returns most specific common name (if any)
         auto common_name() const -> up::optional<std::string>;
-        bool matches_hostname(const std::string& hostname) const;
+        bool matches_hostname(up::string_view hostname) const;
     };
 
 

@@ -48,7 +48,7 @@ namespace
             }
         }
     public: // --- operations ---
-        auto transform(const std::string& to, const std::string& from, up::chunk::from chunk)
+        auto transform(const std::string& to, const std::string& from, up::string_view string)
         {
             constexpr auto error = std::size_t(-1);
             if (_dirty) {
@@ -63,8 +63,8 @@ namespace
              * strict and checks for inconsistencies between the buffer
              * parameters and the return value. */
             auto buffer = up::buffer();
-            auto from_data = const_cast<char*>(chunk.data());
-            auto from_size = chunk.size();
+            auto from_data = const_cast<char*>(string.data());
+            auto from_size = string.size();
             auto&& process = [&] {
                 for (;;) {
                     /* Apparently, iconv requires at least 11 bytes for the output
@@ -114,9 +114,9 @@ namespace
     protected:
         ~base() noexcept = default;
     public: // --- operations ---
-        auto transform(up::chunk::from chunk)
+        auto transform(up::string_view string)
         {
-            return _wrapper.transform(_to, _from, chunk);
+            return _wrapper.transform(_to, _from, string);
         }
     };
 
@@ -134,9 +134,9 @@ up_iconv::unique_iconv::unique_iconv(std::string to, std::string from)
     : _impl(up::make_impl<impl>(std::move(to), std::move(from)))
 { }
 
-auto up_iconv::unique_iconv::operator()(up::chunk::from chunk) -> std::string
+auto up_iconv::unique_iconv::operator()(up::string_view string) -> std::string
 {
-    return _impl->transform(chunk);
+    return _impl->transform(string);
 }
 
 
@@ -153,8 +153,8 @@ up_iconv::shared_iconv::shared_iconv(std::string to, std::string from)
     : _impl(up::make_impl<impl>(std::move(to), std::move(from)))
 { }
 
-auto up_iconv::shared_iconv::operator()(up::chunk::from chunk) const -> std::string
+auto up_iconv::shared_iconv::operator()(up::string_view string) const -> std::string
 {
     std::unique_lock<std::mutex> lock(_impl->_mutex);
-    return _impl->transform(chunk);
+    return _impl->transform(string);
 }
