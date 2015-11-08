@@ -373,10 +373,11 @@ namespace up_fs
     public: // --- scope ---
         using self = channel;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
-        explicit channel(up::impl_ptr<impl> impl)
+        explicit channel(up::impl_ptr<impl, self> impl)
             : _impl(std::move(impl))
         { }
         channel(const self& rhs) = delete;

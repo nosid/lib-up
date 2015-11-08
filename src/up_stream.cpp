@@ -17,7 +17,7 @@ namespace
 
     struct runtime { };
 
-    void check_state(const up::impl_ptr<up::stream::engine>& engine)
+    void check_state(const std::unique_ptr<up::stream::engine>& engine)
     {
         if (!engine) {
             UP_RAISE(runtime, "invalid-stream-engine-state"_s);
@@ -121,7 +121,7 @@ namespace
 }
 
 
-up_stream::stream::stream(up::impl_ptr<engine> engine)
+up_stream::stream::stream(std::unique_ptr<engine> engine)
     : _engine(std::move(engine))
 {
     check_state(_engine);
@@ -201,7 +201,7 @@ void up_stream::stream::write_all(up::chunk::from_bulk_t&& chunks, await& awaiti
     } while (chunks.total());
 }
 
-void up_stream::stream::upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform)
+void up_stream::stream::upgrade(std::function<std::unique_ptr<engine>(std::unique_ptr<engine>)> transform)
 {
     check_state(_engine);
     _engine = transform(std::move(_engine));
@@ -267,13 +267,13 @@ class up_stream::stream::deadline_await::impl final
 {
 public: // --- scope ---
     using self = impl;
-    static auto make(up::impl_ptr<self>&& old, int clockid, const up::duration& duration, bool absolute)
-        -> up::impl_ptr<self>
+    static auto make(up::impl_ptr<self, deadline_await>&& old, int clockid, const up::duration& duration, bool absolute)
+        -> up::impl_ptr<self, deadline_await>
     {
         if (old && old->update(clockid, duration, absolute)) {
             return std::move(old);
         } else {
-            return up::make_impl<self>(clockid, duration, absolute);
+            return up::make_impl<self, deadline_await>(clockid, duration, absolute);
         }
     }
 private: // --- fields ---
@@ -334,20 +334,25 @@ public: // --- operations ---
 };
 
 
+void up_stream::stream::deadline_await::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_stream::stream::deadline_await::deadline_await()
-    : _impl(up::null_impl<impl>())
+    : _impl(up::null_impl<impl, self>())
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::system_time_point& expires_at)
-    : _impl(up::make_impl<impl>(CLOCK_REALTIME, expires_at.time_since_epoch(), true))
+    : _impl(up::make_impl<impl, self>(CLOCK_REALTIME, expires_at.time_since_epoch(), true))
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::steady_time_point& expires_at)
-    : _impl(up::make_impl<impl>(CLOCK_MONOTONIC, expires_at.time_since_epoch(), true))
+    : _impl(up::make_impl<impl, self>(CLOCK_MONOTONIC, expires_at.time_since_epoch(), true))
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::duration& expires_from_now)
-    : _impl(up::make_impl<impl>(CLOCK_MONOTONIC, expires_from_now, false))
+    : _impl(up::make_impl<impl, self>(CLOCK_MONOTONIC, expires_from_now, false))
 { }
 
 auto up_stream::stream::deadline_await::operator=(const up::system_time_point& expires_at) & -> self&

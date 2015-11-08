@@ -988,7 +988,7 @@ private:
             },
             "tcp-connection-writev-error"_s, _remote, chunks.count(), chunks.total());
     }
-    auto downgrade() -> up::impl_ptr<up::stream::engine> override
+    auto downgrade() -> std::unique_ptr<up::stream::engine> override
     {
         UP_RAISE(runtime, "tcp-bad-downgrade-error"_s);
     }
@@ -1003,7 +1003,7 @@ private:
 };
 
 
-up_inet::tcp::connection::connection(up::impl_ptr<engine> engine)
+up_inet::tcp::connection::connection(std::unique_ptr<engine> engine)
     : stream(std::move(engine))
 { }
 
@@ -1051,9 +1051,9 @@ class up_inet::tcp::listener::impl final
 public: // --- scope ---
     using self = impl;
 public: // --- state ---
-    up::impl_ptr<socket::impl> _socket;
+    up::impl_ptr<socket::impl, socket> _socket;
 public: // --- life ---
-    explicit impl(up::impl_ptr<socket::impl>&& socket, int backlog)
+    explicit impl(up::impl_ptr<socket::impl, socket>&& socket, int backlog)
         : _socket(std::move(socket))
     {
         int rv = ::listen(_socket->_fd, backlog);
@@ -1075,7 +1075,12 @@ public: // --- operations ---
 };
 
 
-up_inet::tcp::listener::listener(up::impl_ptr<impl> impl)
+void up_inet::tcp::listener::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
+up_inet::tcp::listener::listener(up::impl_ptr<impl, self> impl)
     : _impl(std::move(impl))
 { }
 
@@ -1099,7 +1104,7 @@ auto up_inet::tcp::listener::accept(up::stream::await& awaiting) -> connection
         socket->_fd = ::accept4(_impl->_socket->_fd, reinterpret_cast<sockaddr*>(&addr), &length, flags);
         if (socket->_fd != -1) {
             socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, int(1));
-            return connection(up::make_impl<connection::engine>(std::move(socket), make_tcp_endpoint(&addr, length)));
+            return connection(std::make_unique<connection::engine>(std::move(socket), make_tcp_endpoint(&addr, length)));
         } else if (!waited && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             awaiting(_impl->_socket->get_native_handle(), up::stream::await::operation::read);
             waited = true;
@@ -1112,12 +1117,17 @@ auto up_inet::tcp::listener::accept(up::stream::await& awaiting) -> connection
 }
 
 
+void up_inet::tcp::socket::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_inet::tcp::socket::socket(ip::version version)
-    : _impl(up::make_impl<impl>(endpoint::any, version))
+    : _impl(up::make_impl<impl, self>(endpoint::any, version))
 { }
 
 up_inet::tcp::socket::socket(const tcp::endpoint& endpoint, up::enum_set<option> options)
-    : _impl(up::make_impl<impl>(endpoint, endpoint.address().version()))
+    : _impl(up::make_impl<impl, self>(endpoint, endpoint.address().version()))
 {
     if (options.all(option::reuseaddr)) {
         _impl->setsockopt(SOL_SOCKET, SO_REUSEADDR, int(1));
@@ -1173,12 +1183,12 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::awai
         }
     });
     _impl->setsockopt(IPPROTO_TCP, TCP_NODELAY, int(1));
-    return connection(up::make_impl<connection::engine>(std::move(_impl), remote));
+    return connection(std::make_unique<connection::engine>(std::move(_impl), remote));
 }
 
 auto up_inet::tcp::socket::listen(int backlog) && -> listener
 {
-    return listener(up::make_impl<listener::impl>(std::move(_impl), backlog));
+    return listener(up::make_impl<listener::impl, listener>(std::move(_impl), backlog));
 }
 
 

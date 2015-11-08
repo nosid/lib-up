@@ -73,8 +73,13 @@ public: // --- operations ---
 };
 
 
+void up_buffer_adapter::buffer_adapter::reader::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_buffer_adapter::buffer_adapter::reader::reader(const up::buffer& buffer)
-    : _impl(up::make_impl<impl>(buffer))
+    : _impl(up::make_impl<impl, self>(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::reader::operator FILE*()
@@ -102,8 +107,13 @@ public: // --- operations ---
 };
 
 
+void up_buffer_adapter::buffer_adapter::consumer::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_buffer_adapter::buffer_adapter::consumer::consumer(up::buffer& buffer)
-    : _impl(up::make_impl<impl>(buffer))
+    : _impl(up::make_impl<impl, self>(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::consumer::operator FILE*()
@@ -136,8 +146,13 @@ public: // --- operations ---
 };
 
 
+void up_buffer_adapter::buffer_adapter::producer::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_buffer_adapter::buffer_adapter::producer::producer(up::buffer& buffer)
-    : _impl(up::make_impl<impl>(buffer))
+    : _impl(up::make_impl<impl, self>(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::producer::operator FILE*()

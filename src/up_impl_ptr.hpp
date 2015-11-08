@@ -5,21 +5,39 @@
 namespace up_impl_ptr
 {
 
-    template <typename Type>
-    using impl_ptr = std::unique_ptr<Type, void(*)(void*)>;
-
-    template <typename Type, typename... Args>
-    auto make_impl(Args&&... args) -> impl_ptr<Type>
+    template <typename Impl, typename Enclosing>
+    class deleter final
     {
-        return impl_ptr<Type>(
-            new Type(std::forward<Args>(args)...),
-            [](void* ptr) { std::default_delete<Type>()(static_cast<Type*>(ptr)); });
+    public: // --- operations ---
+        void operator()(Impl* ptr) const
+        {
+            Enclosing::destroy(ptr);
+        }
+    };
+
+    template <typename Impl>
+    class deleter<Impl, void> final
+    {
+    public: // --- operations ---
+        void operator()(Impl* ptr) const
+        {
+            destroy(ptr);
+        }
+    };
+
+    template <typename Impl, typename Enclosing = void>
+    using impl_ptr = std::unique_ptr<Impl, deleter<Impl, Enclosing>>;
+
+    template <typename Impl, typename Enclosing = void, typename Base = Impl, typename... Args>
+    auto make_impl(Args&&... args) -> impl_ptr<Base, Enclosing>
+    {
+        return impl_ptr<Base, Enclosing>(new Impl(std::forward<Args>(args)...));
     }
 
-    template <typename Type>
-    auto null_impl() -> impl_ptr<Type>
+    template <typename Impl, typename Enclosing = void>
+    auto null_impl() -> impl_ptr<Impl, Enclosing>
     {
-        return impl_ptr<Type>(nullptr, [](void* ptr __attribute__((unused))) { });
+        return impl_ptr<Impl, Enclosing>(nullptr);
     }
 
 }

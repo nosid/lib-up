@@ -134,9 +134,10 @@ namespace up_tls
         using hostname_callback = std::function<self&(std::string)>;
         class accept_hostname;
         class reject_hostname;
+        static void destroy(impl* ptr);
         static auto ignore_hostname() -> hostname_callback;
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         explicit server_context(identity identity, options options);
     public: // --- operations ---
@@ -152,10 +153,10 @@ namespace up_tls
          * The hostname_callback is used for server name indication (SNI).
          */
         auto upgrade(
-            up::impl_ptr<up::stream::engine> engine,
+            std::unique_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
             const hostname_callback& callback)
-            -> up::impl_ptr<up::stream::engine>;
+            -> std::unique_ptr<up::stream::engine>;
     };
 
 
@@ -174,8 +175,9 @@ namespace up_tls
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
         using options = up::enum_set<option>;
         using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         /**
          * The authority is used to verify client certificates. A client
@@ -197,10 +199,10 @@ namespace up_tls
          * certificate chain provided by the client.
          */
         auto upgrade(
-            up::impl_ptr<up::stream::engine> engine,
+            std::unique_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
             const verify_callback& callback)
-            -> up::impl_ptr<up::stream::engine>;
+            -> std::unique_ptr<up::stream::engine>;
     };
 
 
@@ -212,8 +214,9 @@ namespace up_tls
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, };
         using options = up::enum_set<option>;
         using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         /**
          * The authority is used for certificate verification. The
@@ -242,11 +245,11 @@ namespace up_tls
          * certificates (e.g. for DNS-based authentication of named entities).
          */
         auto upgrade(
-            up::impl_ptr<up::stream::engine> engine,
+            std::unique_ptr<up::stream::engine> engine,
             up::stream::await& awaiting,
             const up::optional<std::string>& hostname,
             const verify_callback& callback)
-            -> up::impl_ptr<up::stream::engine>;
+            -> std::unique_ptr<up::stream::engine>;
     };
 
 }

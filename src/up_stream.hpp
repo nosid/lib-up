@@ -13,6 +13,7 @@ namespace up_stream
     class stream
     {
     public: // --- scope ---
+        using self = stream;
         enum class native_handle : int { invalid = -1, };
         class timeout;
         class await;
@@ -20,11 +21,10 @@ namespace up_stream
         class deadline_await;
         class infinite_await;
         class engine;
-        using self = stream;
     private: // --- state ---
-        up::impl_ptr<engine> _engine;
+        std::unique_ptr<engine> _engine;
     public: // --- life ---
-        explicit stream(up::impl_ptr<engine> engine);
+        explicit stream(std::unique_ptr<engine> engine);
         stream(const self& rhs) = delete;
         stream(self&& rhs) noexcept = default;
         virtual ~stream() noexcept = default;
@@ -79,7 +79,7 @@ namespace up_stream
         {
             write_all(std::move(chunks), awaiting);
         }
-        void upgrade(std::function<up::impl_ptr<engine>(up::impl_ptr<engine>)> transform);
+        void upgrade(std::function<std::unique_ptr<engine>(std::unique_ptr<engine>)> transform);
         void downgrade(await& awaiting);
         void downgrade(await&& awaiting)
         {
@@ -136,8 +136,9 @@ namespace up_stream
     public : // --- scope ---
         using self = deadline_await;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         explicit deadline_await();
         explicit deadline_await(const up::system_time_point& expires_at);
@@ -203,7 +204,7 @@ namespace up_stream
         virtual auto write_some(up::chunk::from chunk) const -> std::size_t = 0;
         virtual auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t = 0;
         virtual auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t = 0;
-        virtual auto downgrade() -> up::impl_ptr<engine> = 0;
+        virtual auto downgrade() -> std::unique_ptr<engine> = 0;
         virtual auto get_underlying_engine() const -> const engine* = 0;
         virtual auto get_native_handle() const -> native_handle = 0;
     protected:

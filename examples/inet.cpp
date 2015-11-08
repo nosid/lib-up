@@ -50,7 +50,7 @@ namespace
                 std::cerr << "HOSTNAME:" << hostname << '\n';
                 UP_RAISE(up::tls::server_context::accept_hostname, "accept"_s);
             };
-            stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
+            stream.upgrade([&](std::unique_ptr<up::stream::engine> engine) {
                     return tls.upgrade(std::move(engine), deadline, callback);
                     // return tls.upgrade(std::move(engine), deadline,
                     //     [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
         for (auto&& address : up::ip::resolve_endpoints(hostname)) {
             auto stream = up::tcp::socket(address.version())
                 .connect(up::tcp::endpoint(address, up::tcp::port(443)), deadline);
-            stream.upgrade([&](up::impl_ptr<up::stream::engine> engine) {
+            stream.upgrade([&](std::unique_ptr<up::stream::engine> engine) {
                     return tls.upgrade(std::move(engine), deadline, hostname,
                         [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
                             auto cn = certificate.common_name();

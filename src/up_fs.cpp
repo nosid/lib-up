@@ -1338,7 +1338,7 @@ auto up_fs::fs::file::acquire_lock(bool exclusive, bool blocking) const -> lock
 
 auto up_fs::fs::file::make_channel() const -> channel
 {
-    return channel(up::make_impl<channel::impl>(_impl));
+    return channel(up::make_impl<channel::impl, channel>(_impl));
 }
 
 
@@ -1417,6 +1417,11 @@ public: // --- operations ---
     }
 };
 
+
+void up_fs::fs::file::channel::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
 
 auto up_fs::fs::file::channel::fill(const file& source, std::size_t size, off_t offset)
     -> std::size_t
