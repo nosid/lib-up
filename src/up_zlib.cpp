@@ -111,11 +111,11 @@ void up_zlib::zlib::compressor::destroy(impl* ptr)
 }
 
 up_zlib::zlib::compressor::compressor()
-    : _impl(up::make_impl<impl, self>(Z_DEFAULT_COMPRESSION))
+    : _impl(up::impl_make(Z_DEFAULT_COMPRESSION))
 { }
 
 up_zlib::zlib::compressor::compressor(int level)
-    : _impl(up::make_impl<impl, self>(level))
+    : _impl(up::impl_make(level))
 { }
 
 auto up_zlib::zlib::compressor::operator()(up::chunk::from chunk) -> self&
@@ -172,7 +172,7 @@ void up_zlib::zlib::decompressor::destroy(impl* ptr)
 }
 
 up_zlib::zlib::decompressor::decompressor()
-    : _impl(up::make_impl<impl, self>())
+    : _impl(up::impl_make())
 { }
 
 auto up_zlib::zlib::decompressor::operator()(up::chunk::from chunk) -> self&

@@ -79,7 +79,7 @@ void up_buffer_adapter::buffer_adapter::reader::destroy(impl* ptr)
 }
 
 up_buffer_adapter::buffer_adapter::reader::reader(const up::buffer& buffer)
-    : _impl(up::make_impl<impl, self>(buffer))
+    : _impl(up::impl_make(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::reader::operator FILE*()
@@ -113,7 +113,7 @@ void up_buffer_adapter::buffer_adapter::consumer::destroy(impl* ptr)
 }
 
 up_buffer_adapter::buffer_adapter::consumer::consumer(up::buffer& buffer)
-    : _impl(up::make_impl<impl, self>(buffer))
+    : _impl(up::impl_make(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::consumer::operator FILE*()
@@ -152,7 +152,7 @@ void up_buffer_adapter::buffer_adapter::producer::destroy(impl* ptr)
 }
 
 up_buffer_adapter::buffer_adapter::producer::producer(up::buffer& buffer)
-    : _impl(up::make_impl<impl, self>(buffer))
+    : _impl(up::impl_make(buffer))
 { }
 
 up_buffer_adapter::buffer_adapter::producer::operator FILE*()

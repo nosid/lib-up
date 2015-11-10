@@ -136,7 +136,7 @@ void up_iconv::unique_iconv::destroy(impl* ptr)
 }
 
 up_iconv::unique_iconv::unique_iconv(std::string to, std::string from)
-    : _impl(up::make_impl<impl, self>(std::move(to), std::move(from)))
+    : _impl(up::impl_make(std::move(to), std::move(from)))
 { }
 
 auto up_iconv::unique_iconv::operator()(up::string_view string) -> std::string
@@ -160,7 +160,7 @@ void up_iconv::shared_iconv::destroy(impl* ptr)
 }
 
 up_iconv::shared_iconv::shared_iconv(std::string to, std::string from)
-    : _impl(up::make_impl<impl, self>(std::move(to), std::move(from)))
+    : _impl(up::impl_make(std::move(to), std::move(from)))
 { }
 
 auto up_iconv::shared_iconv::operator()(up::string_view string) const -> std::string

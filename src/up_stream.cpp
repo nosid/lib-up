@@ -273,7 +273,7 @@ public: // --- scope ---
         if (old && old->update(clockid, duration, absolute)) {
             return std::move(old);
         } else {
-            return up::make_impl<self, deadline_await>(clockid, duration, absolute);
+            return up::impl_make(clockid, duration, absolute);
         }
     }
 private: // --- fields ---
@@ -340,19 +340,19 @@ void up_stream::stream::deadline_await::destroy(impl* ptr)
 }
 
 up_stream::stream::deadline_await::deadline_await()
-    : _impl(up::null_impl<impl, self>())
+    : _impl(up::impl_null<impl, self>())
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::system_time_point& expires_at)
-    : _impl(up::make_impl<impl, self>(CLOCK_REALTIME, expires_at.time_since_epoch(), true))
+    : _impl(up::impl_make(CLOCK_REALTIME, expires_at.time_since_epoch(), true))
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::steady_time_point& expires_at)
-    : _impl(up::make_impl<impl, self>(CLOCK_MONOTONIC, expires_at.time_since_epoch(), true))
+    : _impl(up::impl_make(CLOCK_MONOTONIC, expires_at.time_since_epoch(), true))
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::duration& expires_from_now)
-    : _impl(up::make_impl<impl, self>(CLOCK_MONOTONIC, expires_from_now, false))
+    : _impl(up::impl_make(CLOCK_MONOTONIC, expires_from_now, false))
 { }
 
 auto up_stream::stream::deadline_await::operator=(const up::system_time_point& expires_at) & -> self&

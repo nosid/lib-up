@@ -1123,11 +1123,11 @@ void up_inet::tcp::socket::destroy(impl* ptr)
 }
 
 up_inet::tcp::socket::socket(ip::version version)
-    : _impl(up::make_impl<impl, self>(endpoint::any, version))
+    : _impl(up::impl_make(endpoint::any, version))
 { }
 
 up_inet::tcp::socket::socket(const tcp::endpoint& endpoint, up::enum_set<option> options)
-    : _impl(up::make_impl<impl, self>(endpoint, endpoint.address().version()))
+    : _impl(up::impl_make(endpoint, endpoint.address().version()))
 {
     if (options.all(option::reuseaddr)) {
         _impl->setsockopt(SOL_SOCKET, SO_REUSEADDR, int(1));
@@ -1188,7 +1188,7 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::awai
 
 auto up_inet::tcp::socket::listen(int backlog) && -> listener
 {
-    return listener(up::make_impl<listener::impl, listener>(std::move(_impl), backlog));
+    return listener(up::impl_make(std::move(_impl), backlog));
 }
 
 

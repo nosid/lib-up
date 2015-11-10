@@ -1014,7 +1014,7 @@ auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 
 
 up_tls::tls::server_context::server_context(identity identity, options options)
-    : _impl(up::make_impl<impl, self>(std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::server_context::upgrade(
@@ -1155,7 +1155,7 @@ void up_tls::tls::secure_context::destroy(impl* ptr)
 }
 
 up_tls::tls::secure_context::secure_context(authority authority, identity identity, options options)
-    : _impl(up::make_impl<impl, self>(std::move(authority), std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(authority), std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::secure_context::upgrade(
@@ -1283,7 +1283,7 @@ void up_tls::tls::client_context::destroy(impl* ptr)
 
 up_tls::tls::client_context::client_context(
     authority authority, up::optional<identity> identity, options options)
-    : _impl(up::make_impl<impl, self>(std::move(authority), std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(authority), std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::client_context::upgrade(

@@ -1338,7 +1338,7 @@ auto up_fs::fs::file::acquire_lock(bool exclusive, bool blocking) const -> lock
 
 auto up_fs::fs::file::make_channel() const -> channel
 {
-    return channel(up::make_impl<channel::impl, channel>(_impl));
+    return channel(up::impl_make(_impl));
 }
 
 

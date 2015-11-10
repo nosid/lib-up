@@ -109,7 +109,7 @@ namespace up_exception
                 return _to_fabric_aux(std::index_sequence_for<Types...>{});
             }
             template <std::size_t... Indexes>
-                auto _to_fabric_aux(std::index_sequence<Indexes...>) const
+            auto _to_fabric_aux(std::index_sequence<Indexes...>) const
             {
                 return up::fabric(typeid(*this), _message.to_string(),
                     up::invoke_to_fabric_with_fallback(up::pack_get<Indexes>(_args))...);
