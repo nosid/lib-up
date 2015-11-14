@@ -91,7 +91,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
     } else if (size < uchar_max()) {
         _core[0] = size;
         std::memcpy(_core + 1, data, core_size / 2 - 1);
-        char* temp = up::char_cast<char>(std::malloc(size));
+        char* temp = up::char_cast<char>(::operator new(size));
         if (temp == nullptr) {
             UP_RAISE(runtime, "istring-out-of-memory"_s, size);
         } else {
@@ -104,7 +104,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
     } else {
         _core[0] = uchar_max();
         std::memcpy(_core + 1, data, core_size / 2 - 1);
-        char* temp = up::char_cast<char>(std::malloc(size + sizeof(size)));
+        char* temp = up::char_cast<char>(::operator new(size + sizeof(size)));
         if (temp == nullptr) {
             UP_RAISE(runtime, "istring-out-of-memory"_s, size);
         } else {
@@ -145,10 +145,10 @@ up_istring::istring::~istring() noexcept
         // short string, nothing to do
     } else if (_core[0] < uchar_max()) {
         // medium string
-        std::free(cast_ptr(_core));
+        ::operator delete(cast_ptr(_core), size());
     } else {
         // long string
-        std::free(cast_ptr(_core));
+        ::operator delete(cast_ptr(_core), size());
     }
 }
 
