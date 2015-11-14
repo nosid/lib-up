@@ -6,7 +6,7 @@ project
       <cflags>-Wextra
       <cflags>-Werror
       <cflags>-march=native
-      <cxxflags>-std=c++1y
+      <cxxflags>-std=c++1z
       # Workaround: Clang no longer supports -finline-functions (enabled on inlining=full
       <variant>release:<inlining>on
       # GCC
