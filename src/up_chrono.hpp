@@ -40,7 +40,7 @@ namespace up_chrono
         using rep = duration::rep;
         using period = duration::period;
         using time_point = std::chrono::time_point<self>;
-        static constexpr bool is_steady = delegate::is_steady;
+        static const constexpr bool is_steady = delegate::is_steady;
         static auto now() noexcept -> time_point
         {
             return time_point(delegate::now().time_since_epoch());
@@ -71,7 +71,7 @@ namespace up_chrono
         using rep = duration::rep;
         using period = duration::period;
         using time_point = std::chrono::time_point<self>;
-        static constexpr bool is_steady = delegate::is_steady;
+        static const constexpr bool is_steady = delegate::is_steady;
         static auto now() noexcept -> time_point
         {
             return time_point(delegate::now().time_since_epoch());

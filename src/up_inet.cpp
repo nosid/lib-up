@@ -132,15 +132,15 @@ namespace
     template <>
     struct traits<up_inet::tcp>
     {
-        static constexpr int sock_type = SOCK_STREAM;
-        static constexpr int ni_flags = 0;
+        static const constexpr int sock_type = SOCK_STREAM;
+        static const constexpr int ni_flags = 0;
     };
 
     template <>
     struct traits<up_inet::udp>
     {
-        static constexpr int sock_type = SOCK_DGRAM;
-        static constexpr int ni_flags = NI_DGRAM;
+        static const constexpr int sock_type = SOCK_DGRAM;
+        static const constexpr int ni_flags = NI_DGRAM;
     };
 
 

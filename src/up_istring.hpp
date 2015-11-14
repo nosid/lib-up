@@ -22,8 +22,8 @@ namespace up_istring
     {
     public: // --- scope ---
         using self = istring;
-        static constexpr std::size_t npos = std::size_t(-1);
-        static constexpr unsigned char core_size = sizeof(char*) * 2;
+        static const constexpr std::size_t npos = std::size_t(-1);
+        static const constexpr unsigned char core_size = sizeof(char*) * 2;
     private: // --- state ---
         unsigned char _core[core_size];
     public: // --- life ---

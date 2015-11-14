@@ -14,9 +14,9 @@ namespace
     {
         using type = uint32_t;
         __attribute__((unused))
-        static constexpr type prime = UINT32_C(16777619);
+        static const constexpr type prime = UINT32_C(16777619);
         __attribute__((unused))
-        static constexpr type offset = UINT32_C(2166136261);
+        static const constexpr type offset = UINT32_C(2166136261);
     };
 
     template <>
@@ -24,9 +24,9 @@ namespace
     {
         using type = uint64_t;
         __attribute__((unused))
-        static constexpr type prime = UINT64_C(1099511628211);
+        static const constexpr type prime = UINT64_C(1099511628211);
         __attribute__((unused))
-        static constexpr type offset = UINT64_C(14695981039346656037);
+        static const constexpr type offset = UINT64_C(14695981039346656037);
     };
 
     template <int digits>

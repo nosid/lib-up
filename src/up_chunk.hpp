@@ -44,7 +44,7 @@ namespace up_chunk
     {
     protected: // --- scope ---
         using self = into_bulk_t;
-        static constexpr std::size_t Size = sizeof(char*) + sizeof(std::size_t);
+        static const constexpr std::size_t Size = sizeof(char*) + sizeof(std::size_t);
     protected: // --- life ---
         explicit into_bulk_t() = default;
         ~into_bulk_t() noexcept = default;
@@ -160,7 +160,7 @@ namespace up_chunk
     {
     protected: // --- scope ---
         using self = from_bulk_t;
-        static constexpr std::size_t Size = sizeof(char*) + sizeof(std::size_t);
+        static const constexpr std::size_t Size = sizeof(char*) + sizeof(std::size_t);
     protected: // --- life ---
         explicit from_bulk_t() = default;
         ~from_bulk_t() noexcept = default;
