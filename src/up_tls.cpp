@@ -376,7 +376,7 @@ namespace
         }
     protected: // --- state ---
         ssl_ptr _ssl;
-        up::impl_ptr<engine> _underlying;
+        std::unique_ptr<up::stream::engine> _underlying;
         /* Spin lock: Apparently, OpenSSL is not thread-safe in the same way
          * as POSIX socket. That means, you can't read from and write to the
          * same TLS stream at the same time. The lock is used to protect
@@ -386,7 +386,7 @@ namespace
         mutable state _state = state::bad;
     protected: // --- life ---
         explicit base_engine(
-            ssl_ptr ssl, up::impl_ptr<engine> underlying, await& awaiting, int handshake(SSL*))
+            ssl_ptr ssl, std::unique_ptr<up::stream::engine> underlying, await& awaiting, int handshake(SSL*))
             : _ssl(std::move(ssl)), _underlying(std::move(underlying))
         {
             if (_ssl == nullptr) {
@@ -473,7 +473,7 @@ namespace
              * we only process the first non-empty buffer. */
             return write_some(chunks.head());
         }
-        auto downgrade() -> up::impl_ptr<engine> override
+        auto downgrade() -> std::unique_ptr<up::stream::engine> override
         {
             sentry sentry(this, state::shutdown_in_progress);
             _graceful_shutdown();
@@ -989,7 +989,7 @@ private: // --- scope ---
 public: // --- life ---
     explicit server_engine(
         SSL_CTX* ssl_ctx,
-        up::impl_ptr<engine> underlying,
+        std::unique_ptr<up::stream::engine> underlying,
         await& awaiting,
         const hostname_callback& callback)
         : auxiliary(callback)
@@ -1000,6 +1000,11 @@ public: // --- life ---
 };
 
 
+void up_tls::tls::server_context::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 {
     return [](std::string hostname) -> self& {
@@ -1009,16 +1014,16 @@ auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 
 
 up_tls::tls::server_context::server_context(identity identity, options options)
-    : _impl(up::make_impl<impl>(std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::server_context::upgrade(
-    up::impl_ptr<up::stream::engine> engine,
+    std::unique_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
     const hostname_callback& callback)
-    -> up::impl_ptr<up::stream::engine>
+    -> std::unique_ptr<up::stream::engine>
 {
-    return up::make_impl<impl::server_engine>(
+    return std::make_unique<impl::server_engine>(
         _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
 }
 
@@ -1124,7 +1129,7 @@ private: // --- scope ---
 public: // --- life ---
     explicit secure_engine(
         SSL_CTX* ssl_ctx,
-        up::impl_ptr<engine> underlying,
+        std::unique_ptr<up::stream::engine> underlying,
         await& awaiting,
         const verify_callback& callback)
         : auxiliary(callback)
@@ -1144,17 +1149,22 @@ public: // --- life ---
 };
 
 
+void up_tls::tls::secure_context::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_tls::tls::secure_context::secure_context(authority authority, identity identity, options options)
-    : _impl(up::make_impl<impl>(std::move(authority), std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(authority), std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::secure_context::upgrade(
-    up::impl_ptr<up::stream::engine> engine,
+    std::unique_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
     const verify_callback& callback)
-    -> up::impl_ptr<up::stream::engine>
+    -> std::unique_ptr<up::stream::engine>
 {
-    return up::make_impl<impl::secure_engine>(
+    return std::make_unique<impl::secure_engine>(
         _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
 }
 
@@ -1245,7 +1255,7 @@ private: // --- scope ---
 public: // --- life ---
     explicit client_engine(
         SSL_CTX* ssl_ctx,
-        up::impl_ptr<engine> underlying,
+        std::unique_ptr<up::stream::engine> underlying,
         await& awaiting,
         const up::optional<std::string>& hostname,
         const verify_callback& callback)
@@ -1266,18 +1276,23 @@ public: // --- life ---
 };
 
 
+void up_tls::tls::client_context::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_tls::tls::client_context::client_context(
     authority authority, up::optional<identity> identity, options options)
-    : _impl(up::make_impl<impl>(std::move(authority), std::move(identity), std::move(options)))
+    : _impl(up::impl_make(std::move(authority), std::move(identity), std::move(options)))
 { }
 
 auto up_tls::tls::client_context::upgrade(
-    up::impl_ptr<up::stream::engine> engine,
+    std::unique_ptr<up::stream::engine> engine,
     up::stream::await& awaiting,
     const up::optional<std::string>& hostname,
     const verify_callback& callback)
-    -> up::impl_ptr<up::stream::engine>
+    -> std::unique_ptr<up::stream::engine>
 {
-    return up::make_impl<impl::client_engine>(
+    return std::make_unique<impl::client_engine>(
         _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, hostname, callback);
 }

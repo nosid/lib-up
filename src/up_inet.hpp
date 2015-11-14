@@ -184,7 +184,7 @@ namespace up_inet
         enum class qos_drop : uint8_t { low, med, high, };
         class engine;
     public: // --- life ---
-        explicit connection(up::impl_ptr<engine> engine);
+        explicit connection(std::unique_ptr<engine> engine);
     public: // --- operations ---
         auto to_fabric() const -> up::fabric;
         auto local() const -> tcp::endpoint;
@@ -200,10 +200,11 @@ namespace up_inet
     public: // --- scope ---
         using self = listener;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
-        explicit listener(up::impl_ptr<impl> impl);
+        explicit listener(up::impl_ptr<impl, self> impl);
         listener(const self& rhs) = delete;
         listener(self&& rhs) noexcept = default;
         ~listener() noexcept = default;
@@ -234,8 +235,9 @@ namespace up_inet
         enum class option : uint8_t { reuseaddr, reuseport, freebind, };
         using options = up::enum_set<option>;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         explicit socket(ip::version version); // unbound socket
         explicit socket(const tcp::endpoint& endpoint, options options); // bound socket

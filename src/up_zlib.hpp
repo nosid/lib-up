@@ -89,11 +89,12 @@ namespace up_zlib
      */
     class zlib::compressor final
     {
-    private: // --- scope ---
+    public: // --- scope ---
         using self = compressor;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         /// Construct instance with default compression level.
         explicit compressor();
@@ -156,11 +157,12 @@ namespace up_zlib
      */
     class zlib::decompressor final
     {
-    private: // --- scope ---
+    public: // --- scope ---
         using self = decompressor;
         class impl;
+        static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl> _impl;
+        up::impl_ptr<impl, self> _impl;
     public: // --- life ---
         /// Construct instance.
         explicit decompressor();

@@ -162,7 +162,8 @@ protected: // --- life ---
     explicit impl() noexcept = default;
     impl(const self& rhs) = delete;
     impl(self&& rhs) noexcept = delete;
-    ~impl() noexcept = default;
+public:
+    virtual ~impl() noexcept = default;
 public: // --- operations ---
     auto operator=(const self& rhs) & -> self& = delete;
     auto operator=(self&& rhs) & noexcept -> self& = delete;
@@ -203,27 +204,32 @@ private: // --- operations ---
 
 
 
+void up_secure_hash::secure_hasher_aux::destroy(impl* ptr)
+{
+    std::default_delete<impl>()(ptr);
+}
+
 up_secure_hash::secure_hasher_aux::secure_hasher_aux(secure_hash_mechanism mechanism)
-    : _impl(up::null_impl<impl>())
+    : _impl(up::impl_null<impl, self>())
 {
     switch (mechanism) {
     case secure_hash_mechanism::md5:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::md5>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::md5>>();
         break;
     case secure_hash_mechanism::sha1:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::sha1>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha1>>();
         break;
     case secure_hash_mechanism::sha224:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::sha224>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha224>>();
         break;
     case secure_hash_mechanism::sha256:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::sha256>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha256>>();
         break;
     case secure_hash_mechanism::sha384:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::sha384>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha384>>();
         break;
     case secure_hash_mechanism::sha512:
-        _impl = up::make_impl<impl::derived<secure_hash_mechanism::sha512>>();
+        _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha512>>();
         break;
     default:
         UP_RAISE(runtime, "invalid-secure-hash-mechanism"_s, mechanism);
