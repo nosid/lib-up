@@ -202,9 +202,9 @@ namespace up_inet
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
-        explicit listener(up::impl_ptr<impl, self> impl);
+        explicit listener(up::impl_ptr<impl, destroy> impl);
         listener(const self& rhs) = delete;
         listener(self&& rhs) noexcept = default;
         ~listener() noexcept = default;
@@ -237,7 +237,7 @@ namespace up_inet
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit socket(ip::version version); // unbound socket
         explicit socket(const tcp::endpoint& endpoint, options options); // bound socket

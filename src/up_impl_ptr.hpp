@@ -5,34 +5,18 @@
 namespace up_impl_ptr
 {
 
-    template <typename Impl, typename Enclosing>
+    template <typename Ptr, void Delete(Ptr)>
     class deleter final
     {
     public: // --- operations ---
-        void operator()(Impl* ptr) const
+        void operator()(Ptr ptr) const
         {
-            Enclosing::destroy(ptr);
+            Delete(ptr);
         }
     };
 
-    template <typename Impl>
-    class deleter<Impl, void> final
-    {
-    public: // --- operations ---
-        void operator()(Impl* ptr) const
-        {
-            destroy(ptr);
-        }
-    };
-
-    template <typename Impl, typename Enclosing = void>
-    using impl_ptr = std::unique_ptr<Impl, deleter<Impl, Enclosing>>;
-
-    template <typename Impl, typename Enclosing = void, typename Base = Impl, typename... Args>
-    auto make_impl(Args&&... args) -> impl_ptr<Base, Enclosing>
-    {
-        return impl_ptr<Base, Enclosing>(new Impl(std::forward<Args>(args)...));
-    }
+    template <typename Impl, void Delete(Impl*)>
+    using impl_ptr = std::unique_ptr<Impl, deleter<Impl*, Delete>>;
 
     template <typename Type, typename... Args>
     class impl_maker final
@@ -47,8 +31,7 @@ namespace up_impl_ptr
         template <typename... Types>
         operator std::unique_ptr<Types...>() &&
         {
-            return std::unique_ptr<Types...>(
-                _create(std::index_sequence_for<Args...>()));
+            return std::unique_ptr<Types...>(_create(std::index_sequence_for<Args...>()));
         }
     private:
         template <std::size_t... Indexes>
@@ -88,12 +71,6 @@ namespace up_impl_ptr
         return impl_maker<Type, Args...>(std::forward<Args>(args)...);
     }
 
-    template <typename Impl, typename Enclosing = void>
-    auto impl_null() -> impl_ptr<Impl, Enclosing>
-    {
-        return impl_ptr<Impl, Enclosing>(nullptr);
-    }
-
 }
 
 namespace up
@@ -101,6 +78,5 @@ namespace up
 
     using up_impl_ptr::impl_ptr;
     using up_impl_ptr::impl_make;
-    using up_impl_ptr::impl_null;
 
 }

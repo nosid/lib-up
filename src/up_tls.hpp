@@ -137,7 +137,7 @@ namespace up_tls
         static void destroy(impl* ptr);
         static auto ignore_hostname() -> hostname_callback;
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit server_context(identity identity, options options);
     public: // --- operations ---
@@ -177,7 +177,7 @@ namespace up_tls
         using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         /**
          * The authority is used to verify client certificates. A client
@@ -216,7 +216,7 @@ namespace up_tls
         using verify_callback = std::function<bool(bool, std::size_t, const certificate&)>;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         /**
          * The authority is used for certificate verification. The

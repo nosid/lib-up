@@ -1051,9 +1051,9 @@ class up_inet::tcp::listener::impl final
 public: // --- scope ---
     using self = impl;
 public: // --- state ---
-    up::impl_ptr<socket::impl, socket> _socket;
+    up::impl_ptr<socket::impl, socket::destroy> _socket;
 public: // --- life ---
-    explicit impl(up::impl_ptr<socket::impl, socket>&& socket, int backlog)
+    explicit impl(up::impl_ptr<socket::impl, socket::destroy>&& socket, int backlog)
         : _socket(std::move(socket))
     {
         int rv = ::listen(_socket->_fd, backlog);
@@ -1080,7 +1080,7 @@ void up_inet::tcp::listener::destroy(impl* ptr)
     std::default_delete<impl>()(ptr);
 }
 
-up_inet::tcp::listener::listener(up::impl_ptr<impl, self> impl)
+up_inet::tcp::listener::listener(up::impl_ptr<impl, destroy> impl)
     : _impl(std::move(impl))
 { }
 

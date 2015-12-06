@@ -94,7 +94,7 @@ namespace up_zlib
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         /// Construct instance with default compression level.
         explicit compressor();
@@ -162,7 +162,7 @@ namespace up_zlib
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         /// Construct instance.
         explicit decompressor();

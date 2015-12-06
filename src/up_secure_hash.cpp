@@ -210,7 +210,7 @@ void up_secure_hash::secure_hasher_aux::destroy(impl* ptr)
 }
 
 up_secure_hash::secure_hasher_aux::secure_hasher_aux(secure_hash_mechanism mechanism)
-    : _impl(up::impl_null<impl, self>())
+    : _impl()
 {
     switch (mechanism) {
     case secure_hash_mechanism::md5:

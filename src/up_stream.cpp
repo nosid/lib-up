@@ -267,8 +267,8 @@ class up_stream::stream::deadline_await::impl final
 {
 public: // --- scope ---
     using self = impl;
-    static auto make(up::impl_ptr<self, deadline_await>&& old, int clockid, const up::duration& duration, bool absolute)
-        -> up::impl_ptr<self, deadline_await>
+    static auto make(up::impl_ptr<self, destroy>&& old, int clockid, const up::duration& duration, bool absolute)
+        -> up::impl_ptr<self, destroy>
     {
         if (old && old->update(clockid, duration, absolute)) {
             return std::move(old);
@@ -340,7 +340,7 @@ void up_stream::stream::deadline_await::destroy(impl* ptr)
 }
 
 up_stream::stream::deadline_await::deadline_await()
-    : _impl(up::impl_null<impl, self>())
+    : _impl()
 { }
 
 up_stream::stream::deadline_await::deadline_await(const up::system_time_point& expires_at)

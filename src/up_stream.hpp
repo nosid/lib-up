@@ -138,7 +138,7 @@ namespace up_stream
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit deadline_await();
         explicit deadline_await(const up::system_time_point& expires_at);

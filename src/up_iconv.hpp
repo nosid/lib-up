@@ -24,7 +24,7 @@ namespace up_iconv
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit unique_iconv(std::string to, std::string from);
         unique_iconv(const self& rhs) = delete;
@@ -65,7 +65,7 @@ namespace up_iconv
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit shared_iconv(std::string to, std::string from);
         shared_iconv(const self& rhs) = delete;

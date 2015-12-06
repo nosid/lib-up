@@ -88,7 +88,7 @@ namespace up_secure_hash
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life --
         explicit secure_hasher_aux(secure_hash_mechanism mechanism);
         secure_hasher_aux(const self&) = delete;

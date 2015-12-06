@@ -22,7 +22,7 @@ namespace up_buffer_adapter
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit reader(const up::buffer& buffer);
         // avoid temporary objects (risk of dangling references)
@@ -44,7 +44,7 @@ namespace up_buffer_adapter
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit consumer(up::buffer& buffer);
         consumer(const self& rhs) = delete;
@@ -64,7 +64,7 @@ namespace up_buffer_adapter
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
-        up::impl_ptr<impl, self> _impl;
+        up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
         explicit producer(up::buffer& buffer);
         producer(const self& rhs) = delete;
