@@ -154,7 +154,7 @@ namespace up_secure_hash
         public: // --- scope ---
             using self = digest;
         private: // --- state ---
-            char _data[secure_hash_digest_size(Mechanism)];
+            std::array<char, secure_hash_digest_size(Mechanism)> _data;
         public: // --- operations ---
             void swap(self& rhs) noexcept
             {
@@ -166,7 +166,7 @@ namespace up_secure_hash
             }
             auto data() const noexcept -> const char*
             {
-                return _data;
+                return _data.data();
             }
             constexpr auto size() const noexcept -> std::size_t
             {
@@ -174,11 +174,11 @@ namespace up_secure_hash
             }
             operator up::chunk::from() const
             {
-                return up::chunk::from(_data, secure_hash_digest_size(Mechanism));
+                return up::chunk::from(_data.data(), secure_hash_digest_size(Mechanism));
             }
             operator up::chunk::into()
             {
-                return up::chunk::into(_data, secure_hash_digest_size(Mechanism));
+                return up::chunk::into(_data.data(), secure_hash_digest_size(Mechanism));
             }
         };
         class hasher final
