@@ -17,6 +17,7 @@
 #include "up_defer.hpp"
 #include "up_exception.hpp"
 #include "up_integral_cast.hpp"
+#include "up_hash.hpp"
 #include "up_utility.hpp"
 
 

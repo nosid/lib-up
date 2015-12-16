@@ -13,6 +13,7 @@
 namespace up_string_view
 {
 
+    using std::experimental::basic_string_view;
     using std::experimental::string_view;
 
 }
@@ -20,6 +21,7 @@ namespace up_string_view
 namespace up
 {
 
+    using up_string_view::basic_string_view;
     using up_string_view::string_view;
 
 }

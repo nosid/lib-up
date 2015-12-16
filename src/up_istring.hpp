@@ -1,6 +1,7 @@
 #pragma once
 
-#include "up_hash.hpp"
+#include "up_chunk.hpp"
+#include "up_string_view.hpp"
 
 namespace up_istring
 {
@@ -78,7 +79,7 @@ namespace std
         using result_type = std::size_t;
         auto operator()(const up_istring::istring& value) const noexcept
         {
-            return up::fnv1a(value);
+            return hash<up::string_view>()(value);
         }
     };
 }
