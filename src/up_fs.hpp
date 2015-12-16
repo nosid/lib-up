@@ -162,11 +162,11 @@ namespace up_fs
         }
         auto to_fabric() const -> up::fabric;
         auto working() const -> origin;
-        auto resolved(const std::string& pathname, bool follow = false) const -> origin;
+        auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         // operator for convenience - same as working()
         auto operator()() const -> origin;
         // operator for convenience - same as resolved(...)
-        auto operator()(const std::string& pathname, bool follow = false) const -> origin;
+        auto operator()(const up::string_view& pathname, bool follow = false) const -> origin;
     };
 
 
@@ -193,7 +193,7 @@ namespace up_fs
         }
         auto to_fabric() const -> up::fabric;
         auto working() const -> origin;
-        auto resolved(const std::string& pathname, bool follow = false) const -> origin;
+        auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         auto location() const -> std::string;
         auto operator()(std::string pathname, bool follow = false) const -> path;
     };
@@ -226,8 +226,7 @@ namespace up_fs
             return _impl;
         }
         auto follow(bool value) const -> self;
-        auto joined(const std::string& pathname) const -> self;
-        auto joined(const up::istring& pathname) const -> self;
+        auto joined(const up::string_view& pathname) const -> self;
         auto resolved() const -> origin;
         auto stat() const -> stats;
         void chmod(mode_t mode) const;
@@ -239,7 +238,7 @@ namespace up_fs
         void rename(const self& target, bool replace) const;
         void exchange(const self& target) const;
         auto readlink() const -> std::string;
-        void symlink(const std::string& value) const;
+        void symlink(const up::string_view& value) const;
         auto list() const -> std::vector<directory_entry>;
         bool list(std::function<bool(directory_entry)> visitor) const;
         /* The following two operations are a bit different because there

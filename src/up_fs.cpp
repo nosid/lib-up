@@ -19,6 +19,7 @@
 #include "up_defer.hpp"
 #include "up_exception.hpp"
 #include "up_integral_cast.hpp"
+#include "up_nts.hpp"
 #include "up_terminate.hpp"
 
 
@@ -334,7 +335,7 @@ namespace
         invoke(p, q);
     }
 
-    auto pathname_normalize(const std::string& pathname)
+    auto pathname_normalize(const up::string_view& pathname)
     {
         bool absolute = pathname.compare(0, 1, "/") == 0;
         bool separator = absolute;
@@ -618,7 +619,7 @@ auto up_fs::fs::context::working() const -> origin
     return origin(std::make_shared<const origin::impl>(_impl));
 }
 
-auto up_fs::fs::context::resolved(const std::string& pathname, bool follow) const -> origin
+auto up_fs::fs::context::resolved(const up::string_view& pathname, bool follow) const -> origin
 {
     return origin(std::make_shared<const origin::impl>(_impl, pathname, follow, AT_FDCWD));
 }
@@ -628,7 +629,7 @@ auto up_fs::fs::context::operator()() const -> origin
     return working();
 }
 
-auto up_fs::fs::context::operator()(const std::string& pathname, bool follow) const -> origin
+auto up_fs::fs::context::operator()(const up::string_view& pathname, bool follow) const -> origin
 {
     return resolved(pathname, follow);
 }
@@ -644,12 +645,12 @@ public: // --- life ---
     explicit impl(std::shared_ptr<const context::impl> context)
         : _context(std::move(context)), _handle(-1)
     { }
-    explicit impl(std::shared_ptr<const context::impl> context, const std::string& pathname, bool follow, int dir_fd)
+    explicit impl(std::shared_ptr<const context::impl> context, const up::string_view& pathname, bool follow, int dir_fd)
         : _context(std::move(context)), _handle(-1)
     {
         int flags = O_RDONLY | O_DIRECTORY | O_PATH;
         flags |= follow ? 0 : O_NOFOLLOW;
-        _handle = handle(_context->openat(dir_fd, pathname.c_str(), flags));
+        _handle = handle(_context->openat(dir_fd, up::nts(pathname), flags));
     }
 public: // --- operations ---
     auto to_fabric() const -> up::fabric
@@ -675,7 +676,7 @@ public: // --- operations ---
     {
         return std::make_shared<const self>(_context);
     }
-    auto resolved(const std::string& pathname, bool follow) const -> std::shared_ptr<const self>
+    auto resolved(const up::string_view& pathname, bool follow) const -> std::shared_ptr<const self>
     {
         return std::make_shared<const self>(_context, pathname, follow, dir_fd());
     }
@@ -775,7 +776,7 @@ auto up_fs::fs::origin::working() const -> origin
     return self(_impl->working());
 }
 
-auto up_fs::fs::origin::resolved(const std::string& pathname, bool follow) const -> origin
+auto up_fs::fs::origin::resolved(const up::string_view& pathname, bool follow) const -> origin
 {
     return self(_impl->resolved(pathname, follow));
 }
@@ -826,12 +827,14 @@ public: // --- operations ---
     {
         return std::make_shared<const self>(_origin, _pathname, value);
     }
-    auto joined(const std::string& pathname) const -> std::shared_ptr<const self>
+    auto joined(const up::string_view& pathname) const -> std::shared_ptr<const self>
     {
         if (pathname.compare(0, 1, "/") == 0) {
-            return std::make_shared<const self>(_origin->working(), pathname, _follow);
+            return std::make_shared<const self>(
+                _origin->working(), std::string(pathname.data(), pathname.size()), _follow);
         } else {
-            return std::make_shared<const self>(_origin, pathname_normalize(_pathname + '/' + pathname), _follow);
+            std::string s = (_pathname + '/').append(pathname.data(), pathname.size());
+            return std::make_shared<const self>(_origin, pathname_normalize(s), _follow);
         }
     }
     auto resolved() const -> std::shared_ptr<const origin::impl>
@@ -912,9 +915,9 @@ public: // --- operations ---
         }
         UP_RAISE(runtime, "fs-readlink-error"_s, up::errno_info(errno));
     }
-    void symlink(const std::string& value) const
+    void symlink(const up::string_view& value) const
     {
-        check(::symlinkat(value.c_str(), _origin->dir_fd(), _pathname.c_str()),
+        check(::symlinkat(up::nts(value), _origin->dir_fd(), up::nts(_pathname)),
             "fs-symlink-error"_s, *this, value);
     }
     auto list() const -> std::vector<directory_entry>
@@ -958,14 +961,9 @@ auto up_fs::fs::path::follow(bool value) const -> self
     return self(_impl->follow(value));
 }
 
-auto up_fs::fs::path::joined(const std::string& pathname) const -> self
+auto up_fs::fs::path::joined(const up::string_view& pathname) const -> self
 {
     return self(_impl->joined(pathname));
-}
-
-auto up_fs::fs::path::joined(const up::istring& pathname) const -> self
-{
-    return joined(pathname.to_string());
 }
 
 auto up_fs::fs::path::resolved() const -> origin
@@ -1023,7 +1021,7 @@ auto up_fs::fs::path::readlink() const -> std::string
     return _impl->readlink();
 }
 
-void up_fs::fs::path::symlink(const std::string& value) const
+void up_fs::fs::path::symlink(const up::string_view& value) const
 {
     _impl->symlink(value);
 }

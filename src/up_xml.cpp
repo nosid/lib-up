@@ -414,7 +414,7 @@ namespace
             _element(prefixes(), parent, element);
         }
     private: // --- operations ---
-        auto _as_c_str(const up::istring& value) -> const xmlChar*
+        auto _as_c_str(const up::string_view& value) -> const xmlChar*
         {
             _buffer.consume(_buffer.available());
             auto data = value.data();

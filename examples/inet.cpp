@@ -70,7 +70,7 @@ namespace
     }
 
     __attribute__((unused))
-    auto connect(up::ip::endpoint address, const std::string& port, up::stream::await& await)
+    auto connect(up::ip::endpoint address, const up::string_view& port, up::stream::await& await)
         -> up::tcp::connection
     {
         return up::tcp::socket(address.version())

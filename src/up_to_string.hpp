@@ -1,6 +1,6 @@
 #pragma once
 
-#include "up_include.hpp"
+#include "up_string_view.hpp"
 
 /**
  * The following namespace is used to find and invoke the correct overloaded,
@@ -20,6 +20,11 @@ namespace up_adl_to_string
     inline auto to_string(const char* text) -> std::string
     {
         return std::string(text);
+    }
+
+    inline auto to_string(const up::string_view& value) -> std::string
+    {
+        return {value.data(), value.size()};
     }
 
     inline auto to_string(const std::string& value) -> const std::string&

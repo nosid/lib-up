@@ -1,5 +1,7 @@
 #pragma once
 
+#include "up_include.hpp"
+
 #include <cstdint>
 
 #include "up_impl_ptr.hpp"
@@ -35,7 +37,7 @@ namespace up_inet
         endpoint() = delete;
         explicit endpoint(init&& argument);
         /// throws invalid_ip_endpoint
-        explicit endpoint(const std::string& value);
+        explicit endpoint(const up::string_view& value);
     public: // --- operations ---
         auto to_string() const -> std::string;
     };
@@ -74,7 +76,7 @@ namespace up_inet
         endpoint() = delete;
         explicit endpoint(init&& argument);
         /// throws invalid_ip_endpoint
-        explicit endpoint(const std::string& value);
+        explicit endpoint(const up::string_view& value);
     public: // --- operations ---
         auto to_string() const -> std::string;
     };
@@ -95,8 +97,8 @@ namespace up_inet
     public: // --- scope ---
         enum class version : uint8_t { v4, v6, };
         class endpoint;
-        static auto resolve_canonical(const std::string& name) -> std::string;
-        static auto resolve_endpoints(const std::string& name) -> std::vector<endpoint>;
+        static auto resolve_canonical(const up::string_view& name) -> std::string;
+        static auto resolve_endpoints(const up::string_view& name) -> std::vector<endpoint>;
         static auto resolve_name(const ip::endpoint& endpoint) -> std::string;
     };
 
@@ -117,7 +119,7 @@ namespace up_inet
         ip::version _version;
     public: // --- life ---
         endpoint() = delete;
-        explicit endpoint(const std::string& value);
+        explicit endpoint(const up::string_view& value);
         endpoint(const self& rhs);
         endpoint(const ipv4::endpoint& rhs);
         endpoint(const ipv6::endpoint& rhs);
@@ -149,7 +151,7 @@ namespace up_inet
         // raises invalid_service
         static auto resolve_name(port port) -> std::string;
         // raises invalid_service
-        static auto resolve_port(const std::string& name) -> port;
+        static auto resolve_port(const up::string_view& name) -> port;
     };
 
     auto to_string(tcp::port value) -> std::string;
@@ -274,7 +276,7 @@ namespace up_inet
         // raises invalid_service
         static auto resolve_name(port port) -> std::string;
         // raises invalid_service
-        static auto resolve_port(const std::string& name) -> port;
+        static auto resolve_port(const up::string_view& name) -> port;
     };
 
     auto to_string(udp::port value) -> std::string;

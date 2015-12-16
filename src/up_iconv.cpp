@@ -6,6 +6,7 @@
 
 #include "up_buffer.hpp"
 #include "up_exception.hpp"
+#include "up_nts.hpp"
 #include "up_terminate.hpp"
 
 
@@ -32,8 +33,8 @@ namespace
         iconv_t _iconv;
         bool _dirty = false;
     public: // --- life ---
-        explicit wrapper(const std::string& to, const std::string& from)
-            : _iconv(::iconv_open(to.c_str(), from.c_str()))
+        explicit wrapper(const up::string_view& to, const up::string_view& from)
+            : _iconv(::iconv_open(up::nts(to), up::nts(from)))
         {
             if (_iconv == iconv_t(-1)) {
                 UP_RAISE(runtime, "iconv-bad-encoding"_s, to, from, up::errno_info(errno));
@@ -48,7 +49,7 @@ namespace
             }
         }
     public: // --- operations ---
-        auto transform(const std::string& to, const std::string& from, up::string_view string)
+        auto transform(const up::string_view& to, const up::string_view& from, up::string_view string)
         {
             constexpr auto error = std::size_t(-1);
             if (_dirty) {

@@ -13,6 +13,7 @@
 #include "up_defer.hpp"
 #include "up_exception.hpp"
 #include "up_integral_cast.hpp"
+#include "up_nts.hpp"
 #include "up_terminate.hpp"
 #include "up_utility.hpp"
 
@@ -100,9 +101,9 @@ namespace
         return up::invoke_to_string(up::to_underlying_type(value));
     }
 
-    void ip_address_parse(address_family af, const std::string& text, void* result)
+    void ip_address_parse(address_family af, const up::string_view& text, void* result)
     {
-        int rv = ::inet_pton(up::to_underlying_type(af), text.c_str(), result);
+        int rv = ::inet_pton(up::to_underlying_type(af), up::nts(text), result);
         if (rv == 1) {
             // okay
         } else if (rv == 0) {
@@ -209,7 +210,7 @@ namespace
     }
 
     template <typename Callable>
-    auto getaddrinfo_aux(const std::string& host_name, int flags, Callable&& callable)
+    auto getaddrinfo_aux(const up::string_view& host_name, int flags, Callable&& callable)
     {
         addrinfo hints;
         std::memset(&hints, 0, sizeof(hints));
@@ -219,7 +220,7 @@ namespace
          * (3) sock type. Setting an arbitrary socket type helps. */
         hints.ai_socktype = SOCK_STREAM;
         addrinfo* ai;
-        int rv = ::getaddrinfo(host_name.c_str(), nullptr, &hints, &ai);
+        int rv = ::getaddrinfo(up::nts(host_name), nullptr, &hints, &ai);
         if (rv == 0) {
             std::unique_ptr<addrinfo, void (*)(addrinfo*)> scoped(ai, &::freeaddrinfo);
             return std::forward<Callable>(callable)(ai);
@@ -324,7 +325,7 @@ const up_inet::ipv4::endpoint up_inet::ipv4::endpoint::any(
 const up_inet::ipv4::endpoint up_inet::ipv4::endpoint::loopback(
     up_inet::ipv4::endpoint::init{in_addr{byte_order_host_to_network(INADDR_LOOPBACK)}});
 
-up_inet::ipv4::endpoint::endpoint(const std::string& value)
+up_inet::ipv4::endpoint::endpoint(const up::string_view& value)
 {
     ip_address_parse(address_family::v4, value, &_data);
 }
@@ -395,7 +396,7 @@ const up_inet::ipv6::endpoint up_inet::ipv6::endpoint::any(
 const up_inet::ipv6::endpoint up_inet::ipv6::endpoint::loopback(
     up_inet::ipv6::endpoint::init{in6_addr IN6ADDR_LOOPBACK_INIT});
 
-up_inet::ipv6::endpoint::endpoint(const std::string& value)
+up_inet::ipv6::endpoint::endpoint(const up::string_view& value)
 {
     ip_address_parse(address_family::v6, value, &_data);
 }
@@ -411,7 +412,7 @@ auto up_inet::ipv6::endpoint::to_string() const -> std::string
 }
 
 
-auto up_inet::ip::resolve_canonical(const std::string& name) -> std::string
+auto up_inet::ip::resolve_canonical(const up::string_view& name) -> std::string
 {
     return getaddrinfo_aux(name, AI_CANONNAME, [&name](addrinfo* ai) -> std::string {
             if (ai && ai->ai_canonname) {
@@ -422,7 +423,7 @@ auto up_inet::ip::resolve_canonical(const std::string& name) -> std::string
         });
 }
 
-auto up_inet::ip::resolve_endpoints(const std::string& name) -> std::vector<endpoint>
+auto up_inet::ip::resolve_endpoints(const up::string_view& name) -> std::vector<endpoint>
 {
     return getaddrinfo_aux(name, 0, [](addrinfo* ai) -> std::vector<endpoint> {
             std::vector<endpoint> result;
@@ -472,7 +473,7 @@ auto up_inet::to_string(ip::version value) -> std::string
 }
 
 
-up_inet::ip::endpoint::endpoint(const std::string& value)
+up_inet::ip::endpoint::endpoint(const up::string_view& value)
     : _version(ip::version::v4)
 {
     try {
@@ -642,7 +643,7 @@ namespace
 {
 
     template <typename Protocol>
-    auto resolve_service_port(const std::string& name)
+    auto resolve_service_port(const up::string_view& name)
     {
         addrinfo hints;
         std::memset(&hints, 0, sizeof(hints));
@@ -650,7 +651,7 @@ namespace
         hints.ai_family = AF_UNSPEC;
         hints.ai_socktype = traits<Protocol>::sock_type;
         addrinfo* ai;
-        int rv = ::getaddrinfo(nullptr, name.c_str(), &hints, &ai);
+        int rv = ::getaddrinfo(nullptr, up::nts(name), &hints, &ai);
         if (rv == EAI_NONAME) {
             UP_RAISE(typename Protocol::invalid_service, "unknown-network-service"_s,
                 name, ai_error_info(rv));
@@ -788,7 +789,7 @@ auto up_inet::tcp::resolve_name(port port) -> std::string
     return resolve_service_name<tcp>(port);
 }
 
-auto up_inet::tcp::resolve_port(const std::string& name) -> port
+auto up_inet::tcp::resolve_port(const up::string_view& name) -> port
 {
     return resolve_service_port<tcp>(name);
 }
@@ -1197,7 +1198,7 @@ auto up_inet::udp::resolve_name(port port) -> std::string
     return resolve_service_name<udp>(port);
 }
 
-auto up_inet::udp::resolve_port(const std::string& name) -> port
+auto up_inet::udp::resolve_port(const up::string_view& name) -> port
 {
     return resolve_service_port<udp>(name);
 }
