@@ -58,8 +58,8 @@ namespace up_string
         using reverse_iterator = std::reverse_iterator<iterator>;
         using string_view = up::basic_string_view<value_type, traits_type>;
     protected:
-        using const_coord_type = std::pair<const_pointer, size_type>;
-        using coord_type = std::pair<pointer, size_type>;
+        using const_span_type = std::pair<const_pointer, size_type>;
+        using span_type = std::pair<pointer, size_type>;
     private:
         static_assert(std::is_same<size_type, typename string_view::size_type>(), "type mismatch");
         static_assert(std::is_same<difference_type, typename string_view::difference_type>(), "type mismatch");
@@ -143,8 +143,8 @@ namespace up_string
         static const constexpr size_type npos = string_view::npos;
 
     private:
-        using const_coord_type = typename types<traits_type>::const_coord_type;
-        using coord_type = typename types<traits_type>::coord_type;
+        using const_span_type = typename types<traits_type>::const_span_type;
+        using span_type = typename types<traits_type>::span_type;
 
         class copy_fill final
         {
@@ -285,7 +285,7 @@ namespace up_string
         explicit basic_string(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
             : basic_string(tags::capacity(), baseline, headroom, overflow_sum(headroom, fills.size()...))
         {
-            _apply_fills(_coord().first, std::forward<Fills>(fills)...);
+            _apply_fills(_span().first, std::forward<Fills>(fills)...);
         }
         explicit basic_string(tags::capacity, size_type baseline, size_type headroom, size_type request)
             : Core(tags::capacity(), std::max(request, baseline + baseline / 2 + 32), request - headroom)
@@ -323,8 +323,8 @@ namespace up_string
         // MUTATION
         auto begin() noexcept -> iterator
         {
-            auto coord = _coord();
-            return _iterator(coord.first, {});
+            auto span = _span();
+            return _iterator(span.first, {});
         }
         auto end() const noexcept -> const_iterator
         {
@@ -333,8 +333,8 @@ namespace up_string
         // MUTATION
         auto end() noexcept -> iterator
         {
-            auto coord = _coord();
-            return _iterator(coord.first, coord.second);
+            auto span = _span();
+            return _iterator(span.first, span.second);
         }
 
         auto rbegin() const noexcept -> const_reverse_iterator
@@ -358,13 +358,13 @@ namespace up_string
 
         auto cbegin() const noexcept -> const_iterator
         {
-            auto coord = _const_coord();
-            return _const_iterator(coord.first, {});
+            auto span = _const_span();
+            return _const_iterator(span.first, {});
         }
         auto cend() const noexcept -> const_iterator
         {
-            auto coord = _const_coord();
-            return _const_iterator(coord.first, coord.second);
+            auto span = _const_span();
+            return _const_iterator(span.first, span.second);
         }
         auto crbegin() const noexcept -> const_reverse_iterator
         {
@@ -411,17 +411,17 @@ namespace up_string
         {
             auto capacity = _capacity();
             if (request > capacity) {
-                auto coord = _coord();
-                self(tags::fill(), {}, request - coord.second,
-                    copy_fill(coord.first, coord.second)).swap(*this);
+                auto span = _span();
+                self(tags::fill(), {}, request - span.second,
+                    copy_fill(span.first, span.second)).swap(*this);
             } else if (capacity - request < sizeof(self)) {
                 // nothing
             } else if (capacity - _size() < sizeof(self)) {
                 // nothing
             } else {
-                auto coord = _coord();
-                self(tags::fill(), {}, request - coord.second,
-                    copy_fill(coord.first, coord.second)).swap(*this);
+                auto span = _span();
+                self(tags::fill(), {}, request - span.second,
+                    copy_fill(span.first, span.second)).swap(*this);
             }
         }
         // MUTATION
@@ -445,50 +445,50 @@ namespace up_string
 
         auto operator[](size_type pos) const -> const_reference
         {
-            auto coord = _const_coord();
-            return coord.first[pos];
+            auto span = _const_span();
+            return span.first[pos];
         }
         // MUTATION
         auto operator[](size_type pos) -> reference
         {
-            auto coord = _coord();
-            return coord.first[pos];
+            auto span = _span();
+            return span.first[pos];
         }
         auto at(size_type n) const -> const_reference
         {
-            auto coord = _const_coord();
-            _range_check(n < coord.second, "up::basic_string::at: position out of bounds");
-            return coord.first[n];
+            auto span = _const_span();
+            _range_check(n < span.second, "up::basic_string::at: position out of bounds");
+            return span.first[n];
         }
         // MUTATION
         auto at(size_type n) -> reference
         {
-            auto coord = _coord();
-            _range_check(n < coord.second, "up::basic_string::at: position out of bounds");
-            return coord.first[n];
+            auto span = _span();
+            _range_check(n < span.second, "up::basic_string::at: position out of bounds");
+            return span.first[n];
         }
 
         auto front() const -> const_reference
         {
-            auto coord = _const_coord();
-            return coord.first[0];
+            auto span = _const_span();
+            return span.first[0];
         }
         // MUTATION
         auto front() -> reference
         {
-            auto coord = _coord();
-            return coord.first[0];
+            auto span = _span();
+            return span.first[0];
         }
         auto back() const -> const_reference
         {
-            auto coord = _const_coord();
-            return coord.first[coord.second - size_type(1)];
+            auto span = _const_span();
+            return span.first[span.second - size_type(1)];
         }
         // MUTATION
         auto back() -> reference
         {
-            auto coord = _coord();
-            return coord.first[coord.second - size_type(1)];
+            auto span = _span();
+            return span.first[span.second - size_type(1)];
         }
 
         // MUTATION
@@ -663,11 +663,11 @@ namespace up_string
         // MUTATION
         auto erase(const_iterator first, const_iterator last) -> iterator
         {
-            auto coord = _coord();
-            size_type pos = std::distance(_const_iterator(coord.first, {}), first);
+            auto span = _span();
+            size_type pos = std::distance(_const_iterator(span.first, {}), first);
             size_type n = std::distance(first, last);
             _erase(pos, n);
-            return _iterator(coord.first, pos);
+            return _iterator(span.first, pos);
         }
 
         // MUTATION
@@ -748,7 +748,7 @@ namespace up_string
 
         auto data() const noexcept -> const value_type*
         {
-            return _const_coord().first;
+            return _const_span().first;
         }
         auto c_str() const noexcept -> const value_type* = delete; // intentionally not supported
 
@@ -856,10 +856,10 @@ namespace up_string
 
         auto substr(size_type pos = {}, size_type n = npos) const -> self
         {
-            auto coord = _const_coord();
-            _range_check(pos <= coord.second, "up::basic_string::subtr: position out of bounds");
+            auto span = _const_span();
+            _range_check(pos <= span.second, "up::basic_string::subtr: position out of bounds");
             return self(tags::fill(), {}, {},
-                copy_fill(coord.first + pos, std::min(n, coord.second - pos)));
+                copy_fill(span.first + pos, std::min(n, span.second - pos)));
         }
 
         auto compare(const string_view& s) const noexcept -> int
@@ -889,30 +889,30 @@ namespace up_string
 
         operator string_view() const noexcept
         {
-            auto coord = _const_coord();
-            return {coord.first, coord.second};
+            auto span = _const_span();
+            return {span.first, span.second};
         }
         // XXX: temporary workaround for up::to_string
         auto to_string() const -> std::string
         {
-            auto coord = _const_coord();
-            return {coord.first, coord.second};
+            auto span = _const_span();
+            return {span.first, span.second};
         }
         // XXX: temporary workaround for up::out
         void out(std::ostream& os) const
         {
-            auto coord = _const_coord();
-            os.write(coord.first, coord.second);
+            auto span = _const_span();
+            os.write(span.first, span.second);
         }
 
     private:
-        auto _const_coord() const noexcept -> const_coord_type
+        auto _const_span() const noexcept -> const_span_type
         {
-            return Core::const_coord();
+            return Core::const_span();
         }
-        auto _coord() noexcept -> coord_type
+        auto _span() noexcept -> span_type
         {
-            return Core::coord();
+            return Core::span();
         }
         auto _size() const noexcept -> size_type
         {
@@ -939,13 +939,13 @@ namespace up_string
         template <typename Fill>
         auto _append_fill(Fill&& fill) -> self&
         {
-            auto coord = _coord();
+            auto span = _span();
             size_type n = fill.size();
             if (_increase_size(n)) {
-                fill.apply(coord.first + coord.second);
+                fill.apply(span.first + span.second);
             } else {
                 self(tags::fill(), _capacity(), {},
-                    copy_fill(coord.first, coord.second),
+                    copy_fill(span.first, span.second),
                     std::forward<Fill>(fill)).swap(*this);
             }
             return *this;
@@ -953,13 +953,13 @@ namespace up_string
         template <typename Fill>
         auto _assign_fill(Fill&& fill) -> self&
         {
-            auto coord = _coord();
+            auto span = _span();
             size_type n = fill.size();
-            if (n <= coord.second) {
-                fill.apply(coord.first);
+            if (n <= span.second) {
+                fill.apply(span.first);
                 _trim_size(n);
-            } else if (_increase_size(n - coord.second)) {
-                fill.apply(coord.first);
+            } else if (_increase_size(n - span.second)) {
+                fill.apply(span.first);
             } else {
                 self(tags::fill(), {}, {}, std::forward<Fill>(fill)).swap(*this);
             }
@@ -968,60 +968,60 @@ namespace up_string
         template <typename Fill>
         auto _insert_fill(size_type pos, Fill&& fill) -> self&
         {
-            auto coord = _coord();
-            _range_check(pos <= coord.second, "up::basic_string::insert: position out of bounds");
+            auto span = _span();
+            _range_check(pos <= span.second, "up::basic_string::insert: position out of bounds");
             size_type n = fill.size();
             if (_increase_size(n)) {
-                traits_type::move(coord.first + pos + n, coord.first + pos, coord.second - pos);
-                fill.apply(coord.first + pos);
+                traits_type::move(span.first + pos + n, span.first + pos, span.second - pos);
+                fill.apply(span.first + pos);
             } else {
                 self(tags::fill(), _capacity(), {},
-                    copy_fill(coord.first, pos),
+                    copy_fill(span.first, pos),
                     std::forward<Fill>(fill),
-                    copy_fill(coord.first + pos, coord.second - pos)).swap(*this);
+                    copy_fill(span.first + pos, span.second - pos)).swap(*this);
             }
             return *this;
         }
         template <typename Fill>
         auto _insert_fill(const_iterator p, Fill&& fill) -> iterator
         {
-            size_type pos = std::distance(_const_iterator(_coord().first, {}), p);
+            size_type pos = std::distance(_const_iterator(_span().first, {}), p);
             _insert_fill(pos, std::forward<Fill>(fill));
-            return _iterator(_coord().first, pos);
+            return _iterator(_span().first, pos);
         }
         template <typename Fill>
         auto _replace_fill(size_type pos, size_type n, Fill&& fill) -> self&
         {
-            auto coord = _coord();
+            auto span = _span();
             size_type k = fill.size();
             if (k <= n) {
-                traits_type::move(coord.first + pos + k, coord.first + pos + n, coord.second - pos - n);
-                fill.apply(coord.first + pos);
-                _trim_size(coord.second + (n - k));
+                traits_type::move(span.first + pos + k, span.first + pos + n, span.second - pos - n);
+                fill.apply(span.first + pos);
+                _trim_size(span.second + (n - k));
             } else if (_increase_size(k - n)) {
-                traits_type::move(coord.first + pos + k, coord.first + pos + n, coord.second - pos - n);
-                fill.apply(coord.first + pos);
+                traits_type::move(span.first + pos + k, span.first + pos + n, span.second - pos - n);
+                fill.apply(span.first + pos);
             } else {
                 self(tags::fill(), _capacity(), {},
-                    copy_fill(coord.first, pos),
+                    copy_fill(span.first, pos),
                     std::forward<Fill>(fill),
-                    copy_fill(coord.first + pos + n, coord.second - pos - n)).swap(*this);
+                    copy_fill(span.first + pos + n, span.second - pos - n)).swap(*this);
             }
             return *this;
         }
         template <typename Fill>
         auto _replace_fill(const_iterator p, const_iterator q, Fill&& fill) -> self&
         {
-            size_type pos = std::distance(_const_iterator(_coord().first, {}), p);
+            size_type pos = std::distance(_const_iterator(_span().first, {}), p);
             size_type n = std::distance(p, q);
             return _replace_fill(pos, n, std::forward<Fill>(fill));
         }
         auto _erase(size_type pos, size_type n) -> self&
         {
             if (n) {
-                auto coord = _coord();
-                traits_type::move(coord.first + pos, coord.first + pos + n, coord.second - pos - n);
-                _trim_size(coord.second - n);
+                auto span = _span();
+                traits_type::move(span.first + pos, span.first + pos + n, span.second - pos - n);
+                _trim_size(span.second - n);
             } // else: nothing
             return *this;
         }
@@ -1516,11 +1516,11 @@ namespace up_string
             up::swap_noexcept(_size, rhs._size);
             up::swap_noexcept(_data, rhs._data);
         }
-        auto const_coord() const noexcept -> const_coord_type
+        auto const_span() const noexcept -> const_span_type
         {
             return {_data.get(), _size};
         }
-        auto coord() noexcept -> coord_type
+        auto span() noexcept -> span_type
         {
             return {_data.get(), _size};
         }
