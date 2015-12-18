@@ -40,31 +40,50 @@ namespace up_string
     };
 
 
-    template <typename Traits>
-    class types
+    class basic_string_types
     {
-    public: // --- scope ---
-        using traits_type = Traits;
-        using value_type = typename traits_type::char_type;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
-        using const_reference = const value_type&;
-        using reference = value_type&;
-        using const_pointer = const value_type*;
-        using pointer = value_type*;
-        using const_iterator = const_pointer;
-        using iterator = pointer;
-        using const_reverse_iterator = std::reverse_iterator<const_iterator>;
-        using reverse_iterator = std::reverse_iterator<iterator>;
-        using string_view = up::basic_string_view<value_type, traits_type>;
-    protected:
-        using const_span_type = std::pair<const_pointer, size_type>;
-        using span_type = std::pair<pointer, size_type>;
-    private:
-        static_assert(std::is_same<size_type, typename string_view::size_type>(), "type mismatch");
-        static_assert(std::is_same<difference_type, typename string_view::difference_type>(), "type mismatch");
-        static_assert(std::is_same<const_reference, typename string_view::const_reference>(), "type mismatch");
-        static_assert(std::is_same<const_pointer, typename string_view::const_pointer>(), "type mismatch");
+    private: // --- scope ---
+        template <typename Primary, typename Secondary>
+        class match_aux final
+        {
+        public: // --- scope ---
+            static_assert(std::is_same<Primary, Secondary>(), "type mismatch");
+            using type = Primary;
+        };
+        template <typename Primary, typename Secondary>
+        using match = typename match_aux<Primary, Secondary>::type;
+
+    public:
+        template <typename Traits>
+        using string_view = up::basic_string_view<typename Traits::char_type, Traits>;
+
+        template <typename Traits>
+        using value_type = typename Traits::char_type;
+        template <typename Traits>
+        using size_type = match<std::size_t, typename string_view<Traits>::size_type>;
+        template <typename Traits>
+        using difference_type = match<std::ptrdiff_t, typename string_view<Traits>::difference_type>;
+        template <typename Traits>
+        using const_reference = match<const value_type<Traits>&, typename string_view<Traits>::const_reference>;
+        template <typename Traits>
+        using reference = value_type<Traits>&;
+        template <typename Traits>
+        using const_pointer = match<const value_type<Traits>*, typename string_view<Traits>::const_pointer>;
+        template <typename Traits>
+        using pointer = value_type<Traits>*;
+        template <typename Traits>
+        using const_iterator = const_pointer<Traits>;
+        template <typename Traits>
+        using iterator = pointer<Traits>;
+        template <typename Traits>
+        using const_reverse_iterator = std::reverse_iterator<const_iterator<Traits>>;
+        template <typename Traits>
+        using reverse_iterator = std::reverse_iterator<iterator<Traits>>;
+
+        template <typename Traits>
+        using const_span_type = std::pair<const_pointer<Traits>, size_type<Traits>>;
+        template <typename Traits>
+        using span_type = std::pair<pointer<Traits>, size_type<Traits>>;
     };
 
 
@@ -81,8 +100,8 @@ namespace up_string
     class iterator_fill_base<Traits, Iterator, false>
     {
     private: // --- scope ---
-        using value_type = typename types<Traits>::value_type;
-        using size_type = typename types<Traits>::size_type;
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
     public: // --- life ---
         explicit iterator_fill_base(Iterator first, Iterator last); // XXX:IMPL
     public: // --- operations ---
@@ -94,8 +113,8 @@ namespace up_string
     class iterator_fill_base<Traits, Iterator, true>
     {
     private: // --- scope ---
-        using value_type = typename types<Traits>::value_type;
-        using size_type = typename types<Traits>::size_type;
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
     private: // --- state ---
         Iterator _first;
         Iterator _last;
@@ -126,25 +145,25 @@ namespace up_string
 
     public:
         using traits_type = typename Core::traits_type;
-        using value_type = typename types<traits_type>::value_type;
-        using size_type = typename types<traits_type>::size_type;
-        using difference_type = typename types<traits_type>::difference_type;
-        using const_reference = typename types<traits_type>::const_reference;
-        using reference = typename types<traits_type>::reference;
-        using const_pointer = typename types<traits_type>::const_pointer;
-        using pointer = typename types<traits_type>::pointer;
-        using const_iterator = typename types<traits_type>::const_iterator;
-        using iterator = typename types<traits_type>::iterator;
-        using const_reverse_iterator = typename types<traits_type>::const_reverse_iterator;
-        using reverse_iterator = typename types<traits_type>::reverse_iterator;
+        using value_type = basic_string_types::value_type<traits_type>;
+        using size_type = basic_string_types::size_type<traits_type>;
+        using difference_type = basic_string_types::difference_type<traits_type>;
+        using const_reference = basic_string_types::const_reference<traits_type>;
+        using reference = basic_string_types::reference<traits_type>;
+        using const_pointer = basic_string_types::const_pointer<traits_type>;
+        using pointer = basic_string_types::pointer<traits_type>;
+        using const_iterator = basic_string_types::const_iterator<traits_type>;
+        using iterator = basic_string_types::iterator<traits_type>;
+        using const_reverse_iterator = basic_string_types::const_reverse_iterator<traits_type>;
+        using reverse_iterator = basic_string_types::reverse_iterator<traits_type>;
 
-        using string_view = typename types<traits_type>::string_view;
+        using string_view = basic_string_types::string_view<traits_type>;
 
         static const constexpr size_type npos = string_view::npos;
 
     private:
-        using const_span_type = typename types<traits_type>::const_span_type;
-        using span_type = typename types<traits_type>::span_type;
+        using const_span_type = basic_string_types::const_span_type<traits_type>;
+        using span_type = basic_string_types::span_type<traits_type>;
 
         class copy_fill final
         {
@@ -1461,10 +1480,13 @@ namespace up_string
     }
 
 
-    class core : protected types<std::char_traits<char>>
+    class core
     {
     private: // --- scope ---
         using self = core;
+    protected:
+        using traits_type = std::char_traits<char>;
+        using size_type = basic_string_types::size_type<traits_type>;
     protected:
         static auto max_size() -> size_type
         {
@@ -1516,11 +1538,11 @@ namespace up_string
             up::swap_noexcept(_size, rhs._size);
             up::swap_noexcept(_data, rhs._data);
         }
-        auto const_span() const noexcept -> const_span_type
+        auto const_span() const noexcept -> basic_string_types::const_span_type<traits_type>
         {
             return {_data.get(), _size};
         }
-        auto span() noexcept -> span_type
+        auto span() noexcept -> basic_string_types::span_type<traits_type>
         {
             return {_data.get(), _size};
         }
