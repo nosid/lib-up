@@ -12,7 +12,7 @@
 
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_nts.hpp"
 #include "up_terminate.hpp"
 #include "up_utility.hpp"
@@ -963,7 +963,7 @@ private:
                     .msg_name = nullptr,
                     .msg_namelen = 0,
                     .msg_iov = chunks.as<iovec>(),
-                    .msg_iovlen = up::integral_caster(chunks.count()),
+                    .msg_iovlen = up::ints::caster(chunks.count()),
                     .msg_control = nullptr,
                     .msg_controllen = 0,
                     .msg_flags = 0,
@@ -980,7 +980,7 @@ private:
                     .msg_name = nullptr,
                     .msg_namelen = 0,
                     .msg_iov = chunks.as<iovec>(),
-                    .msg_iovlen = up::integral_caster(chunks.count()),
+                    .msg_iovlen = up::ints::caster(chunks.count()),
                     .msg_control = nullptr,
                     .msg_controllen = 0,
                     .msg_flags = 0,
@@ -1035,9 +1035,9 @@ void up_inet::tcp::connection::keepalive(std::chrono::seconds idle, std::size_t 
 {
     auto&& socket = *static_cast<const engine*>(get_underlying_engine())->_socket;
     socket.setsockopt(SOL_SOCKET, SO_KEEPALIVE, int(1));
-    socket.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, up::integral_cast<int>(idle.count()));
-    socket.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, up::integral_cast<int>(probes));
-    socket.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, up::integral_cast<int>(interval.count()));
+    socket.setsockopt(IPPROTO_TCP, TCP_KEEPIDLE, up::ints::cast<int>(idle.count()));
+    socket.setsockopt(IPPROTO_TCP, TCP_KEEPCNT, up::ints::cast<int>(probes));
+    socket.setsockopt(IPPROTO_TCP, TCP_KEEPINTVL, up::ints::cast<int>(interval.count()));
 }
 
 auto up_inet::tcp::connection::incoming_cpu() const -> int

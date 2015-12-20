@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 
 namespace
 {
@@ -68,7 +68,7 @@ public: // --- operations ---
         auto n = std::min(size, _buffer.available() - _offset);
         std::memcpy(data, _buffer.warm() + _offset, n);
         _offset += n;
-        return up::integral_caster(n);
+        return up::ints::caster(n);
     }
 };
 
@@ -102,7 +102,7 @@ public: // --- operations ---
         auto n = std::min(size, _buffer.available());
         std::memcpy(data, _buffer.warm(), n);
         _buffer.consume(n);
-        return up::integral_caster(n);
+        return up::ints::caster(n);
     }
 };
 
@@ -137,7 +137,7 @@ public: // --- operations ---
             _buffer.reserve(size);
             std::memcpy(_buffer.cold(), data, size);
             _buffer.produce(size);
-            return up::integral_caster(size);
+            return up::ints::caster(size);
         } catch (...) {
             UP_SUPPRESS_CURRENT_EXCEPTION("buffer-adapter"_s);
             return 0; // signal error (see also man page for fopencookie)

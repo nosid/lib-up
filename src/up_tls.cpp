@@ -16,7 +16,7 @@
 #include "up_char_cast.hpp"
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_utility.hpp"
 
 namespace
@@ -224,7 +224,7 @@ namespace
             engine* stream = static_cast<engine*>(bio->ptr);
             try {
                 ::BIO_clear_retry_flags(bio);
-                return up::integral_caster(stream->write_some({data, up::integral_caster(size)}));
+                return up::ints::caster(stream->write_some({data, up::ints::caster(size)}));
             } catch (const up::exception<engine::unreadable>&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
@@ -242,7 +242,7 @@ namespace
             engine* stream = static_cast<engine*>(bio->ptr);
             try {
                 ::BIO_clear_retry_flags(bio);
-                return up::integral_caster(stream->read_some({data, up::integral_caster(size)}));
+                return up::ints::caster(stream->read_some({data, up::ints::caster(size)}));
             } catch (const up::exception<engine::unreadable>&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
@@ -264,7 +264,7 @@ namespace
             case BIO_CTRL_GET_CLOSE:
                 return bio->shutdown;
             case BIO_CTRL_SET_CLOSE:
-                bio->shutdown = up::integral_caster(num);
+                bio->shutdown = up::ints::caster(num);
                 return 1;
             case BIO_CTRL_DUP:
                 return 1;
@@ -447,7 +447,7 @@ namespace
                 sentry sentry(this, state::read_in_progress);
                 openssl_thread::instance();
                 return _handle_io_result(
-                    ::SSL_read(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), true);
+                    ::SSL_read(_ssl.get(), chunk.data(), up::ints::caster(chunk.size())), true);
             } catch (const up::exception<already_shutdown>&) {
                 /* Simulate behavior of a regular socket that has been
                  * uni-directionally shutdown. */
@@ -459,7 +459,7 @@ namespace
             sentry sentry(this, state::write_in_progress);
             openssl_thread::instance();
             return _handle_io_result(
-                ::SSL_write(_ssl.get(), chunk.data(), up::integral_caster(chunk.size())), false);
+                ::SSL_write(_ssl.get(), chunk.data(), up::ints::caster(chunk.size())), false);
         }
         auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t override
         {
@@ -525,7 +525,7 @@ namespace
             auto error = ::SSL_get_error(_ssl.get(), result);
             if (result > 0) {
                 _state = state::good;
-                return up::integral_caster(std::make_unsigned_t<decltype(result)>(result));
+                return up::ints::caster(std::make_unsigned_t<decltype(result)>(result));
             } else if (allow_shutdown && result == 0 && error == SSL_ERROR_ZERO_RETURN) {
                 /* Clean ssl shutdown; however, note that the socket might
                  * still be open. */
@@ -819,7 +819,7 @@ auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
         int rv = ::ASN1_STRING_to_UTF8(&buffer, ::X509_NAME_ENTRY_get_data(entry));
         if (rv >= 0) {
             UP_DEFER { ::OPENSSL_free(buffer); };
-            return std::string(up::char_cast<char>(buffer), up::integral_cast<std::size_t>(rv));
+            return std::string(up::char_cast<char>(buffer), up::ints::cast<std::size_t>(rv));
         } else {
             raise_ssl_error("tls-bad-common-name"_s);
         }
@@ -1051,7 +1051,7 @@ private:
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
             auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
-            auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
+            auto depth = up::ints::cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
             X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
             try {
                 certificate::impl impl(x509);
@@ -1192,7 +1192,7 @@ private:
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
             auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
-            auto depth = up::integral_cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
+            auto depth = up::ints::cast<std::size_t>(::X509_STORE_CTX_get_error_depth(x509_store));
             X509* x509 = ::X509_STORE_CTX_get_current_cert(x509_store);
             try {
                 certificate::impl impl(x509);

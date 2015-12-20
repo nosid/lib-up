@@ -6,7 +6,7 @@
 
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 
 
 namespace
@@ -40,7 +40,7 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
     if (rv < 0) {
         UP_RAISE(runtime, "cformat-error"_s, std::string(format), rv);
     }
-    auto size = up::integral_cast<std::size_t>(rv);
+    auto size = up::ints::cast<std::size_t>(rv);
     if (size < buffer.capacity()) {
         buffer.produce(size);
     } else {
@@ -49,7 +49,7 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
         if (rv < 0) {
             UP_RAISE(runtime, "cformat-error"_s, std::string(format), size, rv);
         }
-        size = up::integral_cast<std::size_t>(rv);
+        size = up::ints::cast<std::size_t>(rv);
         if (size < buffer.capacity()) {
             buffer.produce(size);
         } else {

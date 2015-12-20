@@ -16,7 +16,7 @@
 #include "up_char_cast.hpp"
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_hash.hpp"
 #include "up_utility.hpp"
 
@@ -168,10 +168,10 @@ namespace
                     result->readcallback = [](void* context, char* buf, int len) -> int {
                         if (context && buf && len >= 0) {
                             auto buffer = static_cast<up::buffer*>(context);
-                            auto n = std::min(up::integral_cast<std::size_t>(len), buffer->available());
+                            auto n = std::min(up::ints::cast<std::size_t>(len), buffer->available());
                             std::memcpy(buf, buffer->warm(), n);
                             buffer->consume(n);
-                            return up::integral_caster(n);
+                            return up::ints::caster(n);
                         } else {
                             return -1;
                         }
@@ -489,7 +489,7 @@ namespace
         void _add_text(xmlNode* parent, Value&& value)
         {
             auto text = ::xmlNewDocTextLen(
-                parent->doc, _chars(value.data()), up::integral_caster(value.size()));
+                parent->doc, _chars(value.data()), up::ints::caster(value.size()));
             if (text == nullptr) {
                 raise<runtime>("xml-new-text-error"_s);
             }
@@ -711,7 +711,7 @@ public: // --- operations ---
             [](void* cookie, const char* data, int size) {
                 try {
                     up::buffer* b = static_cast<up::buffer*>(cookie);
-                    std::size_t n = up::integral_caster(size);
+                    std::size_t n = up::ints::caster(size);
                     b->reserve(n);
                     std::memcpy(b->cold(), data, n);
                     b->produce(n);

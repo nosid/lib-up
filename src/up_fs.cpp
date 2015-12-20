@@ -18,7 +18,7 @@
 #include "up_buffer.hpp"
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_nts.hpp"
 #include "up_terminate.hpp"
 
@@ -360,7 +360,7 @@ namespace
         for (;;) {
             ssize_t rv = function(fd, chunk.data(), chunk.size(), offset);
             if (rv != -1) {
-                return up::integral_caster(rv);
+                return up::ints::caster(rv);
             } else if (errno == EINTR) {
                 // continue
             } else {
@@ -375,9 +375,9 @@ namespace
     {
         for (;;) {
             ssize_t rv = function(fd, chunks.template as<iovec>(),
-                up::integral_caster(chunks.count()), offset);
+                up::ints::caster(chunks.count()), offset);
             if (rv != -1) {
-                return up::integral_caster(rv);
+                return up::ints::caster(rv);
             } else if (errno == EINTR) {
                 // continue
             } else {
@@ -511,14 +511,14 @@ public: // --- operations ---
     template <typename Count>
     auto bytes(Count count) const -> uint64_t
     {
-        return up::integral_caster(uint64_t(_statvfs.f_frsize) * count);
+        return up::ints::caster(uint64_t(_statvfs.f_frsize) * count);
     }
 };
 
 
 auto up_fs::fs::statfs::id() -> uint64_t
 {
-    return up::integral_caster(_impl->_statvfs.f_fsid);
+    return up::ints::caster(_impl->_statvfs.f_fsid);
 }
 
 auto up_fs::fs::statfs::bytes_total() -> uint64_t
@@ -538,17 +538,17 @@ auto up_fs::fs::statfs::bytes_available() -> uint64_t
 
 auto up_fs::fs::statfs::files_total() -> uint64_t
 {
-    return up::integral_caster(_impl->_statvfs.f_files);
+    return up::ints::caster(_impl->_statvfs.f_files);
 }
 
 auto up_fs::fs::statfs::files_free() -> uint64_t
 {
-    return up::integral_caster(_impl->_statvfs.f_ffree);
+    return up::ints::caster(_impl->_statvfs.f_ffree);
 }
 
 auto up_fs::fs::statfs::files_available() -> uint64_t
 {
-    return up::integral_caster(_impl->_statvfs.f_favail);
+    return up::ints::caster(_impl->_statvfs.f_favail);
 }
 
 

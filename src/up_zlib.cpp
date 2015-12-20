@@ -4,7 +4,7 @@
 
 #include "up_char_cast.hpp"
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_terminate.hpp"
 
 
@@ -44,12 +44,12 @@ namespace
         void process_impl(
             Operation&& operation, up::string_literal&& message, up::chunk::from chunk, int flush)
         {
-            _z_stream.avail_in = up::integral_caster(chunk.size());
+            _z_stream.avail_in = up::ints::caster(chunk.size());
             _z_stream.next_in = up::char_cast<Bytef>(const_cast<char*>(chunk.data()));
             int rv = 0;
             do {
                 _buffer.reserve(chunk.size() / 4 + 256);
-                _z_stream.avail_out = up::integral_caster(_buffer.capacity());
+                _z_stream.avail_out = up::ints::caster(_buffer.capacity());
                 _z_stream.next_out = reinterpret_cast<Bytef*>(_buffer.cold());
                 rv = operation(&_z_stream, flush);
                 if (rv != Z_OK && rv != Z_STREAM_END) {

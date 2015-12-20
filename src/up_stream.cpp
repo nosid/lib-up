@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "up_exception.hpp"
-#include "up_integral_cast.hpp"
+#include "up_ints.hpp"
 #include "up_utility.hpp"
 #include "up_terminate.hpp"
 
@@ -239,7 +239,7 @@ void up_stream::stream::steady_await::_wait(native_handle handle, operation op)
         auto remaining = std::max(_deadline - _now, up::duration::zero());
         auto s = std::chrono::duration_cast<std::chrono::seconds>(remaining);
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(remaining - s);
-        timespec ts{up::integral_caster(s.count()), up::integral_caster(ns.count())};
+        timespec ts{up::ints::caster(s.count()), up::ints::caster(ns.count())};
         int rv = ::ppoll(&fds, 1, &ts, nullptr);
         if (rv > 0) {
             auto valid = POLLIN | POLLOUT | POLLHUP | POLLERR;
@@ -308,7 +308,7 @@ public: // --- operations ---
         if (clockid == _clockid) {
             auto s = std::chrono::duration_cast<std::chrono::seconds>(duration);
             auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration - s);
-            itimerspec its = {{0, 0}, {up::integral_caster(s.count()), up::integral_caster(ns.count())}};
+            itimerspec its = {{0, 0}, {up::ints::caster(s.count()), up::ints::caster(ns.count())}};
             if (its.it_value.tv_sec <= 0 && its.it_value.tv_nsec <= 0) {
                 // adjust values - otherwise timer will be disarmed
                 its.it_value.tv_sec = 0;
