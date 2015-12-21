@@ -1,36 +1,11 @@
 #pragma once
 
+#include "up_ints.hpp"
 #include "up_string_view.hpp"
 #include "up_swap.hpp"
-#include "up_variadic.hpp"
 
 namespace up_string
 {
-
-    template <typename Result>
-    auto overflow_sum_partial(Result result) -> Result
-    {
-        return result;
-    }
-
-    template <typename Result, typename Head, typename... Tail>
-    auto overflow_sum_partial(Result result, Head head, Tail... tail) -> Result
-    {
-        if (__builtin_add_overflow(result, head, &result)) {
-            throw std::length_error("integer overflow"); // XXX
-        } else {
-            return overflow_sum_partial(result, tail...);
-        }
-    }
-
-    // XXX: move to separate header
-    template <typename Head, typename... Tail>
-    auto overflow_sum(Head head, Tail... tail)
-        -> typename std::enable_if<up::variadic_all(std::is_same<Head, Tail>()...), Head>::type
-    {
-        return overflow_sum_partial(head, tail...);
-    }
-
 
     class tags final
     {
@@ -164,6 +139,10 @@ namespace up_string
     private:
         using const_span_type = basic_string_types::const_span_type<traits_type>;
         using span_type = basic_string_types::span_type<traits_type>;
+
+        using sizes = typename up::ints::domain<size_type>;
+
+        class runtime;
 
         class copy_fill final
         {
@@ -302,12 +281,12 @@ namespace up_string
     private:
         template <typename... Fills>
         explicit basic_string(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
-            : basic_string(tags::capacity(), baseline, headroom, overflow_sum(headroom, fills.size()...))
+            : basic_string(tags::capacity(), baseline, headroom, sizes::template or_length_error<runtime>::sum(headroom, fills.size()...))
         {
             _apply_fills(_span().first, std::forward<Fills>(fills)...);
         }
         explicit basic_string(tags::capacity, size_type baseline, size_type headroom, size_type request)
-            : Core(tags::capacity(), std::max(request, baseline + baseline / 2 + 32), request - headroom)
+            : Core(tags::capacity(), std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)), request - headroom)
         { }
 
     public: // --- operations ---
@@ -943,7 +922,7 @@ namespace up_string
         }
         bool _increase_size(size_type n)
         {
-            size_type size = overflow_sum(_size(), n);
+            size_type size = sizes::template or_length_error<runtime>::add(_size(), n);
             if (size <= _capacity()) {
                 Core::set_size(size);
                 return true;

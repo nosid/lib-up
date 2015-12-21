@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "up_exception.hpp"
+#include "up_ints.hpp"
 
 
 up_nts::nts::nts() noexcept
@@ -20,10 +21,8 @@ up_nts::nts::nts(const char* data, size_type size)
         std::memcpy(_handle._data.data(), data, size);
         std::memset(_handle._data.data() + size, 0, handle_size - size);
     } else {
-        _handle._ref._size = size + 1;
-        if (_handle._ref._size < size) { // XXX:OVERFLOW
-            UP_RAISE(struct runtime, "nts-overflow"_s);
-        }
+        using sizes = up::ints::domain<size_type>::or_overflow_error<struct runtime>;
+        _handle._ref._size = sizes::add(size, 1);
         _handle._ref._data = static_cast<char*>(::operator new(_handle._ref._size));
         std::memcpy(_handle._ref._data, data, size);
         _handle._ref._data[size] = 0;

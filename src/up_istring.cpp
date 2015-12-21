@@ -4,6 +4,7 @@
 
 #include "up_char_cast.hpp"
 #include "up_exception.hpp"
+#include "up_ints.hpp"
 
 namespace
 {
@@ -36,7 +37,6 @@ namespace
      * dirty flag, because the cache might get outdated. */
 
     struct runtime;
-    struct out_of_range;
 
     constexpr auto uchar_max()
     {
@@ -99,12 +99,12 @@ up_istring::istring::istring(const char* data, std::size_t size)
             new (_core + core_size / 2) char*{temp};
             std::memcpy(temp, data, size);
         }
-    } else if (size + sizeof(size) < size) {
-        UP_RAISE(out_of_range, "istring-overflow"_s, size);
     } else {
+        using sizes = up::ints::domain<std::size_t>::or_length_error<runtime>;
+        auto total = sizes::add(size, sizeof(size));
         _core[0] = uchar_max();
         std::memcpy(_core + 1, data, core_size / 2 - 1);
-        char* temp = up::char_cast<char>(::operator new(size + sizeof(size)));
+        char* temp = up::char_cast<char>(::operator new(total));
         if (temp == nullptr) {
             UP_RAISE(runtime, "istring-out-of-memory"_s, size);
         } else {

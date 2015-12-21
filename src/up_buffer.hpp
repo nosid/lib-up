@@ -23,6 +23,7 @@ namespace up_buffer
     public: // --- scope ---
         using self = buffer;
         class impl;
+        using size_type = std::size_t;
     private: // --- state ---
         /**
          * All information is stored behind a single pointer to keep the
@@ -31,7 +32,7 @@ namespace up_buffer
         char* _core = nullptr;
     public: // --- life ---
         explicit buffer() noexcept = default;
-        buffer(const char* data, std::size_t size);
+        buffer(const char* data, size_type size);
         buffer(up::chunk::from chunk);
         buffer(const self& rhs);
         buffer(self&& rhs) noexcept;
@@ -57,9 +58,9 @@ namespace up_buffer
         auto warm() const noexcept -> const char*;
         auto warm() noexcept -> char*;
         // size of warm range
-        auto available() const noexcept -> std::size_t;
+        auto available() const noexcept -> size_type;
         // drain data from warm range
-        void consume(std::size_t size);
+        void consume(size_type n);
         // implicit conversion for typical usage of warm range
         operator up::chunk::from() const;
 
@@ -71,11 +72,11 @@ namespace up_buffer
         // pointer to beginning of cold range (end of warm range)
         auto cold() noexcept -> char*;
         // size of cold range
-        auto capacity() const noexcept -> std::size_t;
+        auto capacity() const noexcept -> size_type;
         // increase the size of the cold range (if necessary)
-        auto reserve(std::size_t required_cold_size) -> self&;
+        auto reserve(size_type required_cold_size) -> self&;
         // move the point between warm and cold range
-        void produce(std::size_t size);
+        void produce(size_type n);
         // implicit conversion for typical usage of cold range
         operator up::chunk::into();
     };

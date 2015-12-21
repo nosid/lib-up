@@ -4,6 +4,7 @@
 
 #include "up_char_cast.hpp"
 #include "up_exception.hpp"
+#include "up_ints.hpp"
 
 
 namespace
@@ -12,25 +13,21 @@ namespace
     struct runtime;
     struct out_of_range;
 
+    using size_type = up_buffer::buffer::size_type;
+    using sizes = up::ints::domain<size_type>;
 
-    template <typename Unsigned>
-    auto overflow(Unsigned lhs, Unsigned rhs)
-        -> std::enable_if_t<std::is_unsigned<Unsigned>::value, bool>
-    {
-        return lhs + rhs < lhs;
-    }
 
     class header
     {
     public: // --- state ---
-        std::size_t _size;
-        std::size_t _warm_pos;
-        std::size_t _cold_pos;
+        size_type _size;
+        size_type _warm_pos;
+        size_type _cold_pos;
     public: // --- life ---
         explicit header()
             : _size(), _warm_pos(), _cold_pos()
         { }
-        explicit header(std::size_t size, std::size_t warm_pos, std::size_t cold_pos)
+        explicit header(size_type size, size_type warm_pos, size_type cold_pos)
             : _size(size), _warm_pos(warm_pos), _cold_pos(cold_pos)
         { }
     public: // --- operations ---
@@ -68,12 +65,7 @@ namespace
 
     auto core_size(const header& h)
     {
-        std::size_t size = sizeof(header) + h._size;
-        if (size < h._size) {
-            UP_RAISE(out_of_range, "buffer-overflow"_s, h);
-        } else {
-            return size;
-        }
+        return sizes::or_length_error<runtime>::add(sizeof(header), h._size);
     }
 
     auto core_reallocate(char* core, const header& h) -> char*
@@ -101,7 +93,7 @@ namespace
 }
 
 
-up_buffer::buffer::buffer(const char* data, std::size_t size)
+up_buffer::buffer::buffer(const char* data, size_type size)
     : buffer()
 {
     if (size) {
@@ -117,7 +109,7 @@ up_buffer::buffer::buffer(up::chunk::from chunk)
 up_buffer::buffer::buffer(const self& rhs)
     : buffer()
 {
-    std::size_t size = rhs.available();
+    size_type size = rhs.available();
     if (size) {
         _core = core_reallocate(nullptr, header(size, 0, size));
         std::memcpy(get_data(_core), rhs.warm(), size);
@@ -159,25 +151,24 @@ auto up_buffer::buffer::warm() noexcept -> char*
     return get_data(_core) + h._warm_pos;
 }
 
-auto up_buffer::buffer::available() const noexcept -> std::size_t
+auto up_buffer::buffer::available() const noexcept -> size_type
 {
     auto&& h = get_const_header(_core);
     return h._cold_pos - h._warm_pos;
 }
 
-void up_buffer::buffer::consume(std::size_t size)
+void up_buffer::buffer::consume(size_type n)
 {
     if (_core) {
         auto&& h = get_mutable_header(_core);
-        if (overflow(h._warm_pos, size)) {
-            UP_RAISE(out_of_range, "buffer-consume-overflow"_s, h, size);
-        } else if (h._warm_pos + size > h._cold_pos) {
-            UP_RAISE(out_of_range, "buffer-consume-overflow"_s, h, size);
+        auto pos = sizes::or_range_error<runtime>::add(h._warm_pos, n);
+        if (pos > h._cold_pos) {
+            UP_RAISE(out_of_range, "buffer-consume-overflow"_s, h, n);
         } else {
-            h._warm_pos += size;
+            h._warm_pos = pos;
         }
-    } else if (size) {
-        UP_RAISE(out_of_range, "buffer-consume-overflow"_s, null_header, size);
+    } else if (n) {
+        UP_RAISE(out_of_range, "buffer-consume-overflow"_s, null_header, n);
     } // else: nothing
 }
 
@@ -192,22 +183,23 @@ auto up_buffer::buffer::cold() noexcept -> char*
     return get_data(_core) + h._cold_pos;
 }
 
-auto up_buffer::buffer::capacity() const noexcept -> std::size_t
+auto up_buffer::buffer::capacity() const noexcept -> size_type
 {
     auto&& h = get_const_header(_core);
     return h._size - h._cold_pos;
 }
 
-auto up_buffer::buffer::reserve(std::size_t required_cold_size) -> self&
+auto up_buffer::buffer::reserve(size_type required_cold_size) -> self&
 {
     auto&& h = get_const_header(_core);
     auto bias_size = h._warm_pos;
     auto warm_size = h._cold_pos - h._warm_pos;
     auto cold_size = h._size - h._cold_pos;
     auto free_size = bias_size + cold_size;
+    auto required_size = sizes::or_length_error<runtime>::add(warm_size, required_cold_size);
     if (_core == nullptr) {
         /* Initial allocation. */
-        std::size_t size = std::max(required_cold_size, std::size_t(32));
+        size_type size = std::max(required_cold_size, size_type(32));
         _core = core_reallocate(nullptr, header(size, 0, 0));
     } else if (warm_size && cold_size >= required_cold_size) {
         /* Nothing to do, since there is sufficient space available. We do not
@@ -217,16 +209,14 @@ auto up_buffer::buffer::reserve(std::size_t required_cold_size) -> self&
         /* By moving a fairly small amount of data (at most 50%), we can
          * create sufficient space. */
         core_move_to_front(_core);
-    } else if (overflow(warm_size, required_cold_size)) {
-        /* There is no way to allocate that much storage. */
-        UP_RAISE(out_of_range, "buffer-reserve-overflow"_s, h, required_cold_size);
-    } else if (free_size + warm_size < std::size_t(1 << 16) || free_size >= warm_size
-        || overflow(bias_size, warm_size + required_cold_size)) {
+    } else if (free_size + warm_size < size_type(1 << 16)
+        || free_size >= warm_size
+        || !sizes::is_valid::add(bias_size, required_size)) {
         /* In this case, it is unlikely that realloc has any benefits. So,
          * allocate new memory and move the data to the front. */
-        std::size_t size = std::max(
-            warm_size + warm_size / 2 + cold_size * 2,
-            warm_size + required_cold_size);
+        size_type size = std::max(
+            sizes::unsafe::sum(required_size, warm_size / 2, cold_size),
+            required_size); // note: safe fallback in case of overflow
         auto core = core_reallocate(nullptr, header(size, 0, warm_size));
         std::memcpy(get_data(core), get_data(_core) + bias_size, warm_size);
         std::free(std::exchange(_core, core));
@@ -234,27 +224,26 @@ auto up_buffer::buffer::reserve(std::size_t required_cold_size) -> self&
         /* In this case, realloc might be signifanctly faster than allocating
          * new memory. The data is not moved to the front, because that might
          * make things worse. */
-        std::size_t size = std::max(
-            bias_size + warm_size + warm_size / 2 + cold_size * 2,
-            bias_size + warm_size + required_cold_size);
+        size_type size = std::max(
+            sizes::unsafe::sum(bias_size, required_size, warm_size / 2, cold_size),
+            bias_size + required_size); // note: safe fallback (checked above)
         _core = core_reallocate(_core, header(size, bias_size, bias_size + warm_size));
     }
     return *this;
 }
 
-void up_buffer::buffer::produce(std::size_t size)
+void up_buffer::buffer::produce(size_type n)
 {
     if (_core) {
         auto&& h = get_mutable_header(_core);
-        if (overflow(h._cold_pos, size)) {
-            UP_RAISE(out_of_range, "buffer-produce-overflow"_s, h, size);
-        } else if (h._cold_pos + size > h._size) {
-            UP_RAISE(out_of_range, "buffer-produce-overflow"_s, h, size);
+        auto pos = sizes::or_range_error<runtime>::add(h._cold_pos, n);
+        if (pos > h._size) {
+            UP_RAISE(out_of_range, "buffer-produce-overflow"_s, h, n);
         } else {
-            h._cold_pos += size;
+            h._cold_pos = pos;
         }
-    } else if (size) {
-        UP_RAISE(out_of_range, "buffer-produce-overflow"_s, null_header, size);
+    } else if (n) {
+        UP_RAISE(out_of_range, "buffer-produce-overflow"_s, null_header, n);
     } // else: nothing
 }
 
