@@ -10,6 +10,7 @@
  * based data structure.
  */
 
+#include "up_ints.hpp"
 #include "up_swap.hpp"
 #include "up_utility.hpp"
 
@@ -185,6 +186,9 @@ namespace up_terse_map
             : _hasher(hash), _equal(equal)
         {
             if (capacity) {
+                // conservative overflow check (covering the following ops)
+                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                sizes::mul(sizes::add(alignof(value_type), capacity), sizes::add(sizeof(value_type), sizeof(tag)));
                 capacity += (_aligned(_tag_size(capacity)) - _tag_size(capacity)) / sizeof(tag);
                 _raw = std::make_unique<char[]>(_aligned(_tag_size(capacity)) + _capacity * sizeof(value_type));
                 std::uninitialized_fill_n(_tags(), _capacity, tag::pristine);
@@ -498,22 +502,22 @@ namespace up_terse_map
                 _max_load_factor = z;
             }
         }
-        void rehash(size_type capacity)
+        void rehash(size_type requested_capacity)
         {
-            if (capacity == 0 && _size == 0) {
+            if (requested_capacity == 0 && _size == 0) {
                 _capacity = 0;
                 _raw.reset(nullptr);
             } else {
-                capacity = std::max(
-                    std::max(static_cast<size_type>(_size / _max_load_factor + 1), capacity),
-                    std::max(_capacity + _capacity / 2, size_type(7)));
-                /* The following implementation is inefficient, because it
-                 * makes no use of move operations, neither for the key nor
-                 * the mapped value. */
-                terse_map temp(capacity, _hasher, _equal);
-                temp._max_load_factor = _max_load_factor;
-                temp.insert(begin(), end());
-                swap(temp);
+                auto minimum = size_type(7);
+                if (requested_capacity > _capacity) {
+                    _do_rehash(std::max(requested_capacity, minimum));
+                } else {
+                    auto calculated = static_cast<size_type>(_size / _max_load_factor + 1);
+                    auto n = std::max(requested_capacity, std::max(minimum, calculated));
+                    if (n < _capacity) {
+                        _do_rehash(n);
+                    } // else: nothing
+                }
             }
         }
         void reserve(size_type capacity)
@@ -543,11 +547,11 @@ namespace up_terse_map
         auto _aligned(size_type n) const
         {
             auto r = n % alignof(value_type);
-            return r == 0 ? n : n - r + alignof(value_type);
+            return r == 0 ? n : n - r + alignof(value_type); // constructor guarantees no overflow
         }
         auto _tag_size(size_type n) const
         {
-            return (n + 1) * sizeof(tag);
+            return (n + 1) * sizeof(tag); // constructor guarantees no overflow
         }
         auto _tags()
         {
@@ -626,8 +630,11 @@ namespace up_terse_map
                 tags[index.second] = tag(hash % up::to_underlying_type(tag::upper));
                 ++_size;
                 return {iterator(tags + index.second, values + index.second), true};
+            } else if (_capacity == 0 || _size >= _capacity * _max_load_factor) {
+                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                reserve(sizes::sum(_size, _size / 2, 1));
+                return _insert_final(std::forward<K>(key), std::forward<M>(mapped));
             } else {
-                rehash((_size + 1) / _max_load_factor);
                 return _insert_final(std::forward<K>(key), std::forward<M>(mapped));
             }
         }
@@ -645,6 +652,16 @@ namespace up_terse_map
         {
             value_type value(std::forward<Args>(args)...);
             return _insert_decomposed(value.first, std::move(value.second));
+        }
+        void _do_rehash(size_type capacity)
+        {
+            /* The following implementation is inefficient, because it makes
+             * no use of move operations, neither for the key nor the mapped
+             * value. */
+            terse_map temp(capacity, _hasher, _equal);
+            temp._max_load_factor = _max_load_factor;
+            temp.insert(begin(), end());
+            swap(temp);
         }
     };
 

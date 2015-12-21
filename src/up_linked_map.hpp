@@ -12,6 +12,7 @@
  * actually useful.
  */
 
+#include "up_ints.hpp"
 #include "up_swap.hpp"
 
 
@@ -745,16 +746,22 @@ namespace up_linked_map
                 _max_load_factor = z;
             }
         }
-        void rehash(size_type bucket_count)
+        void rehash(size_type requested_bucket_count)
         {
-            if (bucket_count == 0 && _size == 0) {
+            if (requested_bucket_count == 0 && _size == 0) {
                 _bucket_count = 0;
                 _buckets.reset(nullptr);
             } else {
-                bucket_count = std::max(
-                    std::max(static_cast<size_type>(_size / _max_load_factor + 1), bucket_count),
-                    std::max(_bucket_count + _bucket_count / 2, size_type(7)));
-                _do_rehash(bucket_count);
+                auto minimum = size_type(7);
+                if (requested_bucket_count > _bucket_count) {
+                    _do_rehash(std::max(requested_bucket_count, minimum));
+                } else {
+                    auto calculated = static_cast<size_type>(_size / _max_load_factor + 1);
+                    auto n = std::max(requested_bucket_count, std::max(minimum, calculated));
+                    if (n < _bucket_count) {
+                        _do_rehash(n);
+                    } // else: nothing
+                }
             }
         }
         void reserve(size_type size)
@@ -841,8 +848,9 @@ namespace up_linked_map
         }
         auto _put_node(list_node* position, std::unique_ptr<node> n) -> iterator
         {
-            if (_bucket_count == 0 || _size <= _bucket_count * _max_load_factor) {
-                reserve(_size + 1);
+            if (_bucket_count == 0 || _size >= _bucket_count * _max_load_factor) {
+                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                reserve(sizes::sum(_size, _size / 2, 1));
             }
             node* node = n.release();
             // link into linked list (before position)
