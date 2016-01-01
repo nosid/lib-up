@@ -176,7 +176,7 @@ namespace up_terse_map
         std::unique_ptr<char[]> _raw = {};
         hasher _hasher = {};
         key_equal _equal = {};
-        float _max_load_factor = 0.8;
+        float _max_load_factor = 0.8f;
     public: // --- life ---
         terse_map() noexcept = default;
         explicit terse_map(
@@ -492,8 +492,8 @@ namespace up_terse_map
         }
         void max_load_factor(float z)
         {
-            constexpr float min = 0.1;
-            constexpr float max = 0.9;
+            constexpr float min = 0.1f;
+            constexpr float max = 0.9f;
             if (z < min) {
                 _max_load_factor = min;
             } else if (z > max) {

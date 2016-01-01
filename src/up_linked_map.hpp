@@ -736,7 +736,7 @@ namespace up_linked_map
         }
         void max_load_factor(float z)
         {
-            constexpr float min = 0.1;
+            constexpr float min = 0.1f;
             constexpr float max = 10.0;
             if (z < min) {
                 _max_load_factor = min;
