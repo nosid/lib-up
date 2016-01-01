@@ -28,8 +28,8 @@ namespace up_terminate
 
 }
 
-#define UP_TERMINATE(message, ...)                       \
+#define UP_TERMINATE(message, ...) \
     do { \
         using namespace up::literals; \
-        ::up_terminate::terminate(UP_SOURCE_LOCATION(), message, __VA_ARGS__); \
+        ::up_terminate::terminate(up::source_location(), message, __VA_ARGS__); \
     } while (false)

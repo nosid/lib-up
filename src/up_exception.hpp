@@ -194,11 +194,11 @@ namespace up
 #define UP_RAISE(TAG, ...) \
     do { \
         using namespace up::literals; \
-        ::up_exception::raise<TAG>(UP_SOURCE_LOCATION(), __VA_ARGS__); \
+        ::up_exception::raise<TAG>(up::source_location(), __VA_ARGS__);        \
     } while (false)
 
 #define UP_SUPPRESS_CURRENT_EXCEPTION(...) \
     do { \
         using namespace up::literals; \
-        ::up_exception::suppress_current_exception(UP_SOURCE_LOCATION(), __VA_ARGS__); \
+        ::up_exception::suppress_current_exception(up::source_location(), __VA_ARGS__); \
     } while (false)

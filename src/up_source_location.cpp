@@ -4,5 +4,5 @@
 
 void up_source_location::source_location::out(std::ostream& os) const
 {
-    up::out(os, _func, '[', _file, ':', _line, ']');
+    up::out(os, _file, ':', _line);
 }
