@@ -32,8 +32,8 @@ namespace
     struct runtime;
 
 
-    template <typename... Args>
-    int check(int rv, Args&&... args)
+    template <typename Type, typename... Args>
+    auto check(Type rv, Args&&... args) -> Type
     {
         if (rv >= 0) {
             return rv;
@@ -59,7 +59,7 @@ namespace
     }
 
 
-    int syscall_renameat2(
+    auto syscall_renameat2(
         int olddirfd,
         const char* oldpath,
         int newdirfd,
@@ -906,7 +906,7 @@ public: // --- operations ---
         for (std::size_t i = 8; i <= 16; ++i) {
             std::size_t size = 1 << i;
             auto buffer = std::make_unique<char[]>(size);
-            int rv = check(
+            auto rv = check(
                 ::readlinkat(_origin->dir_fd(), _pathname.c_str(), buffer.get(), size),
                 "fs-readlink-error"_s, *this);
             if (static_cast<std::size_t>(rv) < size) {
