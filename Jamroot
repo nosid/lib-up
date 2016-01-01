@@ -5,6 +5,7 @@ project
       <cflags>-Wall
       <cflags>-Wextra
       <cflags>-Werror
+      <cflags>-Wcast-align # recommended by "Secure C++ Programming"
       <cflags>-march=native
       <cxxflags>-std=c++1z
       # Workaround: Clang no longer supports -finline-functions (enabled on inlining=full
