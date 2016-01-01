@@ -13,6 +13,7 @@ project
       <toolset>gcc:<cflags>-Wsuggest-attribute=noreturn
       <toolset>gcc:<cflags>-Wunused-but-set-parameter
       <toolset>gcc:<cflags>-Wunused-but-set-variable
+      <toolset>gcc:<cflags>-Wtrampolines # recommended by "Secure C++ Programming"
       <toolset>gcc:<cflags>-fdiagnostics-color
       <toolset>gcc:<cflags>-flto
       <toolset>gcc:<cflags>-grecord-gcc-switches
