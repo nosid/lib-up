@@ -6,6 +6,7 @@ project
       <cflags>-Wextra
       <cflags>-Werror
       <cflags>-Wcast-align # recommended by "Secure C++ Programming"
+      <cflags>-Wstrict-overflow # recommended by "Secure C++ Programming"
       <cflags>-Woverloaded-virtual # recommended by "Secure C++ Programming"
       <cflags>-Wreorder # recommended by "Secure C++ Programming"
       <cflags>-march=native
