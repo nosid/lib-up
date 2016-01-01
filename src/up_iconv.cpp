@@ -37,7 +37,7 @@ namespace
             : _iconv(::iconv_open(up::nts(to), up::nts(from)))
         {
             if (_iconv == iconv_t(-1)) {
-                UP_RAISE(runtime, "iconv-bad-encoding"_s, to, from, up::errno_info(errno));
+                UP_RAISE(runtime, "iconv-bad-encoding"_sl, to, from, up::errno_info(errno));
             }
         }
         wrapper(const self& rhs) = delete;
@@ -45,7 +45,7 @@ namespace
         ~wrapper() noexcept
         {
             if (::iconv_close(_iconv) != 0) {
-                UP_TERMINATE("iconv-bad-close"_s, up::errno_info(errno));
+                UP_TERMINATE("iconv-bad-close"_sl, up::errno_info(errno));
             }
         }
     public: // --- operations ---
@@ -54,7 +54,7 @@ namespace
             constexpr auto error = std::size_t(-1);
             if (_dirty) {
                 if (::iconv(_iconv, nullptr, nullptr, nullptr, nullptr) == error) {
-                    UP_RAISE(runtime, "iconv-bad-reset"_s, to, from, up::errno_info(errno));
+                    UP_RAISE(runtime, "iconv-bad-reset"_sl, to, from, up::errno_info(errno));
                 }
             }
             _dirty = true;
@@ -78,12 +78,12 @@ namespace
                         buffer.produce(buffer.capacity() - into_size);
                         break; // done
                     } else if (from_size == 0) {
-                        UP_RAISE(runtime, "iconv-bad-conversion"_s, to, from);
+                        UP_RAISE(runtime, "iconv-bad-conversion"_sl, to, from);
                     } else if (errno != E2BIG) {
-                        UP_RAISE(runtime, "iconv-bad-conversion"_s, to, from, up::errno_info(errno));
+                        UP_RAISE(runtime, "iconv-bad-conversion"_sl, to, from, up::errno_info(errno));
                     } else if (buffer.capacity() == into_size) {
                         // strange, apparently there was no progress
-                        UP_RAISE(runtime, "iconv-bad-conversion"_s, to, from, into_size);
+                        UP_RAISE(runtime, "iconv-bad-conversion"_sl, to, from, into_size);
                     } else {
                         buffer.produce(buffer.capacity() - into_size);
                         // continue

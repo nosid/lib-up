@@ -25,7 +25,7 @@ auto up_utility::type_display_name(const std::type_info& type_info) -> std::stri
     if (status == 0) {
         return std::string(result);
     } else {
-        UP_RAISE(runtime, "type-demangle-error"_s, type_info.name(), status);
+        UP_RAISE(runtime, "type-demangle-error"_sl, type_info.name(), status);
     }
 }
 
@@ -38,7 +38,7 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
     int rv = std::vsnprintf(buffer.cold(), buffer.capacity(), format, aq);
     va_end(aq);
     if (rv < 0) {
-        UP_RAISE(runtime, "cformat-error"_s, std::string(format), rv);
+        UP_RAISE(runtime, "cformat-error"_sl, std::string(format), rv);
     }
     auto size = up::ints::cast<std::size_t>(rv);
     if (size < buffer.capacity()) {
@@ -48,13 +48,13 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
         buffer.reserve(sizes::add(size, 1));
         rv = std::vsnprintf(buffer.cold(), buffer.capacity(), format, ap);
         if (rv < 0) {
-            UP_RAISE(runtime, "cformat-error"_s, std::string(format), size, rv);
+            UP_RAISE(runtime, "cformat-error"_sl, std::string(format), size, rv);
         }
         size = up::ints::cast<std::size_t>(rv);
         if (size < buffer.capacity()) {
             buffer.produce(size);
         } else {
-            UP_RAISE(runtime, "cformat-error"_s, std::string(format), size);
+            UP_RAISE(runtime, "cformat-error"_sl, std::string(format), size);
         }
     }
 }

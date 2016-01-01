@@ -105,11 +105,11 @@ namespace up_test
         {
             using namespace up::literals;
             if (actual != expected || !(actual == expected)) {
-                _failed_aux(location, "equal"_s,
+                _failed_aux(location, "equal"_sl,
                     std::forward<Actual>(actual),
                     std::forward<Expected>(expected));
             } else {
-                _passed(location, "equal"_s);
+                _passed(location, "equal"_sl);
             }
         }
     private:

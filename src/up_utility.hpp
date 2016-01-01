@@ -75,7 +75,7 @@ namespace up_utility
                     _bits |= underlying_type(1) << raw;
                 } else {
                     using namespace up::literals;
-                    raise_enum_set_runtime_error("enum-value-out-of-range"_s,
+                    raise_enum_set_runtime_error("enum-value-out-of-range"_sl,
                         up::invoke_to_fabric_with_fallback(raw));
                 }
             }

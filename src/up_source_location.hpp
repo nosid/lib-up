@@ -22,9 +22,9 @@ namespace up_source_location
     public: // --- life ---
         template <std::size_t I, std::size_t J>
         explicit source_location(const char (&file)[I], std::size_t line, const char (&func)[J])
-            : _file(up::literals::operator"" _s(file, I - 1))
+            : _file(up::literals::operator"" _sl(file, I - 1))
             , _line(line)
-            , _func(up::literals::operator"" _s(func, J - 1))
+            , _func(up::literals::operator"" _sl(func, J - 1))
         {
             static_assert(I > 0, "unexpected size of string literal");
             static_assert(J > 0, "unexpected size of string literal");

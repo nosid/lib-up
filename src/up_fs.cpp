@@ -52,10 +52,10 @@ namespace
             if (cwd) {
                 return std::string(cwd);
             } else if (errno != ERANGE) {
-                check(-1, "fs-getcwd-error"_s);
+                check(-1, "fs-getcwd-error"_sl);
             } // else: continue
         }
-        UP_RAISE(runtime, "fs-getcwd-error"_s, up::errno_info(errno));
+        UP_RAISE(runtime, "fs-getcwd-error"_sl, up::errno_info(errno));
     }
 
 
@@ -134,7 +134,7 @@ namespace
                 int temp = std::exchange(_fd, -1);
                 int rv = ::close(temp);
                 if (rv != 0) {
-                    UP_TERMINATE("bad-close"_s, temp, errno);
+                    UP_TERMINATE("bad-close"_sl, temp, errno);
                 }
             } // else: nothing
         }
@@ -171,21 +171,21 @@ namespace
             if (*p != '\\') {
                 result.push_back(*p);
             } else if (last - p < 4) {
-                UP_RAISE(runtime, "fs-unmangle-path"_s, std::string(first, last));
+                UP_RAISE(runtime, "fs-unmangle-path"_sl, std::string(first, last));
             } else {
                 ++p;
                 if (*p < '0' || *p > '3') {
-                    UP_RAISE(runtime, "fs-unmangle-path"_s, std::string(first, last));
+                    UP_RAISE(runtime, "fs-unmangle-path"_sl, std::string(first, last));
                 }
                 unsigned value = *p - '0';
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    UP_RAISE(runtime, "fs-unmangle-path"_s, std::string(first, last));
+                    UP_RAISE(runtime, "fs-unmangle-path"_sl, std::string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    UP_RAISE(runtime, "fs-unmangle-path"_s, std::string(first, last));
+                    UP_RAISE(runtime, "fs-unmangle-path"_sl, std::string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 result.push_back(static_cast<unsigned char>(value));
@@ -222,16 +222,16 @@ namespace
             int pos;
             int rv = sscanf(first, "%*d %*d %u:%u%n", &major, &minor, &pos);
             if (rv != 2 && rv != 3) {
-                UP_RAISE(runtime, "fs-mountinfo-error"_s, std::string(first, p));
+                UP_RAISE(runtime, "fs-mountinfo-error"_sl, std::string(first, p));
             }
             char* r = std::find(first + pos + 1, last, ' ');
             if (r == last) {
-                UP_RAISE(runtime, "fs-mountinfo-error"_s, std::string(first, p));
+                UP_RAISE(runtime, "fs-mountinfo-error"_sl, std::string(first, p));
             }
             ++r;
             char* s = std::find(r, last, ' ');
             if (s == last) {
-                UP_RAISE(runtime, "fs-mountinfo-error"_s, std::string(first, p));
+                UP_RAISE(runtime, "fs-mountinfo-error"_sl, std::string(first, p));
             }
             result.emplace_back(makedev(major, minor), unmangle_pathname_from_proc(r, s));
             first = p + 1;
@@ -253,7 +253,7 @@ namespace
         case DT_SOCK: return kind::socket;
         case DT_UNKNOWN: return kind::unknown;
         default:
-            UP_RAISE(runtime, "fs-bad-type-error"_s, type);
+            UP_RAISE(runtime, "fs-bad-type-error"_sl, type);
         }
     }
 
@@ -269,13 +269,13 @@ namespace
         int fd = handle.get();
         DIR* dirp = ::fdopendir(fd);
         if (dirp == nullptr) {
-            UP_RAISE(runtime, "fs-opendir-error"_s, fd, up::errno_info(errno));
+            UP_RAISE(runtime, "fs-opendir-error"_sl, fd, up::errno_info(errno));
         }
 
         UP_DEFER {
             int rv = ::closedir(dirp);
             if (rv != 0) {
-                UP_TERMINATE("bad-closedir"_s, rv, errno);
+                UP_TERMINATE("bad-closedir"_sl, rv, errno);
             }
         };
         handle.release();
@@ -291,7 +291,7 @@ namespace
             dirent* de = nullptr;
             int rv = ::readdir_r(dirp, reinterpret_cast<dirent*>(buffer.get()), &de);
             if (rv != 0) {
-                UP_RAISE(runtime, "fs-readdir-error"_s, fd, up::errno_info(rv));
+                UP_RAISE(runtime, "fs-readdir-error"_sl, fd, up::errno_info(rv));
             } else if (de == nullptr) {
                 return false;
             } else if (std::strcmp(de->d_name, ".") == 0
@@ -401,7 +401,7 @@ auto up_fs::to_string(fs::kind value) -> std::string
     case fs::kind::socket: return "socket";
     case fs::kind::unknown: return "unknown";
     default:
-        UP_RAISE(runtime, "fs-bad-kind-error"_s, value);
+        UP_RAISE(runtime, "fs-bad-kind-error"_sl, value);
     }
 }
 
@@ -446,7 +446,7 @@ bool up_fs::fs::stats::is_kind(kind value) const
     case kind::unknown:
         // fall through
     default:
-        UP_RAISE(runtime, "fs-bad-kind-error"_s, value);
+        UP_RAISE(runtime, "fs-bad-kind-error"_sl, value);
     }
     auto&& known = {
         kind::block_device,
@@ -583,22 +583,22 @@ public: // --- operations ---
             if (rv >= 0) {
                 return rv;
             } else if (errno != EPERM) {
-                check(rv, "fs-open-error"_s, dir_fd, pathname, flags | O_NOATIME);
+                check(rv, "fs-open-error"_sl, dir_fd, pathname, flags | O_NOATIME);
             } // else: continue
         }
         return check(
             ::openat(dir_fd, pathname, flags, mode),
-            "fs-open-error"_s, dir_fd, pathname, flags, mode);
+            "fs-open-error"_sl, dir_fd, pathname, flags, mode);
     }
     auto dup(int fd) const -> int
     {
         int operation = (_additional_open_flags & O_CLOEXEC) ? F_DUPFD_CLOEXEC : F_DUPFD;
-        return check(::fcntl(fd, operation), "fs-dup-error"_s, fd, operation);
+        return check(::fcntl(fd, operation), "fs-dup-error"_sl, fd, operation);
     }
     void pipe(handle& read, handle& write) const
     {
         int pipefd[2] {-1, -1};
-        check(::pipe2(pipefd, _additional_open_flags & O_CLOEXEC), "fs-pipe-error"_s);
+        check(::pipe2(pipefd, _additional_open_flags & O_CLOEXEC), "fs-pipe-error"_sl);
         handle(pipefd[0]).swap(read);
         handle(pipefd[1]).swap(write);
     }
@@ -688,7 +688,7 @@ public: // --- operations ---
         }
         auto&& inode = [](int dir_fd) {
             struct stat st;
-            check(::fstat(dir_fd, &st), "fs-stat-error"_s, dir_fd);
+            check(::fstat(dir_fd, &st), "fs-stat-error"_sl, dir_fd);
             return std::make_pair(st.st_dev, st.st_ino);
         };
         int flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_PATH;
@@ -701,7 +701,7 @@ public: // --- operations ---
                 struct stat st;
                 check(
                     ::fstatat(AT_FDCWD, mount.path().c_str(), &st, AT_SYMLINK_NOFOLLOW),
-                    "fs-stat-error"_s, mount.path());
+                    "fs-stat-error"_sl, mount.path());
                 roots.emplace_back(st.st_ino, std::move(mount.path()));
             }
         }
@@ -736,7 +736,7 @@ public: // --- operations ---
                 });
             if (!found) {
                 // current directory not found in parent directory
-                UP_RAISE(runtime, "fs-resolve-error"_s, dir_fd);
+                UP_RAISE(runtime, "fs-resolve-error"_sl, dir_fd);
             }
             auto q = std::partition_point(roots.begin(), roots.end(), [&next](auto&& r) {
                     return r.first < next.second;
@@ -754,7 +754,7 @@ public: // --- operations ---
             up::swap_noexcept(current, parent);
             up::swap_noexcept(next, previous);
         }
-        UP_RAISE(runtime, "fs-resolve-error"_s, dir_fd);
+        UP_RAISE(runtime, "fs-resolve-error"_sl, dir_fd);
     }
 private:
     auto find_mounts() const -> std::vector<mount>
@@ -846,30 +846,30 @@ public: // --- operations ---
         auto result = std::make_shared<stats::impl>();
         auto flags = flags_follow(AT_SYMLINK_FOLLOW);
         check(::fstatat(_origin->dir_fd(), _pathname.c_str(), &result->_stat, flags),
-            "fs-stat-error"_s, *this, flags);
+            "fs-stat-error"_sl, *this, flags);
         return result;
     }
     void chmod(mode_t mode) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
         check(::fchmodat(_origin->dir_fd(), _pathname.c_str(), mode, flags),
-            "fs-chmod-error"_s, *this, mode, flags);
+            "fs-chmod-error"_sl, *this, mode, flags);
     }
     void chown(uid_t owner, gid_t group) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
         check(::fchownat(_origin->dir_fd(), _pathname.c_str(), owner, group, flags),
-            "fs-chown-error"_s, *this, owner, group, flags);
+            "fs-chown-error"_sl, *this, owner, group, flags);
     }
     void mkdir(mode_t mode) const
     {
         check(::mkdirat(_origin->dir_fd(), _pathname.c_str(), mode),
-            "fs-mkdir-error"_s, *this, mode);
+            "fs-mkdir-error"_sl, *this, mode);
     }
     void rmdir() const
     {
         check(::unlinkat(_origin->dir_fd(), _pathname.c_str(), AT_REMOVEDIR),
-            "fs-rmdir-error"_s, *this);
+            "fs-rmdir-error"_sl, *this);
     }
     void link(const self& target) const
     {
@@ -878,12 +878,12 @@ public: // --- operations ---
                 _origin->dir_fd(), _pathname.c_str(),
                 target._origin->dir_fd(), target._pathname.c_str(),
                 flags),
-            "fs-link-error"_s, *this, target, flags);
+            "fs-link-error"_sl, *this, target, flags);
     }
     void unlink() const
     {
         check(::unlinkat(_origin->dir_fd(), _pathname.c_str(), 0),
-            "fs-unlink-error"_s, *this);
+            "fs-unlink-error"_sl, *this);
     }
     void rename(const self& target, bool replace) const
     {
@@ -891,7 +891,7 @@ public: // --- operations ---
                 _origin->dir_fd(), _pathname.c_str(),
                 target._origin->dir_fd(), target._pathname.c_str(),
                 replace ? 0 : RENAME_NOREPLACE),
-            "fs-rename-error"_s, *this, target, replace);
+            "fs-rename-error"_sl, *this, target, replace);
     }
     void exchange(const self& target) const
     {
@@ -899,7 +899,7 @@ public: // --- operations ---
                 _origin->dir_fd(), _pathname.c_str(),
                 target._origin->dir_fd(), target._pathname.c_str(),
                 RENAME_EXCHANGE),
-            "fs-exchange-error"_s, *this, target);
+            "fs-exchange-error"_sl, *this, target);
     }
     auto readlink() const -> std::string
     {
@@ -908,17 +908,17 @@ public: // --- operations ---
             auto buffer = std::make_unique<char[]>(size);
             auto rv = check(
                 ::readlinkat(_origin->dir_fd(), _pathname.c_str(), buffer.get(), size),
-                "fs-readlink-error"_s, *this);
+                "fs-readlink-error"_sl, *this);
             if (static_cast<std::size_t>(rv) < size) {
                 return std::string(buffer.get(), static_cast<std::size_t>(rv));
             }
         }
-        UP_RAISE(runtime, "fs-readlink-error"_s, up::errno_info(errno));
+        UP_RAISE(runtime, "fs-readlink-error"_sl, up::errno_info(errno));
     }
     void symlink(const up::string_view& value) const
     {
         check(::symlinkat(up::nts(value), _origin->dir_fd(), up::nts(_pathname)),
-            "fs-symlink-error"_s, *this, value);
+            "fs-symlink-error"_sl, *this, value);
     }
     auto list() const -> std::vector<directory_entry>
     {
@@ -1044,14 +1044,14 @@ auto up_fs::fs::path::statvfs() const -> statfs
     do {
         rv = ::statvfs(pathname.c_str(), &result->_statvfs);
     } while (rv == -1 && errno == EINTR);
-    check(rv, "fs-statvfs-error"_s, *this);
+    check(rv, "fs-statvfs-error"_sl, *this);
     return statfs(result);
 }
 
 void up_fs::fs::path::truncate(off_t length) const
 {
     check(::truncate(absolute().c_str(), length),
-        "fs-truncate-error"_s, *this, length);
+        "fs-truncate-error"_sl, *this, length);
 }
 
 auto up_fs::fs::path::absolute() const -> std::string
@@ -1077,16 +1077,16 @@ public: // --- operations ---
     }
     void chmod(mode_t mode) const
     {
-        check(::fchmod(fd(), mode), "fs-chmod-error"_s, fd(), mode);
+        check(::fchmod(fd(), mode), "fs-chmod-error"_sl, fd(), mode);
     }
     void chown(uid_t owner, gid_t group) const
     {
-        check(::fchown(fd(), owner, group), "fs-chown-error"_s, fd(), owner, group);
+        check(::fchown(fd(), owner, group), "fs-chown-error"_sl, fd(), owner, group);
     }
     auto stat() const -> std::shared_ptr<const stats::impl>
     {
         auto result = std::make_shared<stats::impl>();
-        check(::fstat(fd(), &result->_stat), "fs-stat-error"_s, fd());
+        check(::fstat(fd(), &result->_stat), "fs-stat-error"_sl, fd());
         return result;
     }
     auto statvfs() const -> std::shared_ptr<const statfs::impl>
@@ -1096,16 +1096,16 @@ public: // --- operations ---
         do {
             rv = ::fstatvfs(fd(), &result->_statvfs);
         } while (rv == -1 && errno == EINTR);
-        check(rv, "fs-statvfs-error"_s, fd());
+        check(rv, "fs-statvfs-error"_sl, fd());
         return result;
     }
     void fdatasync() const
     {
-        check(::fdatasync(fd()), "fs-fdatasync-error"_s, fd());
+        check(::fdatasync(fd()), "fs-fdatasync-error"_sl, fd());
     }
     void fsync() const
     {
-        check(::fsync(fd()), "fs-fsync-error"_s, fd());
+        check(::fsync(fd()), "fs-fsync-error"_sl, fd());
     }
 };
 
@@ -1256,29 +1256,29 @@ void up_fs::fs::file::truncate(off_t length) const
     do {
         rv = ::ftruncate(_impl->fd(), length);
     } while (rv == -1 && errno == EINTR);
-    check(rv, "fs-truncate-error"_s, _impl->fd(), length);
+    check(rv, "fs-truncate-error"_sl, _impl->fd(), length);
 }
 
 auto up_fs::fs::file::read_some(up::chunk::into chunk, off_t offset) const
     -> std::size_t
 {
-    return do_io(::pread, _impl->fd(), std::move(chunk), offset, "fs-read-error"_s);
+    return do_io(::pread, _impl->fd(), std::move(chunk), offset, "fs-read-error"_sl);
 }
 
 auto up_fs::fs::file::write_some(up::chunk::from chunk, off_t offset) const
     -> std::size_t
 {
-    return do_io(::pwrite, _impl->fd(), std::move(chunk), offset, "fs-write-error"_s);
+    return do_io(::pwrite, _impl->fd(), std::move(chunk), offset, "fs-write-error"_sl);
 }
 
 auto up_fs::fs::file::read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
-    return do_iov(::preadv, _impl->fd(), std::move(chunks), offset, "fs-readv-error"_s);
+    return do_iov(::preadv, _impl->fd(), std::move(chunks), offset, "fs-readv-error"_sl);
 }
 
 auto up_fs::fs::file::write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t
 {
-    return do_iov(::pwritev, _impl->fd(), std::move(chunks), offset, "fs-writev-error"_s);
+    return do_iov(::pwritev, _impl->fd(), std::move(chunks), offset, "fs-writev-error"_sl);
 }
 
 void up_fs::fs::file::write_all(up::chunk::from chunk, off_t offset) const
@@ -1287,7 +1287,7 @@ void up_fs::fs::file::write_all(up::chunk::from chunk, off_t offset) const
      * is called at least once. This is intentionally, so that the
      * implementation is similar to write_some. */
     do {
-        auto n = do_io(::pwrite, _impl->fd(), chunk, offset, "fs-write-all-error"_s);
+        auto n = do_io(::pwrite, _impl->fd(), chunk, offset, "fs-write-all-error"_sl);
         chunk.drain(n);
         offset += n;
     } while (chunk.size());
@@ -1297,7 +1297,7 @@ void up_fs::fs::file::write_all(up::chunk::from_bulk_t&& chunks, off_t offset) c
 {
     /* See above regarding the use of a do-while loop. */
     do {
-        auto n = do_iov(::pwritev, _impl->fd(), chunks, offset, "fs-writev-all-error"_s);
+        auto n = do_iov(::pwritev, _impl->fd(), chunks, offset, "fs-writev-all-error"_sl);
         chunks.drain(n);
         offset += n;
     } while (chunks.total());
@@ -1309,7 +1309,7 @@ void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
         if (rv == EINTR) {
             // continue
         } else {
-            UP_RAISE(runtime, "fs-posix-fallocate-error"_s,
+            UP_RAISE(runtime, "fs-posix-fallocate-error"_sl,
                 _impl->fd(), offset, length, up::errno_info(rv));
         }
     }
@@ -1318,7 +1318,7 @@ void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
 void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) const
 {
     if (auto rv = ::posix_fadvise(_impl->fd(), offset, length, advice)) {
-        UP_RAISE(runtime, "fs-posix-fadvise-error"_s,
+        UP_RAISE(runtime, "fs-posix-fadvise-error"_sl,
             _impl->fd(), offset, length, advice, up::errno_info(rv));
     }
 }
@@ -1371,9 +1371,9 @@ private:
             rv = ::flock(_file->fd(), operation);
         } while (rv == -1 && errno == EINTR);
         if (rv == -1 && errno == EWOULDBLOCK) {
-            UP_RAISE(up_fs::fs::locked_file, "fs-file-already-locked"_s, _file->fd(), operation);
+            UP_RAISE(up_fs::fs::locked_file, "fs-file-already-locked"_sl, _file->fd(), operation);
         } else {
-            check(rv, "fs-file-lock"_s, _file->fd(), operation);
+            check(rv, "fs-file-lock"_sl, _file->fd(), operation);
         }
     }
 };
@@ -1403,14 +1403,14 @@ public: // --- operations ---
     {
         ssize_t rv = ::splice(source.fd(), &offset,
             _write.get(), nullptr, size, SPLICE_F_MOVE);
-        check(rv, "fs-splice-error"_s, source.fd(), offset, size);
+        check(rv, "fs-splice-error"_sl, source.fd(), offset, size);
         return static_cast<std::size_t>(rv);
     }
     auto drain(std::size_t size, off_t offset) -> std::size_t
     {
         ssize_t rv = ::splice(_read.get(), nullptr,
             _file->fd(), &offset, size, SPLICE_F_MOVE);
-        check(rv, "fs-splice-error"_s, _file->fd(), size, offset);
+        check(rv, "fs-splice-error"_sl, _file->fd(), size, offset);
         return  static_cast<std::size_t>(rv);
     }
 };

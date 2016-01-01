@@ -81,7 +81,7 @@ namespace
              * (solely) by this framework. */
             _ssl_ex_data_index = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
             if (_ssl_ex_data_index < 0) {
-                UP_RAISE(runtime, "tls-external-data-error"_s);
+                UP_RAISE(runtime, "tls-external-data-error"_sl);
             }
             // required for multi-threaded programs
             ::CRYPTO_THREADID_set_callback(&_thread_id_callback);
@@ -111,13 +111,13 @@ namespace
         void ssl_put_ptr(SSL* ssl, Type* ptr)
         {
             if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, ptr) != 1) {
-                UP_RAISE(runtime, "tls-external-data-error"_s);
+                UP_RAISE(runtime, "tls-external-data-error"_sl);
             }
         }
         void ssl_reset_ptr(SSL* ssl)
         {
             if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, nullptr) != 1) {
-                UP_RAISE(runtime, "tls-external-data-error"_s);
+                UP_RAISE(runtime, "tls-external-data-error"_sl);
             }
         }
         template <typename Type>
@@ -126,7 +126,7 @@ namespace
             if (auto* ptr = ::SSL_get_ex_data(ssl, _ssl_ex_data_index)) {
                 return static_cast<Type*>(ptr);
             } else {
-                UP_RAISE(runtime, "tls-external-data-error"_s);
+                UP_RAISE(runtime, "tls-external-data-error"_sl);
             }
         }
     };
@@ -191,7 +191,7 @@ namespace
         {
             _ptr = ::PEM_read_X509(up::buffer_adapter::reader(buffer), nullptr, nullptr, nullptr);
             if (_ptr == nullptr) {
-                raise_ssl_error("tls-bad-certificate-error"_s);
+                raise_ssl_error("tls-bad-certificate-error"_sl);
             }
         }
         x509(const self& rhs) = delete;
@@ -232,7 +232,7 @@ namespace
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-write-callback"_s);
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-write-callback"_sl);
                 return -1;
             }
         }
@@ -250,7 +250,7 @@ namespace
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-read-callback"_s);
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-bio-read-callback"_sl);
                 return -1;
             }
         }
@@ -360,9 +360,9 @@ namespace
                 } else if (_owner->_state == expected) {
                     // nothing
                 } else if (_owner->_state == state::shutdown_completed) {
-                    UP_RAISE(already_shutdown, "tls-stream-already-shutdown"_s);
+                    UP_RAISE(already_shutdown, "tls-stream-already-shutdown"_sl);
                 } else {
-                    UP_RAISE(runtime, "tls-bad-state"_s,
+                    UP_RAISE(runtime, "tls-bad-state"_sl,
                         up::to_underlying_type(_owner->_state),
                         up::to_underlying_type(expected));
                 }
@@ -390,7 +390,7 @@ namespace
             : _ssl(std::move(ssl)), _underlying(std::move(underlying))
         {
             if (_ssl == nullptr) {
-                raise_ssl_error("tls-ssl-error"_s);
+                raise_ssl_error("tls-ssl-error"_sl);
             }
             /* User-defined BIO. Note that if the BIO is associated with SSL,
              * it is automatically freed in SSL_free. */
@@ -408,7 +408,7 @@ namespace
                     /* The TLS/SSL handshake was not successful but was shut
                      * down controlled and by the specifications of the
                      * TLS/SSL protocol. */
-                    raise_ssl_error("tls-handshake-error"_s,
+                    raise_ssl_error("tls-handshake-error"_sl,
                         result, ::SSL_get_error(_ssl.get(), result));
                 } else {
                     auto error = ::SSL_get_error(_ssl.get(), result);
@@ -417,7 +417,7 @@ namespace
                     } else if (error == SSL_ERROR_WANT_WRITE) {
                         awaiting(_underlying->get_native_handle(), await::operation::write);
                     } else {
-                        raise_ssl_error("tls-io-error"_s, result, error);
+                        raise_ssl_error("tls-io-error"_sl, result, error);
                     }
                 }
             }
@@ -501,9 +501,9 @@ namespace
                 } else if (result < 0) {
                     auto error = ::SSL_get_error(_ssl.get(), result);
                     if (error == SSL_ERROR_WANT_READ) {
-                        UP_RAISE(unreadable, "unreadable-tls-stream"_s);
+                        UP_RAISE(unreadable, "unreadable-tls-stream"_sl);
                     } else if (error == SSL_ERROR_WANT_WRITE) {
-                        UP_RAISE(unwritable, "unwritable-tls-stream"_s);
+                        UP_RAISE(unwritable, "unwritable-tls-stream"_sl);
                     } else if (error == SSL_ERROR_SYSCALL && errno == 0) {
                         /* According to the OpenSSL documentation, an
                          * erroneous SSL_ERROR_SYSCALL may be flagged even
@@ -511,11 +511,11 @@ namespace
                         break;
                     } else {
                         _state = state::bad;
-                        raise_ssl_error("tls-io-error"_s, result, error);
+                        raise_ssl_error("tls-io-error"_sl, result, error);
                     }
                 } else {
                     _state = state::bad;
-                    raise_ssl_error("tls-io-error"_s, result);
+                    raise_ssl_error("tls-io-error"_sl, result);
                 }
             }
             _state = state::shutdown_completed;
@@ -538,12 +538,12 @@ namespace
                 _state = state::shutdown_completed;
                 return 0;
             } else if (result < 0 && error == SSL_ERROR_WANT_READ) {
-                UP_RAISE(unreadable, "unreadable-tls-stream"_s);
+                UP_RAISE(unreadable, "unreadable-tls-stream"_sl);
             } else if (result < 0 && error == SSL_ERROR_WANT_WRITE) {
-                UP_RAISE(unwritable, "unwritable-tls-stream"_s);
+                UP_RAISE(unwritable, "unwritable-tls-stream"_sl);
             } else {
                 _state = state::bad;
-                raise_ssl_error("tls-io-error"_s, result, error);
+                raise_ssl_error("tls-io-error"_sl, result, error);
             }
         }
     };
@@ -587,7 +587,7 @@ protected:
         } else if ((rv = ::SSL_add_dir_cert_subjects_to_stack(names, pathname)) == 1) {
             return rv;
         } else {
-            raise_ssl_error("tls-internal-authority-error"_s, rv, std::string(pathname));
+            raise_ssl_error("tls-internal-authority-error"_sl, rv, std::string(pathname));
         }
     }
     bool _load_file(SSL_CTX* ctx, STACK_OF(X509_NAME)* names, const char* pathname) const
@@ -600,7 +600,7 @@ protected:
         } else if ((rv = ::SSL_add_file_cert_subjects_to_stack(names, pathname)) == 1) {
             return rv;
         } else {
-            raise_ssl_error("tls-internal-authority-error"_s, rv, std::string(pathname));
+            raise_ssl_error("tls-internal-authority-error"_sl, rv, std::string(pathname));
         }
     }
 };
@@ -621,7 +621,7 @@ private: // --- operations ---
          * SSL_CTX_set_default_verify_paths, i.e. it only fails if both file
          * and directory lookup fail. */
         if (rv != 1 && rw != 1) {
-            raise_ssl_error("tls-system-authority-error"_s,
+            raise_ssl_error("tls-system-authority-error"_sl,
                 std::string(file), rv, std::string(directory), rw);
         }
     }
@@ -646,7 +646,7 @@ private: // --- operations ---
     {
         int rv = _load_directory(ctx, names, _pathname.c_str());
         if (rv != 1) {
-            raise_ssl_error("tls-directory-authority-error"_s, rv, _pathname);
+            raise_ssl_error("tls-directory-authority-error"_sl, rv, _pathname);
         } // else: OK
     }
 };
@@ -665,7 +665,7 @@ private: // --- operations ---
     {
         int rv = _load_file(ctx, names, _pathname.c_str());
         if (rv != 1) {
-            raise_ssl_error("tls-file-authority-error"_s, rv, _pathname);
+            raise_ssl_error("tls-file-authority-error"_sl, rv, _pathname);
         } // else: OK
     }
 };
@@ -686,7 +686,7 @@ private: // --- operations ---
             X509* x509 = _certificate.native_handle();
             int rv = ::X509_STORE_add_cert(store, x509);
             if (rv != 1) {
-                raise_ssl_error("tls-bad-certificate-error"_s, rv);
+                raise_ssl_error("tls-bad-certificate-error"_sl, rv);
             } else if (names == nullptr) {
                 // nothing else to do
             } else if (X509_NAME* name = ::X509_get_subject_name(x509)) {
@@ -697,13 +697,13 @@ private: // --- operations ---
                         ::X509_NAME_free(dup);
                     }
                 } else {
-                    raise_ssl_error("tls-bad-certificate-error"_s);
+                    raise_ssl_error("tls-bad-certificate-error"_sl);
                 }
             } else {
-                raise_ssl_error("tls-bad-certificate-error"_s);
+                raise_ssl_error("tls-bad-certificate-error"_sl);
             }
         } else {
-            raise_ssl_error("tls-bad-certificate-error"_s);
+            raise_ssl_error("tls-bad-certificate-error"_sl);
         }
     }
 };
@@ -759,16 +759,16 @@ public: // --- operations ---
         int rv;
         rv = ::SSL_CTX_use_PrivateKey_file(ctx, _private_key_pathname.c_str(), SSL_FILETYPE_PEM);
         if (rv != 1) {
-            raise_ssl_error("tls-private-key-error"_s, rv);
+            raise_ssl_error("tls-private-key-error"_sl, rv);
         }
         rv = ::SSL_CTX_use_certificate_file(ctx, _certificate_pathname.c_str(), SSL_FILETYPE_PEM);
         if (rv != 1) {
-            raise_ssl_error("tls-certificate-error"_s, rv);
+            raise_ssl_error("tls-certificate-error"_sl, rv);
         }
         if (_certificate_chain_pathname) {
             rv = ::SSL_CTX_use_certificate_chain_file(ctx, _certificate_chain_pathname->c_str());
             if (rv != 1) {
-                raise_ssl_error("tls-certificate-chain-error"_s, rv);
+                raise_ssl_error("tls-certificate-chain-error"_sl, rv);
             }
         }
     }
@@ -821,7 +821,7 @@ auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
             UP_DEFER { ::OPENSSL_free(buffer); };
             return std::string(up::char_cast<char>(buffer), up::ints::cast<std::size_t>(rv));
         } else {
-            raise_ssl_error("tls-bad-common-name"_s);
+            raise_ssl_error("tls-bad-common-name"_sl);
         }
     } else {
         return up::nullopt;
@@ -836,7 +836,7 @@ bool up_tls::tls::certificate::matches_hostname(up::string_view hostname) const
     } else if (rv == 0) {
         return false;
     } else {
-        raise_ssl_error("tls-bad-hostname-check"_s, hostname);
+        raise_ssl_error("tls-bad-hostname-check"_sl, hostname);
     }
 }
 
@@ -867,7 +867,7 @@ protected: // --- life ---
         , _identity(identity ? std::move(identity->_impl) : identity_ptr())
     {
         if (_ssl_ctx == nullptr) {
-            raise_ssl_error("tls-bad-context-error"_s);
+            raise_ssl_error("tls-bad-context-error"_sl);
         }
         /* Disable compression, because there have been some security issues
          * with compression in the past, and apparently compression will be
@@ -940,7 +940,7 @@ private:
             } catch (const up::exception<reject_hostname>&) {
                 return SSL_TLSEXT_ERR_NOACK;
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("tls-hostname-callback"_s);
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-hostname-callback"_sl);
                 return SSL_TLSEXT_ERR_ALERT_FATAL;
             }
         } else {
@@ -1008,7 +1008,7 @@ void up_tls::tls::server_context::destroy(impl* ptr)
 auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 {
     return [](std::string hostname) -> self& {
-        UP_RAISE(accept_hostname, "tls-ignore-hostname"_s, std::move(hostname));
+        UP_RAISE(accept_hostname, "tls-ignore-hostname"_sl, std::move(hostname));
     };
 }
 
@@ -1047,7 +1047,7 @@ private:
     {
         auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
         if (index < 0) {
-            raise_ssl_error("tls-internal-certificate-error"_s);
+            raise_ssl_error("tls-internal-certificate-error"_sl);
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
             auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
@@ -1063,12 +1063,12 @@ private:
                 } // else: nothing
                 return result;
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_s);
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_sl);
                 ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
                 return 0;
             }
         } else {
-            raise_ssl_error("tls-internal-certificate-error"_s);
+            raise_ssl_error("tls-internal-certificate-error"_sl);
         }
     }
 public: // --- life ---
@@ -1110,7 +1110,7 @@ public: // --- life ---
             guard.disarm(); // ownership transferred to _ssl_ctx
             ::SSL_CTX_set_verify(_ssl_ctx.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
         } else {
-            raise_ssl_error("tls-runtime-error"_s);
+            raise_ssl_error("tls-runtime-error"_sl);
         }
         _identity->apply(_ssl_ctx.get());
     }
@@ -1140,10 +1140,10 @@ public: // --- life ---
         if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
             ::X509_free(x509);
         } else {
-            UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
+            UP_RAISE(runtime, "tls-missing-peer-certificate"_sl);
         }
         if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
-            UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
+            UP_RAISE(runtime, "tls-invalid-peer-certificate"_sl);
         }
     }
 };
@@ -1188,7 +1188,7 @@ private:
     {
         auto index = ::SSL_get_ex_data_X509_STORE_CTX_idx();
         if (index < 0) {
-            raise_ssl_error("tls-internal-certificate-error"_s);
+            raise_ssl_error("tls-internal-certificate-error"_sl);
         }
         if (SSL* ssl = static_cast<SSL*>(::X509_STORE_CTX_get_ex_data(x509_store, index))) {
             auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
@@ -1204,12 +1204,12 @@ private:
                 } // else: nothing
                 return result;
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_s);
+                UP_SUPPRESS_CURRENT_EXCEPTION("tls-verify-callback"_sl);
                 ::X509_STORE_CTX_set_error(x509_store, X509_V_ERR_APPLICATION_VERIFICATION);
                 return 0;
             }
         } else {
-            raise_ssl_error("tls-internal-certificate-error"_s);
+            raise_ssl_error("tls-internal-certificate-error"_sl);
         }
     }
 public: // --- life ---
@@ -1247,7 +1247,7 @@ private: // --- scope ---
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
         if (hostname && !SSL_set_tlsext_host_name(ssl.get(), hostname->c_str())) {
-            raise_ssl_error("tls-hostname-error"_s, *hostname);
+            raise_ssl_error("tls-hostname-error"_sl, *hostname);
         }
         openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
         return ssl;
@@ -1267,10 +1267,10 @@ public: // --- life ---
         if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
             ::X509_free(x509);
         } else {
-            UP_RAISE(runtime, "tls-missing-peer-certificate"_s);
+            UP_RAISE(runtime, "tls-missing-peer-certificate"_sl);
         }
         if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
-            UP_RAISE(runtime, "tls-invalid-peer-certificate"_s);
+            UP_RAISE(runtime, "tls-invalid-peer-certificate"_sl);
         }
     }
 };

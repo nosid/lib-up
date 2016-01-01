@@ -7,7 +7,7 @@ namespace up_string_literal
 
     // forward declarations (required due to friend relationship)
     class string_literal;
-    constexpr auto operator "" _s(const char* data, std::size_t size) noexcept
+    constexpr auto operator "" _sl(const char* data, std::size_t size) noexcept
         -> string_literal;
 
     /**
@@ -41,7 +41,7 @@ namespace up_string_literal
         }
         void out(std::ostream& os) const;
     public: // --- friends ---
-        friend constexpr auto operator "" _s(
+        friend constexpr auto operator "" _sl(
             const char* data, std::size_t size) noexcept -> string_literal;
     };
 
@@ -49,7 +49,7 @@ namespace up_string_literal
      * String literal for string_literal. This should be the only way to
      * create (non-null) instances of string_literal.
      */
-    inline constexpr auto operator "" _s(const char* data, std::size_t size) noexcept
+    inline constexpr auto operator "" _sl(const char* data, std::size_t size) noexcept
         -> string_literal
     {
         return string_literal(data, size);
@@ -66,7 +66,7 @@ namespace up
     inline namespace literals
     {
 
-        using up_string_literal::operator"" _s;
+        using up_string_literal::operator"" _sl;
 
     }
 

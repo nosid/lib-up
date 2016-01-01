@@ -87,20 +87,20 @@ public: // --- life ---
     {
         int rv = ::deflateInit(&_z_stream, level);
         if (rv != Z_OK) {
-            UP_RAISE(runtime, "zlib-bad-deflate"_s, rv);
+            UP_RAISE(runtime, "zlib-bad-deflate"_sl, rv);
         }
     }
     ~impl() noexcept
     {
         int rv = ::deflateEnd(&_z_stream);
         if (rv != Z_OK && rv != Z_DATA_ERROR) {
-            UP_TERMINATE("zlib-bad-free"_s, rv);
+            UP_TERMINATE("zlib-bad-free"_sl, rv);
         }
     }
 public: // --- operations ---
     void process(up::chunk::from chunk, int flush)
     {
-        process_impl(::deflate, "zlib-bad-deflate"_s, chunk, flush);
+        process_impl(::deflate, "zlib-bad-deflate"_sl, chunk, flush);
     }
 };
 
@@ -148,20 +148,20 @@ public: // --- life ---
     {
         int rv = ::inflateInit(&_z_stream);
         if (rv != Z_OK) {
-            UP_RAISE(runtime, "zlib-bad-inflate"_s, rv);
+            UP_RAISE(runtime, "zlib-bad-inflate"_sl, rv);
         }
     }
     ~impl() noexcept
     {
         int rv = ::inflateEnd(&_z_stream);
         if (rv != Z_OK) {
-            UP_TERMINATE("zlib-bad-free"_s, rv);
+            UP_TERMINATE("zlib-bad-free"_sl, rv);
         }
     }
 public: // --- operations ---
     void process(up::chunk::from chunk, int flush)
     {
-        process_impl(::inflate, "zlib-bad-inflate"_s, chunk, flush);
+        process_impl(::inflate, "zlib-bad-inflate"_sl, chunk, flush);
     }
 };
 

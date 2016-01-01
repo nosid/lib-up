@@ -93,7 +93,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
         std::memcpy(_core + 1, data, core_size / 2 - 1);
         char* temp = up::char_cast<char>(::operator new(size));
         if (temp == nullptr) {
-            UP_RAISE(runtime, "istring-out-of-memory"_s, size);
+            UP_RAISE(runtime, "istring-out-of-memory"_sl, size);
         } else {
             static_assert(std::is_trivial<char*>::value, "requires trivial type");
             new (_core + core_size / 2) char*{temp};
@@ -106,7 +106,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
         std::memcpy(_core + 1, data, core_size / 2 - 1);
         char* temp = up::char_cast<char>(::operator new(total));
         if (temp == nullptr) {
-            UP_RAISE(runtime, "istring-out-of-memory"_s, size);
+            UP_RAISE(runtime, "istring-out-of-memory"_sl, size);
         } else {
             static_assert(std::is_trivial<char*>::value, "requires trivial type");
             static_assert(std::is_trivial<std::size_t>::value, "requires trivial type");
