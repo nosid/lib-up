@@ -14,22 +14,38 @@
 namespace up_terminate
 {
 
+    class message_with_implicit_source_location final
+    {
+    private: // --- state ---
+        up::string_literal _message;
+        up::source_location _location;
+    public: // --- life ---
+        message_with_implicit_source_location(
+            up::string_literal message, up::source_location location = {})
+            : _message(message), _location(location)
+        { }
+    public: // --- operations ---
+        auto message() const { return _message; }
+        auto location() const { return _location; }
+    };
+
     [[noreturn]]
     void terminate_aux(
         up::source_location location, up::string_literal message, const up::fabrics& details);
 
     template <typename... Args>
     [[noreturn]]
-    void terminate(up::source_location location, up::string_literal message, Args&&... args)
+    void terminate(message_with_implicit_source_location message, Args&&... args)
     {
-        terminate_aux(std::move(location), std::move(message),
+        terminate_aux(message.location(), message.message(),
             up::fabrics{up::invoke_to_fabric_with_fallback(std::forward<Args>(args))...});
     }
 
 }
 
-#define UP_TERMINATE(message, ...) \
-    do { \
-        using namespace up::literals; \
-        ::up_terminate::terminate(up::source_location(), message, __VA_ARGS__); \
-    } while (false)
+namespace up
+{
+
+    using up_terminate::terminate;
+
+}

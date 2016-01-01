@@ -94,7 +94,7 @@ public: // --- life ---
     {
         int rv = ::deflateEnd(&_z_stream);
         if (rv != Z_OK && rv != Z_DATA_ERROR) {
-            UP_TERMINATE("zlib-bad-free"_sl, rv);
+            up::terminate("zlib-bad-free"_sl, rv);
         }
     }
 public: // --- operations ---
@@ -155,7 +155,7 @@ public: // --- life ---
     {
         int rv = ::inflateEnd(&_z_stream);
         if (rv != Z_OK) {
-            UP_TERMINATE("zlib-bad-free"_sl, rv);
+            up::terminate("zlib-bad-free"_sl, rv);
         }
     }
 public: // --- operations ---

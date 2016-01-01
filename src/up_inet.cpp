@@ -690,7 +690,7 @@ namespace
             int temp = std::exchange(fd, -1);
             int rv = ::close(temp);
             if (rv != 0) {
-                UP_TERMINATE("bad-close"_sl, temp);
+                up::terminate("bad-close"_sl, temp);
             }
         } // else: nothing
     }

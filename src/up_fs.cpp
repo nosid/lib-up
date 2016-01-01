@@ -134,7 +134,7 @@ namespace
                 int temp = std::exchange(_fd, -1);
                 int rv = ::close(temp);
                 if (rv != 0) {
-                    UP_TERMINATE("bad-close"_sl, temp, errno);
+                    up::terminate("bad-close"_sl, temp, errno);
                 }
             } // else: nothing
         }
@@ -275,7 +275,7 @@ namespace
         UP_DEFER {
             int rv = ::closedir(dirp);
             if (rv != 0) {
-                UP_TERMINATE("bad-closedir"_sl, rv, errno);
+                up::terminate("bad-closedir"_sl, rv, errno);
             }
         };
         handle.release();

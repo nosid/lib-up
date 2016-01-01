@@ -45,7 +45,8 @@ namespace
         ~wrapper() noexcept
         {
             if (::iconv_close(_iconv) != 0) {
-                UP_TERMINATE("iconv-bad-close"_sl, up::errno_info(errno));
+                using namespace up::literals;
+                up::terminate("iconv-bad-close"_sl, up::errno_info(errno));
             }
         }
     public: // --- operations ---
