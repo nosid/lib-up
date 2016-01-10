@@ -131,6 +131,8 @@ void up_test::test_case_base::run()
     _run();
 }
 
+void up_test::test_case_base::_vtable_dummy() const { }
+
 
 void up_test::check::_passed(location location, up::string_literal type)
 {

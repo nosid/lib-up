@@ -194,6 +194,10 @@ namespace up_inet
         void qos(qos_priority priority, qos_drop drop) const;
         void keepalive(std::chrono::seconds idle, std::size_t probes, std::chrono::seconds interval) const;
         auto incoming_cpu() const -> int;
+    private:
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const override;
     };
 
 

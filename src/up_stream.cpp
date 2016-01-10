@@ -219,6 +219,10 @@ auto up_stream::stream::get_underlying_engine() const -> const engine*
     return _engine->get_underlying_engine();
 }
 
+void up_stream::stream::_vtable_dummy() const { }
+
+
+void up_stream::stream::await::_vtable_dummy() const { }
 
 auto up_stream::to_string(stream::await::operation op) -> std::string
 {
@@ -387,3 +391,6 @@ void up_stream::stream::infinite_await::_wait(native_handle handle, operation op
 {
     do_poll(op, handle);
 }
+
+
+void up_stream::stream::engine::_vtable_dummy() const { }

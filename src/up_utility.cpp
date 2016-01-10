@@ -84,6 +84,9 @@ void up_utility::context_frame_base::walk(const visitor& visitor)
     }
 }
 
+void up_utility::context_frame_base::_vtable_dummy() const { }
+
+
 void up_utility::context_frame_walk(const context_frame_base::visitor& visitor)
 {
     context_frame_base::walk(visitor);

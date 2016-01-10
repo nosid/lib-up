@@ -47,6 +47,10 @@ namespace up_test
         void run();
     private:
         virtual void _run() = 0;
+    private:
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const;
     };
 
 

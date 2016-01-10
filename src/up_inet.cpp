@@ -1046,6 +1046,8 @@ auto up_inet::tcp::connection::incoming_cpu() const -> int
     return socket.getsockopt<int>(SOL_SOCKET, SO_INCOMING_CPU);
 }
 
+void up_inet::tcp::connection::_vtable_dummy() const { }
+
 
 class up_inet::tcp::listener::impl final
 {

@@ -149,6 +149,9 @@ namespace up_utility
         auto operator=(context_frame_base&& rhs) & noexcept -> context_frame_base& = delete;
     private:
         virtual void _walk(const visitor& visitor) const = 0;
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const;
     };
 
 

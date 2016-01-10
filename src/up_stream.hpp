@@ -87,6 +87,10 @@ namespace up_stream
         }
     protected:
         auto get_underlying_engine() const -> const engine*;
+    private:
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const;
     };
 
 
@@ -103,6 +107,9 @@ namespace up_stream
         }
     private:
         virtual void _wait(native_handle handle, operation op) = 0;
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const;
     };
 
     auto to_string(stream::await::operation op) -> std::string;
@@ -210,6 +217,10 @@ namespace up_stream
     protected:
         auto operator=(const self& rhs) & -> self& = default;
         auto operator=(self&& rhs) & noexcept -> self& = default;
+    private:
+        // classes with vtables should have at least one out-of-line virtual method definition
+        __attribute__((unused))
+        virtual void _vtable_dummy() const;
     };
 
 }
