@@ -64,15 +64,10 @@ namespace up_secure_hash
 
     void secure_hash_aux(secure_hash_mechanism mechanism, up::chunk::from* chunks, std::size_t count, up::chunk::into result);
 
-    auto secure_hash(secure_hash_mechanism mechanism, up::chunk::from chunk)
-    {
-        secure_hash_digest result(secure_hash_digest_size(mechanism));
-        secure_hash_aux(mechanism, &chunk, 1, result);
-        return result;
-    }
+    auto secure_hash(secure_hash_mechanism mechanism, up::chunk::from chunk) -> secure_hash_digest;
 
     template <typename... Chunks>
-    auto secure_hashv(secure_hash_mechanism mechanism, Chunks&&... chunks)
+    auto secure_hashv(secure_hash_mechanism mechanism, Chunks&&... chunks) -> secure_hash_digest
     {
         up::chunk::from items[sizeof...(chunks)] = {{chunks.data(), chunks.size(), }...};
         secure_hash_digest result(secure_hash_digest_size(mechanism));

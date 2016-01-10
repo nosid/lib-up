@@ -152,6 +152,15 @@ void up_secure_hash::secure_hash_aux(secure_hash_mechanism mechanism, up::chunk:
 }
 
 
+auto up_secure_hash::secure_hash(secure_hash_mechanism mechanism, up::chunk::from chunk)
+    -> secure_hash_digest
+{
+    secure_hash_digest result(secure_hash_digest_size(mechanism));
+    secure_hash_aux(mechanism, &chunk, 1, result);
+    return result;
+}
+
+
 class up_secure_hash::secure_hasher_aux::impl
 {
 public: // --- scope ---

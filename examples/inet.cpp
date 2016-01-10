@@ -12,6 +12,7 @@ namespace
 
     using namespace std::chrono_literals;
 
+    [[noreturn]]
     __attribute__((unused))
     void echo_server(up::tcp::endpoint endpoint)
     {
@@ -31,6 +32,7 @@ namespace
         }
     }
 
+    [[noreturn]]
     __attribute__((unused))
     void tls_echo_server(up::tcp::endpoint endpoint)
     {
