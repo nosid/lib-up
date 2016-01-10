@@ -121,9 +121,13 @@ int main(int argc, char* argv[])
             {});
 
         std::string hostname = "www.google.com";
-        for (auto&& address : up::ip::resolve_endpoints(hostname)) {
-            auto stream = up::tcp::socket(address.version())
-                .connect(up::tcp::endpoint(address, up::tcp::port(443)), deadline);
+        auto endpoints = up::ip::resolve_endpoints(hostname);
+        if (endpoints.empty()) {
+            std::cerr << "INVALID HOSTNAME: " << hostname << '\n';
+            return EXIT_SUCCESS;
+        } else {
+            auto stream = up::tcp::socket(endpoints[0].version())
+                .connect(up::tcp::endpoint(endpoints[0], up::tcp::port(443)), deadline);
             stream.upgrade([&](std::unique_ptr<up::stream::engine> engine) {
                     return tls.upgrade(std::move(engine), deadline, hostname,
                         [&](bool preverified, std::size_t depth, const up::tls::certificate& certificate) {
