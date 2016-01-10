@@ -5,8 +5,8 @@
  * compilers, there are no workarounds necessary.
  */
 
-// The following GCC-specific builtin functions are not supported by
-// Clang. The replacements return the wrong information, but at least it
-// compiles.
-#define __builtin_FILE() __FILE__
-#define __builtin_LINE() __LINE__
+// GCC supports builtin functions to get source information about the location
+// of an invocation. For Clang we fallback to __FILE__ and __LINE__. These
+// replacements return the wrong information, but at least it compiles.
+#define INVOCATION_FILE() __FILE__
+#define INVOCATION_LINE() __LINE__

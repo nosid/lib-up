@@ -53,7 +53,7 @@ project
       <toolset>clang:<cflags>-Wno-global-constructors
       <toolset>clang:<cflags>-Wno-gnu-anonymous-struct
       <toolset>clang:<cflags>-Wno-padded
-      <toolset>clang:<cflags>-Wno-reserved-id-macro
+      <toolset>clang:<cflags>-Wno-reserved-id-macro # required for libxml2
       <toolset>clang:<cflags>-Wno-shadow
       <toolset>clang:<cflags>-Wno-sign-conversion
       <toolset>clang:<cflags>-Wno-switch-enum
