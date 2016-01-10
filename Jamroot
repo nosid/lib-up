@@ -56,7 +56,6 @@ project
       <toolset>clang:<cflags>-Wno-shadow
       <toolset>clang:<cflags>-Wno-sign-conversion
       <toolset>clang:<cflags>-Wno-switch-enum
-      <toolset>clang:<cflags>-Wno-unused-member-function
       <toolset>clang:<cflags>-Wno-used-but-marked-unused
       <toolset>clang:<cflags>-Wno-weak-vtables
     : build-dir bin/

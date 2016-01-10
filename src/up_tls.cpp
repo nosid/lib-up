@@ -39,12 +39,14 @@ namespace
             return instance;
         }
     private:
+        __attribute__((unused)) // required because of compile-type type dispatch
         static void _put_thread_id(CRYPTO_THREADID* result, void* value)
         {
             ::CRYPTO_THREADID_set_pointer(result, value);
         }
         template <typename Integer,
                   typename = typename std::enable_if<std::is_unsigned<Integer>::value>::type>
+        __attribute__((unused)) // required because of compile-type type dispatch
         static void _put_thread_id(CRYPTO_THREADID* result, Integer value)
         {
             unsigned long v{value};
