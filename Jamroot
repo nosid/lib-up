@@ -34,6 +34,35 @@ project
       <toolset>clang:<include>/usr/include/libcxxabi
       <toolset>clang:<cflags>-fdiagnostics-color
       <toolset>clang:<cflags>-include\ workaround_clang.hpp
+      # With Clang it is possible to enable all warnings and then
+      # selectively disable a few of them. More static code analysis
+      # might lead to better code quality. Initially, I have disabled
+      # all additional warnings which prevented compiling the code.
+      # TODO: Selectively re-enable useful warnings.
+      <toolset>clang:<cflags>-Weverything
+      <toolset>clang:<cflags>-Wno-c++98-compat
+      <toolset>clang:<cflags>-Wno-c++98-compat-pedantic
+      <toolset>clang:<cflags>-Wno-c99-extensions
+      <toolset>clang:<cflags>-Wno-conversion
+      <toolset>clang:<cflags>-Wno-covered-switch-default
+      <toolset>clang:<cflags>-Wno-deprecated
+      <toolset>clang:<cflags>-Wno-documentation-unknown-command
+      <toolset>clang:<cflags>-Wno-double-promotion
+      <toolset>clang:<cflags>-Wno-exit-time-destructors
+      <toolset>clang:<cflags>-Wno-format-nonliteral
+      <toolset>clang:<cflags>-Wno-global-constructors
+      <toolset>clang:<cflags>-Wno-gnu-anonymous-struct
+      <toolset>clang:<cflags>-Wno-missing-noreturn
+      <toolset>clang:<cflags>-Wno-missing-prototypes
+      <toolset>clang:<cflags>-Wno-padded
+      <toolset>clang:<cflags>-Wno-reserved-id-macro
+      <toolset>clang:<cflags>-Wno-shadow
+      <toolset>clang:<cflags>-Wno-sign-conversion
+      <toolset>clang:<cflags>-Wno-switch-enum
+      <toolset>clang:<cflags>-Wno-unreachable-code-loop-increment
+      <toolset>clang:<cflags>-Wno-unused-member-function
+      <toolset>clang:<cflags>-Wno-used-but-marked-unused
+      <toolset>clang:<cflags>-Wno-weak-vtables
     : build-dir bin/
     ;
 
