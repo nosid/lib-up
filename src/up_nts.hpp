@@ -26,8 +26,8 @@ namespace up_nts
             struct
             {
                 ref _ref;
-                std::array<char, handle_size - sizeof(ref)> _dummy;
-            };
+                std::array<char, handle_size - sizeof(ref)> _pad;
+            } _padded;
             std::array<char, handle_size> _data;
         };
         static_assert(std::is_standard_layout<handle>::value, "requires standard layout");
