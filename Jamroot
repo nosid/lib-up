@@ -49,7 +49,6 @@ project
       <toolset>clang:<cflags>-Wno-documentation-unknown-command
       <toolset>clang:<cflags>-Wno-double-promotion
       <toolset>clang:<cflags>-Wno-exit-time-destructors
-      <toolset>clang:<cflags>-Wno-format-nonliteral
       <toolset>clang:<cflags>-Wno-global-constructors
       <toolset>clang:<cflags>-Wno-padded
       <toolset>clang:<cflags>-Wno-reserved-id-macro # required for libxml2

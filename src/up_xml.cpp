@@ -41,6 +41,7 @@ namespace
     private:
         static auto _xml_load_uri(const char* URI, xmlCharEncoding encoding)
             -> xmlParserInputBufferPtr;
+        __attribute__((__format__(__printf__, 2, 0)))
         static void _xslt_generic_error(void* cookie, const char* msg, ...);
     public: // --- life ---
         explicit libxml_process()
@@ -125,6 +126,7 @@ namespace
                 return up::fabric(typeid(*this), "details", std::move(details));
             }
         };
+        __attribute__((__format__(__printf__, 2, 0)))
         static void _xml_generic_error(void* cookie, const char* msg, ...)
         {
             va_list ap;
