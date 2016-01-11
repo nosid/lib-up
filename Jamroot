@@ -47,7 +47,6 @@ project
       <toolset>clang:<cflags>-Wno-covered-switch-default
       <toolset>clang:<cflags>-Wno-deprecated # required by cxxabi
       <toolset>clang:<cflags>-Wno-documentation-unknown-command
-      <toolset>clang:<cflags>-Wno-double-promotion
       <toolset>clang:<cflags>-Wno-exit-time-destructors
       <toolset>clang:<cflags>-Wno-global-constructors
       <toolset>clang:<cflags>-Wno-padded
