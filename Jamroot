@@ -45,7 +45,7 @@ project
       <toolset>clang:<cflags>-Wno-c99-extensions
       <toolset>clang:<cflags>-Wno-conversion
       <toolset>clang:<cflags>-Wno-covered-switch-default
-      <toolset>clang:<cflags>-Wno-deprecated
+      <toolset>clang:<cflags>-Wno-deprecated # required by cxxabi
       <toolset>clang:<cflags>-Wno-documentation-unknown-command
       <toolset>clang:<cflags>-Wno-double-promotion
       <toolset>clang:<cflags>-Wno-exit-time-destructors
@@ -53,7 +53,6 @@ project
       <toolset>clang:<cflags>-Wno-padded
       <toolset>clang:<cflags>-Wno-reserved-id-macro # required for libxml2
       <toolset>clang:<cflags>-Wno-shadow
-      <toolset>clang:<cflags>-Wno-sign-conversion
       <toolset>clang:<cflags>-Wno-switch-enum
       <toolset>clang:<cflags>-Wno-used-but-marked-unused
       <toolset>clang:<cflags>-Wno-weak-vtables # false positives for classes defined in cpp files
