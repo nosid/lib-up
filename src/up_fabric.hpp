@@ -68,20 +68,18 @@ namespace up_fabric
 
     template <typename Head, typename... Tail>
     auto invoke_to_fabric(Head&& head, Tail&&... tail)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_to_fabric_aux::member<Head, Tail...>(),
-            decltype(std::declval<Head>().to_fabric(std::declval<Tail>()...))
-            >::type
+            decltype(std::declval<Head>().to_fabric(std::declval<Tail>()...))>
     {
         return std::forward<Head>(head).to_fabric(std::forward<Tail>(tail)...);
     }
 
     template <typename... Args>
     auto invoke_to_fabric(Args&&... args)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             !invoke_to_fabric_aux::member<Args...>(),
-            decltype(up_adl_to_fabric::invoke(std::declval<Args>()...))
-            >::type
+            decltype(up_adl_to_fabric::invoke(std::declval<Args>()...))>
     {
         return up_adl_to_fabric::invoke(std::forward<Args>(args)...);
     }
@@ -115,20 +113,18 @@ namespace up_fabric
 
     template <typename... Args>
     auto invoke_to_fabric_with_fallback(Args&&... args)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_to_fabric_with_fallback_aux::use_to_fabric<Args...>(),
-            decltype(invoke_to_fabric(std::declval<Args>()...))
-            >::type
+            decltype(invoke_to_fabric(std::declval<Args>()...))>
     {
         return invoke_to_fabric(std::forward<Args>(args)...);
     }
 
     template <typename Head, typename... Tail>
     auto invoke_to_fabric_with_fallback(Head&& head, Tail&&... tail)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_to_fabric_with_fallback_aux::use_to_string<Head, Tail...>(),
-            fabric
-            >::type
+            fabric>
     {
         return fabric(
             typeid(head),

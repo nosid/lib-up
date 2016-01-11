@@ -21,7 +21,7 @@ namespace up_ints
 
         template <typename Result, typename Type>
         static auto cast(Type value)
-            -> typename std::enable_if<std::is_integral<Result>{} && std::is_integral<Type>{}, Result>::type
+            -> std::enable_if_t<std::is_integral<Result>{} && std::is_integral<Type>{}, Result>
         {
             /* The following builtin is supported by both Clang and GCC, gives
              * reasonable good results, and is likely to be improved with

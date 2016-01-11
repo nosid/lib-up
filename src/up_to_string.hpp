@@ -99,10 +99,9 @@ namespace up_to_string
      */
     template <typename Head, typename... Tail>
     auto invoke_to_string(Head&& head, Tail&&... tail)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_to_string_aux::member<Head, Tail...>(),
-            decltype(std::declval<Head>().to_string(std::declval<Tail>()...))
-            >::type
+            decltype(std::declval<Head>().to_string(std::declval<Tail>()...))>
     {
         return std::forward<Head>(head).to_string(std::forward<Tail>(tail)...);
     }
@@ -114,10 +113,9 @@ namespace up_to_string
      */
     template <typename... Args>
     auto invoke_to_string(Args&&... args)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             !invoke_to_string_aux::member<Args...>(),
-            decltype(up_adl_to_string::invoke(std::declval<Args>()...))
-            >::type
+            decltype(up_adl_to_string::invoke(std::declval<Args>()...))>
     {
         return up_adl_to_string::invoke(std::forward<Args>(args)...);
     }

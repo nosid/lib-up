@@ -86,10 +86,9 @@ namespace up_swap
     template <typename Head, typename... Tail>
     auto invoke_swap(Head&& head, Tail&&... tail)
         noexcept(noexcept(std::declval<Head>().swap(std::declval<Tail>()...)))
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_swap_aux::member<Head, Tail...>(),
-            decltype(std::declval<Head>().swap(std::declval<Tail>()...))
-            >::type
+            decltype(std::declval<Head>().swap(std::declval<Tail>()...))>
     {
         return std::forward<Head>(head).swap(std::forward<Tail>(tail)...);
     }
@@ -104,10 +103,9 @@ namespace up_swap
     template <typename... Args>
     auto invoke_swap(Args&&... args)
         noexcept(noexcept(up_adl_swap::invoke(std::declval<Args>()...)))
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             !invoke_swap_aux::member<Args...>(),
-            decltype(up_adl_swap::invoke(std::declval<Args>()...))
-            >::type
+            decltype(up_adl_swap::invoke(std::declval<Args>()...))>
     {
         return up_adl_swap::invoke(std::forward<Args>(args)...);
     }

@@ -332,7 +332,7 @@ namespace up_terse_map
         }
         template <
             typename P,
-            typename = typename std::enable_if<std::is_constructible<value_type, P>::value>::type>
+            typename = std::enable_if_t<std::is_constructible<value_type, P>::value>>
         auto insert(P&& obj) -> std::pair<iterator, bool>
         {
             return _insert_value(std::forward<P>(obj));

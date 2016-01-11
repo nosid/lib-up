@@ -68,10 +68,9 @@ namespace up_out
      */
     template <typename Stream, typename Head, typename... Tail>
     auto invoke_out(Stream&& os, Head&& head, Tail&&... tail)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_out_aux::member<Stream, Head, Tail...>(),
-            decltype(std::declval<Head>().out(std::declval<Stream>(), std::declval<Tail>()...))
-            >::type
+            decltype(std::declval<Head>().out(std::declval<Stream>(), std::declval<Tail>()...))>
     {
         return std::forward<Head>(head).out(
             std::forward<Stream>(os), std::forward<Tail>(tail)...);
@@ -84,10 +83,9 @@ namespace up_out
      */
     template <typename Stream, typename... Args>
     auto invoke_out(Stream&& os, Args&&... args)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             invoke_out_aux::free<Stream, Args...>(),
-            decltype(up_adl_out::invoke(std::declval<Stream>(), std::declval<Args>()...))
-            >::type
+            decltype(up_adl_out::invoke(std::declval<Stream>(), std::declval<Args>()...))>
     {
         return up_adl_out::invoke(std::forward<Stream>(os), std::forward<Args>(args)...);
     }
@@ -99,11 +97,10 @@ namespace up_out
      */
     template <typename Stream, typename Type>
     auto invoke_out(Stream&& os, Type&& value)
-        -> typename std::enable_if<
+        -> std::enable_if_t<
             !invoke_out_aux::member<Stream, Type>()
             && !invoke_out_aux::free<Stream, Type>(),
-            decltype(std::declval<Stream>() << std::declval<Type>())
-            >::type
+            decltype(std::declval<Stream>() << std::declval<Type>())>
     {
         return std::forward<Stream>(os) << std::forward<Type>(value);
     }

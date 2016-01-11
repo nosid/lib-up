@@ -45,7 +45,7 @@ namespace
             ::CRYPTO_THREADID_set_pointer(result, value);
         }
         template <typename Integer,
-                  typename = typename std::enable_if<std::is_unsigned<Integer>::value>::type>
+                  typename = std::enable_if_t<std::is_unsigned<Integer>::value>>
         __attribute__((unused)) // required because of compile-type type dispatch
         static void _put_thread_id(CRYPTO_THREADID* result, Integer value)
         {
