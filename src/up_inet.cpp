@@ -1059,6 +1059,7 @@ public: // --- life ---
     explicit impl(up::impl_ptr<socket::impl, socket::destroy>&& socket, int backlog)
         : _socket(std::move(socket))
     {
+        // TODO: Linux 4.4 added support for SO_INCOMING_CPU on listeners
         int rv = ::listen(_socket->_fd, backlog);
         if (rv != 0) {
             UP_RAISE(runtime, "tcp-socket-listen-error"_sl, backlog, up::errno_info(errno));
