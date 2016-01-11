@@ -7,6 +7,7 @@
 namespace up_secure_hash
 {
 
+    // TODO: Add SHA-3 (aka Keccak) as soon as OpenSSL supports it.
     enum class secure_hash_mechanism { md5, sha1, sha224, sha256, sha384, sha512, };
 
     auto to_string(secure_hash_mechanism mechanism) -> std::string;
