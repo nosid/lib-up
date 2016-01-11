@@ -338,7 +338,7 @@ namespace
     {
     protected: // --- scope ---
         using self = base_engine;
-        using await = up::stream::await;
+        using patience = up::stream::patience;
         enum class state { good, bad, read_in_progress, write_in_progress, shutdown_in_progress, shutdown_completed, };
         /* The OpenSSL functions behave a bit strange when it comes to errors.
          * Apparently, even if a function returns with an error, the function
@@ -388,7 +388,7 @@ namespace
         mutable state _state = state::bad;
     protected: // --- life ---
         explicit base_engine(
-            ssl_ptr ssl, std::unique_ptr<up::stream::engine> underlying, await& awaiting, int handshake(SSL*))
+            ssl_ptr ssl, std::unique_ptr<up::stream::engine> underlying, patience& patience, int handshake(SSL*))
             : _ssl(std::move(ssl)), _underlying(std::move(underlying))
         {
             if (_ssl == nullptr) {
@@ -415,9 +415,9 @@ namespace
                 } else {
                     auto error = ::SSL_get_error(_ssl.get(), result);
                     if (error == SSL_ERROR_WANT_READ) {
-                        awaiting(_underlying->get_native_handle(), await::operation::read);
+                        patience(_underlying->get_native_handle(), patience::operation::read);
                     } else if (error == SSL_ERROR_WANT_WRITE) {
-                        awaiting(_underlying->get_native_handle(), await::operation::write);
+                        patience(_underlying->get_native_handle(), patience::operation::write);
                     } else {
                         raise_ssl_error("tls-io-error"_sl, result, error);
                     }
@@ -992,10 +992,10 @@ public: // --- life ---
     explicit server_engine(
         SSL_CTX* ssl_ctx,
         std::unique_ptr<up::stream::engine> underlying,
-        await& awaiting,
+        patience& patience,
         const hostname_callback& callback)
         : auxiliary(callback)
-        , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
+        , base_engine(prepare(ssl_ctx, this), std::move(underlying), patience, ::SSL_accept)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
     }
@@ -1021,12 +1021,12 @@ up_tls::tls::server_context::server_context(identity identity, options options)
 
 auto up_tls::tls::server_context::upgrade(
     std::unique_ptr<up::stream::engine> engine,
-    up::stream::await& awaiting,
+    up::stream::patience& patience,
     const hostname_callback& callback)
     -> std::unique_ptr<up::stream::engine>
 {
     return std::make_unique<impl::server_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), patience, callback);
 }
 
 
@@ -1132,10 +1132,10 @@ public: // --- life ---
     explicit secure_engine(
         SSL_CTX* ssl_ctx,
         std::unique_ptr<up::stream::engine> underlying,
-        await& awaiting,
+        patience& patience,
         const verify_callback& callback)
         : auxiliary(callback)
-        , base_engine(prepare(ssl_ctx, this), std::move(underlying), awaiting, ::SSL_accept)
+        , base_engine(prepare(ssl_ctx, this), std::move(underlying), patience, ::SSL_accept)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
         // sanity checks; should have already been done by OpenSSL library
@@ -1162,12 +1162,12 @@ up_tls::tls::secure_context::secure_context(authority authority, identity identi
 
 auto up_tls::tls::secure_context::upgrade(
     std::unique_ptr<up::stream::engine> engine,
-    up::stream::await& awaiting,
+    up::stream::patience& patience,
     const verify_callback& callback)
     -> std::unique_ptr<up::stream::engine>
 {
     return std::make_unique<impl::secure_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, callback);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), patience, callback);
 }
 
 
@@ -1258,11 +1258,11 @@ public: // --- life ---
     explicit client_engine(
         SSL_CTX* ssl_ctx,
         std::unique_ptr<up::stream::engine> underlying,
-        await& awaiting,
+        patience& patience,
         const up::optional<std::string>& hostname,
         const verify_callback& callback)
         : auxiliary(callback)
-        , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), awaiting, ::SSL_connect)
+        , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), patience, ::SSL_connect)
     {
         openssl_process::instance().ssl_reset_ptr(_ssl.get());
         // sanity checks; should have already been done by OpenSSL library
@@ -1290,11 +1290,11 @@ up_tls::tls::client_context::client_context(
 
 auto up_tls::tls::client_context::upgrade(
     std::unique_ptr<up::stream::engine> engine,
-    up::stream::await& awaiting,
+    up::stream::patience& patience,
     const up::optional<std::string>& hostname,
     const verify_callback& callback)
     -> std::unique_ptr<up::stream::engine>
 {
     return std::make_unique<impl::client_engine>(
-        _impl->get_underlying_ssl_ctx(), std::move(engine), awaiting, hostname, callback);
+        _impl->get_underlying_ssl_ctx(), std::move(engine), patience, hostname, callback);
 }

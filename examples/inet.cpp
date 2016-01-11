@@ -21,8 +21,8 @@ namespace
         for (;;) {
             auto buffer = up::buffer();
             auto now = up::steady_clock::now();
-            auto stream = listener.accept(up::stream::steady_await(now, 3s));
-            auto deadline = up::stream::deadline_await(now + 30s);
+            auto stream = listener.accept(up::stream::steady_patience(now, 3s));
+            auto deadline = up::stream::deadline_patience(now + 30s);
             while (auto count = stream.read_some(buffer.reserve(1 << 14), deadline)) {
                 buffer.produce(count);
                 while (buffer.available()) {
@@ -46,7 +46,7 @@ namespace
         auto listener = up::tcp::socket(std::move(endpoint), {o::reuseaddr}).listen(1);
         for (;;) {
             auto now = up::steady_clock::now();
-            auto deadline = up::stream::deadline_await(now + 30s);
+            auto deadline = up::stream::deadline_patience(now + 30s);
             auto stream = listener.accept(deadline);
             up::tls::server_context::hostname_callback callback = [](std::string hostname) -> up::tls::server_context& {
                 std::cerr << "HOSTNAME:" << hostname << '\n';
@@ -72,23 +72,23 @@ namespace
     }
 
     __attribute__((unused))
-    auto connect(up::ip::endpoint address, const up::string_view& port, up::stream::await& await)
+    auto connect(up::ip::endpoint address, const up::string_view& port, up::stream::patience& patience)
         -> up::tcp::connection
     {
         return up::tcp::socket(address.version())
-            .connect(up::tcp::endpoint(address, up::tcp::resolve_port(port)), await);
+            .connect(up::tcp::endpoint(address, up::tcp::resolve_port(port)), patience);
     }
 
     __attribute__((unused))
-    void http_get(up::stream stream, up::stream::await& await)
+    void http_get(up::stream stream, up::stream::patience& patience)
     {
         std::string request("GET / HTTP/1.0\r\n\r\n");
-        stream.write_all(up::chunk::from(request), await);
+        stream.write_all(up::chunk::from(request), patience);
         auto buffer = up::buffer();
-        while (auto count = stream.read_some(buffer.reserve(1 << 14), await)) {
+        while (auto count = stream.read_some(buffer.reserve(1 << 14), patience)) {
             buffer.produce(count);
         }
-        stream.graceful_close(await);
+        stream.graceful_close(patience);
     }
 
 }
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
         }
 
         auto now = up::steady_clock::now();
-        auto deadline = up::stream::deadline_await(now + 30s);
+        auto deadline = up::stream::deadline_patience(now + 30s);
 
         for (auto&& address : up::ip::resolve_endpoints("www.heise.de.")) {
             // skip IPv6 addresses

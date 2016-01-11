@@ -226,10 +226,10 @@ namespace up_inet
             lhs.swap(rhs);
         }
         auto to_fabric() const -> up::fabric;
-        auto accept(up::stream::await& awaiting) -> connection;
-        auto accept(up::stream::await&& awaiting) -> connection
+        auto accept(up::stream::patience& patience) -> connection;
+        auto accept(up::stream::patience&& patience) -> connection
         {
-            return accept(awaiting);
+            return accept(patience);
         }
     };
 
@@ -263,10 +263,10 @@ namespace up_inet
         }
         auto to_fabric() const -> up::fabric;
         auto endpoint() const -> const tcp::endpoint&;
-        auto connect(const tcp::endpoint& remote, up::stream::await& awaiting) && -> connection;
-        auto connect(const tcp::endpoint& remote, up::stream::await&& awaiting) && -> connection
+        auto connect(const tcp::endpoint& remote, up::stream::patience& patience) && -> connection;
+        auto connect(const tcp::endpoint& remote, up::stream::patience&& patience) && -> connection
         {
-            return std::move(*this).connect(remote, awaiting);
+            return std::move(*this).connect(remote, patience);
         }
         auto listen(int backlog) && -> listener;
     };

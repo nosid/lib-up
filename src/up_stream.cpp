@@ -27,32 +27,32 @@ namespace
     struct
     {
         using engine = up_stream::stream::engine;
-        using await = up_stream::stream::await;
+        using patience = up_stream::stream::patience;
         template <typename Result, typename... Params, typename... Args>
-        auto operator()(const engine& engine, await& awaiting,
+        auto operator()(const engine& engine, patience& patience,
             Result (engine::* fn)(Params...) const, Args&&... args) -> Result
         {
             for (;;) {
                 try {
                     return (engine.*fn)(args...);
                 } catch (const up::exception<engine::unreadable>&) {
-                    awaiting(engine.get_native_handle(), await::operation::read);
+                    patience(engine.get_native_handle(), patience::operation::read);
                 } catch (const up::exception<engine::unwritable>&) {
-                    awaiting(engine.get_native_handle(), await::operation::write);
+                    patience(engine.get_native_handle(), patience::operation::write);
                 }
             }
         }
         template <typename Result, typename... Params, typename... Args>
-        auto operator()(engine& engine, await& awaiting,
+        auto operator()(engine& engine, patience& patience,
             Result (engine::* fn)(Params...), Args&&... args) -> Result
         {
             for (;;) {
                 try {
                     return (engine.*fn)(args...);
                 } catch (const up::exception<engine::unreadable>&) {
-                    awaiting(engine.get_native_handle(), await::operation::read);
+                    patience(engine.get_native_handle(), patience::operation::read);
                 } catch (const up::exception<engine::unwritable>&) {
-                    awaiting(engine.get_native_handle(), await::operation::write);
+                    patience(engine.get_native_handle(), patience::operation::write);
                 }
             }
         }
@@ -69,20 +69,20 @@ namespace
         } // else: nothing
     }
 
-    auto make_poll_events(up_stream::stream::await::operation op) -> short
+    auto make_poll_events(up_stream::stream::patience::operation op) -> short
     {
         switch (op) {
-        case up_stream::stream::await::operation::read:
+        case up_stream::stream::patience::operation::read:
             return POLLIN;
-        case up_stream::stream::await::operation::write:
+        case up_stream::stream::patience::operation::write:
             return POLLOUT;
         }
-        UP_RAISE(runtime, "unexpected-stream-await-operation"_sl, op);
+        UP_RAISE(runtime, "unexpected-stream-patience-operation"_sl, op);
     }
 
     template <typename... Handles>
     auto do_poll(
-        up_stream::stream::await::operation op,
+        up_stream::stream::patience::operation op,
         up_stream::stream::native_handle handle,
         Handles... handles)
         -> std::size_t
@@ -127,16 +127,16 @@ up_stream::stream::stream(std::unique_ptr<engine> engine)
     check_state(_engine);
 }
 
-void up_stream::stream::shutdown(await& awaiting) const
+void up_stream::stream::shutdown(patience& patience) const
 {
     check_state(_engine);
-    return blocking(*_engine, awaiting, &engine::shutdown);
+    return blocking(*_engine, patience, &engine::shutdown);
 }
 
-void up_stream::stream::graceful_close(await& awaiting) const
+void up_stream::stream::graceful_close(patience& patience) const
 {
     check_state(_engine);
-    shutdown(awaiting);
+    shutdown(patience);
     for (;;) {
         try {
             char c;
@@ -147,56 +147,56 @@ void up_stream::stream::graceful_close(await& awaiting) const
                 break;
             }
         } catch (const up::exception<engine::unreadable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::read);
+            patience(_engine->get_native_handle(), patience::operation::read);
         } catch (const up::exception<engine::unwritable>&) {
-            awaiting(_engine->get_native_handle(), await::operation::write);
+            patience(_engine->get_native_handle(), patience::operation::write);
         }
     }
     _engine->hard_close();
 }
 
-auto up_stream::stream::read_some(up::chunk::into chunk, await& awaiting) const -> std::size_t
+auto up_stream::stream::read_some(up::chunk::into chunk, patience& patience) const -> std::size_t
 {
     check_state(_engine);
-    return blocking(*_engine, awaiting, &engine::read_some, std::move(chunk));
+    return blocking(*_engine, patience, &engine::read_some, std::move(chunk));
 }
 
-auto up_stream::stream::write_some(up::chunk::from chunk, await& awaiting) const -> std::size_t
+auto up_stream::stream::write_some(up::chunk::from chunk, patience& patience) const -> std::size_t
 {
     check_state(_engine);
-    return blocking(*_engine, awaiting, &engine::write_some, std::move(chunk));
+    return blocking(*_engine, patience, &engine::write_some, std::move(chunk));
 }
 
-auto up_stream::stream::read_some(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t
+auto up_stream::stream::read_some(up::chunk::into_bulk_t&& chunks, patience& patience) const -> std::size_t
 {
     check_state(_engine);
-    return blocking(*_engine, awaiting, &engine::read_some_bulk, std::move(chunks));
+    return blocking(*_engine, patience, &engine::read_some_bulk, std::move(chunks));
 }
 
-auto up_stream::stream::write_some(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t
+auto up_stream::stream::write_some(up::chunk::from_bulk_t&& chunks, patience& patience) const -> std::size_t
 {
     check_state(_engine);
-    return blocking(*_engine, awaiting, &engine::write_some_bulk, std::move(chunks));
+    return blocking(*_engine, patience, &engine::write_some_bulk, std::move(chunks));
 }
 
-void up_stream::stream::write_all(up::chunk::from chunk, await& awaiting) const
+void up_stream::stream::write_all(up::chunk::from chunk, patience& patience) const
 {
     /* A do-while loop is used, so that the function on the underlying engine
      * is called at least once. This is intentionally, so that the
      * implementation is similar to write_some. */
     check_state(_engine);
     do {
-        auto n = blocking(*_engine, awaiting, &engine::write_some, chunk);
+        auto n = blocking(*_engine, patience, &engine::write_some, chunk);
         chunk.drain(n);
     } while (chunk.size());
 }
 
-void up_stream::stream::write_all(up::chunk::from_bulk_t&& chunks, await& awaiting) const
+void up_stream::stream::write_all(up::chunk::from_bulk_t&& chunks, patience& patience) const
 {
     /* See above regarding the use of a do-while loop. */
     check_state(_engine);
     do {
-        auto n = blocking(*_engine, awaiting, &engine::write_some_bulk, chunks);
+        auto n = blocking(*_engine, patience, &engine::write_some_bulk, chunks);
         chunks.drain(n);
     } while (chunks.total());
 }
@@ -207,10 +207,10 @@ void up_stream::stream::upgrade(std::function<std::unique_ptr<engine>(std::uniqu
     _engine = transform(std::move(_engine));
 }
 
-void up_stream::stream::downgrade(await& awaiting)
+void up_stream::stream::downgrade(patience& patience)
 {
     check_state(_engine);
-    _engine = blocking(*_engine, awaiting, &engine::downgrade);
+    _engine = blocking(*_engine, patience, &engine::downgrade);
 }
 
 auto up_stream::stream::get_underlying_engine() const -> const engine*
@@ -222,21 +222,21 @@ auto up_stream::stream::get_underlying_engine() const -> const engine*
 void up_stream::stream::_vtable_dummy() const { }
 
 
-void up_stream::stream::await::_vtable_dummy() const { }
+void up_stream::stream::patience::_vtable_dummy() const { }
 
-auto up_stream::to_string(stream::await::operation op) -> std::string
+auto up_stream::to_string(stream::patience::operation op) -> std::string
 {
     switch (op) {
-    case stream::await::operation::read:
+    case stream::patience::operation::read:
         return up::invoke_to_string("read"_sl);
-    case stream::await::operation::write:
+    case stream::patience::operation::write:
         return up::invoke_to_string("write"_sl);
     }
-    UP_RAISE(runtime, "unexpected-stream-await-operation"_sl, op);
+    UP_RAISE(runtime, "unexpected-stream-patience-operation"_sl, op);
 }
 
 
-void up_stream::stream::steady_await::_wait(native_handle handle, operation op)
+void up_stream::stream::steady_patience::_wait(native_handle handle, operation op)
 {
     pollfd fds{up::to_underlying_type(handle), make_poll_events(op), 0};
     for (;;) {
@@ -256,18 +256,18 @@ void up_stream::stream::steady_await::_wait(native_handle handle, operation op)
             }
         } else if (rv == 0) {
             _now = up::steady_clock::now();
-            UP_RAISE(timeout, "stream-steady-await-timeout"_sl, op, _deadline, _duration);
+            UP_RAISE(timeout, "stream-steady-patience-timeout"_sl, op, _deadline, _duration);
         } else if (errno == EINTR) {
             // restart
             _now = up::steady_clock::now();
         } else {
-            UP_RAISE(runtime, "stream-steady-await-error"_sl, op, up::errno_info(errno));
+            UP_RAISE(runtime, "stream-steady-patience-error"_sl, op, up::errno_info(errno));
         }
     }
 }
 
 
-class up_stream::stream::deadline_await::impl final
+class up_stream::stream::deadline_patience::impl final
 {
 public: // --- scope ---
     using self = impl;
@@ -332,52 +332,52 @@ public: // --- operations ---
     void wait(native_handle handle, operation op) const
     {
         if (do_poll(op, handle, _fd) == 1) {
-            UP_RAISE(timeout, "stream-deadline-await-timeout"_sl, op, _clockid);
+            UP_RAISE(timeout, "stream-deadline-patience-timeout"_sl, op, _clockid);
         }
     }
 };
 
 
-void up_stream::stream::deadline_await::destroy(impl* ptr)
+void up_stream::stream::deadline_patience::destroy(impl* ptr)
 {
     std::default_delete<impl>()(ptr);
 }
 
-up_stream::stream::deadline_await::deadline_await()
+up_stream::stream::deadline_patience::deadline_patience()
     : _impl()
 { }
 
-up_stream::stream::deadline_await::deadline_await(const up::system_time_point& expires_at)
+up_stream::stream::deadline_patience::deadline_patience(const up::system_time_point& expires_at)
     : _impl(up::impl_make(CLOCK_REALTIME, expires_at.time_since_epoch(), true))
 { }
 
-up_stream::stream::deadline_await::deadline_await(const up::steady_time_point& expires_at)
+up_stream::stream::deadline_patience::deadline_patience(const up::steady_time_point& expires_at)
     : _impl(up::impl_make(CLOCK_MONOTONIC, expires_at.time_since_epoch(), true))
 { }
 
-up_stream::stream::deadline_await::deadline_await(const up::duration& expires_from_now)
+up_stream::stream::deadline_patience::deadline_patience(const up::duration& expires_from_now)
     : _impl(up::impl_make(CLOCK_MONOTONIC, expires_from_now, false))
 { }
 
-auto up_stream::stream::deadline_await::operator=(const up::system_time_point& expires_at) & -> self&
+auto up_stream::stream::deadline_patience::operator=(const up::system_time_point& expires_at) & -> self&
 {
     _impl = impl::make(std::move(_impl), CLOCK_REALTIME, expires_at.time_since_epoch(), true);
     return *this;
 }
 
-auto up_stream::stream::deadline_await::operator=(const up::steady_time_point& expires_at) & -> self&
+auto up_stream::stream::deadline_patience::operator=(const up::steady_time_point& expires_at) & -> self&
 {
     _impl = impl::make(std::move(_impl), CLOCK_MONOTONIC, expires_at.time_since_epoch(), true);
     return *this;
 }
 
-auto up_stream::stream::deadline_await::operator=(const up::duration& expires_from_now) & -> self&
+auto up_stream::stream::deadline_patience::operator=(const up::duration& expires_from_now) & -> self&
 {
     _impl = impl::make(std::move(_impl), CLOCK_MONOTONIC, expires_from_now, false);
     return *this;
 }
 
-void up_stream::stream::deadline_await::_wait(native_handle handle, operation op)
+void up_stream::stream::deadline_patience::_wait(native_handle handle, operation op)
 {
     if (_impl) {
         _impl->wait(handle, op);
@@ -387,7 +387,7 @@ void up_stream::stream::deadline_await::_wait(native_handle handle, operation op
 }
 
 
-void up_stream::stream::infinite_await::_wait(native_handle handle, operation op)
+void up_stream::stream::infinite_patience::_wait(native_handle handle, operation op)
 {
     do_poll(op, handle);
 }

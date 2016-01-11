@@ -154,7 +154,7 @@ namespace up_tls
          */
         auto upgrade(
             std::unique_ptr<up::stream::engine> engine,
-            up::stream::await& awaiting,
+            up::stream::patience& patience,
             const hostname_callback& callback)
             -> std::unique_ptr<up::stream::engine>;
     };
@@ -200,7 +200,7 @@ namespace up_tls
          */
         auto upgrade(
             std::unique_ptr<up::stream::engine> engine,
-            up::stream::await& awaiting,
+            up::stream::patience& patience,
             const verify_callback& callback)
             -> std::unique_ptr<up::stream::engine>;
     };
@@ -246,7 +246,7 @@ namespace up_tls
          */
         auto upgrade(
             std::unique_ptr<up::stream::engine> engine,
-            up::stream::await& awaiting,
+            up::stream::patience& patience,
             const up::optional<std::string>& hostname,
             const verify_callback& callback)
             -> std::unique_ptr<up::stream::engine>;

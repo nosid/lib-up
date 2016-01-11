@@ -1093,7 +1093,7 @@ auto up_inet::tcp::listener::to_fabric() const -> up::fabric
     return _impl->to_fabric();
 }
 
-auto up_inet::tcp::listener::accept(up::stream::await& awaiting) -> connection
+auto up_inet::tcp::listener::accept(up::stream::patience& patience) -> connection
 {
     bool waited = false;
     sockaddr_storage addr;
@@ -1110,7 +1110,7 @@ auto up_inet::tcp::listener::accept(up::stream::await& awaiting) -> connection
             socket->setsockopt(IPPROTO_TCP, TCP_NODELAY, int(1));
             return connection(std::make_unique<connection::engine>(std::move(socket), make_tcp_endpoint(&addr, length)));
         } else if (!waited && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-            awaiting(_impl->_socket->get_native_handle(), up::stream::await::operation::read);
+            patience(_impl->_socket->get_native_handle(), up::stream::patience::operation::read);
             waited = true;
         } else if (errno == EINTR) {
             // restart
@@ -1163,7 +1163,7 @@ auto up_inet::tcp::socket::endpoint() const -> const tcp::endpoint&
     return _impl->_endpoint;
 }
 
-auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::await& awaiting) &&
+auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::patience& patience) &&
     -> connection
 {
     with_sockaddr(remote, [&](const sockaddr* addr, socklen_t addrlen) {
@@ -1175,7 +1175,7 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::awai
             } else if (errno == EINTR) {
                 // restart
             } else if (errno == EINPROGRESS) {
-                awaiting(_impl->get_native_handle(), up::stream::await::operation::write);
+                patience(_impl->get_native_handle(), up::stream::patience::operation::write);
                 if (auto error = _impl->getsockopt<int>(SOL_SOCKET, SO_ERROR)) {
                     UP_RAISE(runtime, "tcp-socket-connect-error"_sl, remote, up::errno_info(error));
                 } else {

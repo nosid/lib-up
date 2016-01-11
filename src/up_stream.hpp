@@ -16,10 +16,10 @@ namespace up_stream
         using self = stream;
         enum class native_handle : int { invalid = -1, };
         class timeout;
-        class await;
-        class steady_await;
-        class deadline_await;
-        class infinite_await;
+        class patience;
+        class steady_patience;
+        class deadline_patience;
+        class infinite_patience;
         class engine;
     private: // --- state ---
         std::unique_ptr<engine> _engine;
@@ -39,51 +39,51 @@ namespace up_stream
         {
             lhs.swap(rhs);
         }
-        void shutdown(await& awaiting) const;
-        void shutdown(await&& awaiting) const
+        void shutdown(patience& patience) const;
+        void shutdown(patience&& patience) const
         {
-            shutdown(awaiting);
+            shutdown(patience);
         }
-        void graceful_close(await& awaiting) const;
-        void graceful_close(await&& awaiting) const
+        void graceful_close(patience& patience) const;
+        void graceful_close(patience&& patience) const
         {
-            graceful_close(awaiting);
+            graceful_close(patience);
         }
-        auto read_some(up::chunk::into chunk, await& awaiting) const -> std::size_t;
-        auto read_some(up::chunk::into chunk, await&& awaiting) const -> std::size_t
+        auto read_some(up::chunk::into chunk, patience& patience) const -> std::size_t;
+        auto read_some(up::chunk::into chunk, patience&& patience) const -> std::size_t
         {
-            return read_some(std::move(chunk), awaiting);
+            return read_some(std::move(chunk), patience);
         }
-        auto write_some(up::chunk::from chunk, await& awaiting) const -> std::size_t;
-        auto write_some(up::chunk::from chunk, await&& awaiting) const -> std::size_t
+        auto write_some(up::chunk::from chunk, patience& patience) const -> std::size_t;
+        auto write_some(up::chunk::from chunk, patience&& patience) const -> std::size_t
         {
-            return write_some(std::move(chunk), awaiting);
+            return write_some(std::move(chunk), patience);
         }
-        auto read_some(up::chunk::into_bulk_t&& chunks, await& awaiting) const -> std::size_t;
-        auto read_some(up::chunk::into_bulk_t&& chunks, await&& awaiting) const -> std::size_t
+        auto read_some(up::chunk::into_bulk_t&& chunks, patience& patience) const -> std::size_t;
+        auto read_some(up::chunk::into_bulk_t&& chunks, patience&& patience) const -> std::size_t
         {
-            return read_some(std::move(chunks), awaiting);
+            return read_some(std::move(chunks), patience);
         }
-        auto write_some(up::chunk::from_bulk_t&& chunks, await& awaiting) const -> std::size_t;
-        auto write_some(up::chunk::from_bulk_t&& chunks, await&& awaiting) const -> std::size_t
+        auto write_some(up::chunk::from_bulk_t&& chunks, patience& patience) const -> std::size_t;
+        auto write_some(up::chunk::from_bulk_t&& chunks, patience&& patience) const -> std::size_t
         {
-            return write_some(std::move(chunks), awaiting);
+            return write_some(std::move(chunks), patience);
         }
-        void write_all(up::chunk::from chunk, await& awaiting) const;
-        void write_all(up::chunk::from chunk, await&& awaiting) const
+        void write_all(up::chunk::from chunk, patience& patience) const;
+        void write_all(up::chunk::from chunk, patience&& patience) const
         {
-            write_all(std::move(chunk), awaiting);
+            write_all(std::move(chunk), patience);
         }
-        void write_all(up::chunk::from_bulk_t&& chunks, await& awaiting) const;
-        void write_all(up::chunk::from_bulk_t&& chunks, await&& awaiting) const
+        void write_all(up::chunk::from_bulk_t&& chunks, patience& patience) const;
+        void write_all(up::chunk::from_bulk_t&& chunks, patience&& patience) const
         {
-            write_all(std::move(chunks), awaiting);
+            write_all(std::move(chunks), patience);
         }
         void upgrade(std::function<std::unique_ptr<engine>(std::unique_ptr<engine>)> transform);
-        void downgrade(await& awaiting);
-        void downgrade(await&& awaiting)
+        void downgrade(patience& patience);
+        void downgrade(patience&& patience)
         {
-            downgrade(awaiting);
+            downgrade(patience);
         }
     protected:
         auto get_underlying_engine() const -> const engine*;
@@ -94,12 +94,12 @@ namespace up_stream
     };
 
 
-    class stream::await
+    class stream::patience
     {
     public: // --- scope ---
         enum class operation { read, write, };
     protected: // --- life ---
-        ~await() noexcept = default;
+        ~patience() noexcept = default;
     public: // --- operations ---
         void operator()(native_handle handle, operation op)
         {
@@ -112,13 +112,13 @@ namespace up_stream
         virtual void _vtable_dummy() const;
     };
 
-    auto to_string(stream::await::operation op) -> std::string;
+    auto to_string(stream::patience::operation op) -> std::string;
 
 
-    class stream::steady_await final : public stream::await
+    class stream::steady_patience final : public stream::patience
     {
     public : // --- scope ---
-        using self = steady_await;
+        using self = steady_patience;
     private: // --- state ---
         up::steady_time_point& _now;
         up::steady_time_point _deadline;
@@ -126,11 +126,11 @@ namespace up_stream
     public: // --- life ---
         /* The argument now is passed as lvalue reference, and will be
          * automatically updated in the wait method. */
-        explicit steady_await(up::steady_time_point& now, const up::steady_time_point& deadline)
+        explicit steady_patience(up::steady_time_point& now, const up::steady_time_point& deadline)
             : _now(now), _deadline(deadline), _duration(deadline - now)
         { }
         template <typename Rep, typename Period>
-        explicit steady_await(up::steady_time_point& now, const std::chrono::duration<Rep, Period>& duration)
+        explicit steady_patience(up::steady_time_point& now, const std::chrono::duration<Rep, Period>& duration)
             : self(now, now + duration)
         { }
     private: // --- operations ---
@@ -138,22 +138,22 @@ namespace up_stream
     };
 
 
-    class stream::deadline_await final : public stream::await
+    class stream::deadline_patience final : public stream::patience
     {
     public : // --- scope ---
-        using self = deadline_await;
+        using self = deadline_patience;
         class impl;
         static void destroy(impl* ptr);
     private: // --- state ---
         up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
-        explicit deadline_await();
-        explicit deadline_await(const up::system_time_point& expires_at);
-        explicit deadline_await(const up::steady_time_point& expires_at);
-        explicit deadline_await(const up::duration& expires_from_now);
-        deadline_await(const self& rhs) = delete;
-        deadline_await(self&& rhs) noexcept = default;
-        ~deadline_await() noexcept = default;
+        explicit deadline_patience();
+        explicit deadline_patience(const up::system_time_point& expires_at);
+        explicit deadline_patience(const up::steady_time_point& expires_at);
+        explicit deadline_patience(const up::duration& expires_from_now);
+        deadline_patience(const self& rhs) = delete;
+        deadline_patience(self&& rhs) noexcept = default;
+        ~deadline_patience() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
         auto operator=(self&& rhs) & noexcept -> self& = default;
@@ -173,15 +173,15 @@ namespace up_stream
     };
 
 
-    class stream::infinite_await final : public stream::await
+    class stream::infinite_patience final : public stream::patience
     {
     public : // --- scope ---
-        using self = infinite_await;
+        using self = infinite_patience;
     public: // --- life ---
-        explicit infinite_await() = default;
-        infinite_await(const self& rhs) = delete;
-        infinite_await(self&& rhs) noexcept = default;
-        ~infinite_await() noexcept = default;
+        explicit infinite_patience() = default;
+        infinite_patience(const self& rhs) = delete;
+        infinite_patience(self&& rhs) noexcept = default;
+        ~infinite_patience() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = delete;
         auto operator=(self&& rhs) & noexcept -> self& = default;
