@@ -7,7 +7,7 @@
  * to write the arguments to the std::ostream.
  */
 
-#include "up_include.hpp"
+#include "up_detection_idiom.hpp"
 
 /**
  * The following namespace is used to find and invoke the correct overloaded,
@@ -29,36 +29,17 @@ namespace up_adl_out
 namespace up_out
 {
 
-    /**
-     * Internal helper class to check if a 'out' member or non-member function
-     * exists, that can be invoked with the given arguments (using SFINAE).
-     * This class is required to choose between member and non-member
-     * function.
-     */
-    class invoke_out_aux final
-    {
-    private: // --- scope ---
-        template <typename Stream, typename Head, typename... Tail>
-        static auto test_member(Stream&&, Head&&, Tail&&...) noexcept
-            -> decltype(std::declval<Head>().out(std::declval<Stream>(), std::declval<Tail>()...));
-        static void test_member(...);
-        template <typename... Args>
-        static auto test_free(Args&&...) noexcept
-            -> decltype(up_adl_out::invoke(std::declval<Args>()...));
-        static void test_free(...);
-    public:
-        template <typename... Args>
-        static constexpr auto member() -> bool
-        {
-            return noexcept(test_member(std::declval<Args>()...));
-        }
-        template <typename... Args>
-        static constexpr auto free() -> bool
-        {
-            return !noexcept(test_member(std::declval<Args>()...))
-                && noexcept(test_free(std::declval<Args>()...));
-        }
-    };
+    template <typename Stream, typename Type>
+    using member_out_t = decltype(std::declval<Type>().out(std::declval<Stream>()));
+
+    template <typename Stream, typename Type>
+    using has_member_out = up::is_detected<member_out_t, Stream, Type>;
+
+    template <typename Stream, typename Type>
+    using free_out_t = decltype(up_adl_out::invoke(std::declval<Stream>(), std::declval<Type>()));
+
+    template <typename Stream, typename Type>
+    using has_free_out = up::is_detected<free_out_t, Stream, Type>;
 
 
     /**
@@ -66,14 +47,13 @@ namespace up_out
      * will only take part in overload resolution if there is matching member
      * function.
      */
-    template <typename Stream, typename Head, typename... Tail>
-    auto invoke_out(Stream&& os, Head&& head, Tail&&... tail)
+    template <typename Stream, typename Type>
+    auto invoke_out(Stream&& os, Type&& value)
         -> std::enable_if_t<
-            invoke_out_aux::member<Stream, Head, Tail...>(),
-            decltype(std::declval<Head>().out(std::declval<Stream>(), std::declval<Tail>()...))>
+            has_member_out<Stream, Type>::value,
+            decltype(std::declval<Type>().out(std::declval<Stream>()))>
     {
-        return std::forward<Head>(head).out(
-            std::forward<Stream>(os), std::forward<Tail>(tail)...);
+        return std::forward<Type>(value).out(std::forward<Stream>(os));
     }
 
     /**
@@ -81,13 +61,13 @@ namespace up_out
      * It will only take part in overload resolution if there is matching
      * non-member function.
      */
-    template <typename Stream, typename... Args>
-    auto invoke_out(Stream&& os, Args&&... args)
+    template <typename Stream, typename Type>
+    auto invoke_out(Stream&& os, Type&& value)
         -> std::enable_if_t<
-            invoke_out_aux::free<Stream, Args...>(),
-            decltype(up_adl_out::invoke(std::declval<Stream>(), std::declval<Args>()...))>
+            !has_member_out<Stream, Type>() && has_free_out<Stream, Type>(),
+            decltype(up_adl_out::invoke(std::declval<Stream>(), std::declval<Type>()))>
     {
-        return up_adl_out::invoke(std::forward<Stream>(os), std::forward<Args>(args)...);
+        return up_adl_out::invoke(std::forward<Stream>(os), std::forward<Type>(value));
     }
 
     /**
@@ -98,8 +78,7 @@ namespace up_out
     template <typename Stream, typename Type>
     auto invoke_out(Stream&& os, Type&& value)
         -> std::enable_if_t<
-            !invoke_out_aux::member<Stream, Type>()
-            && !invoke_out_aux::free<Stream, Type>(),
+            !has_member_out<Stream, Type>() && !has_free_out<Stream, Type>(),
             decltype(std::declval<Stream>() << std::declval<Type>())>
     {
         return std::forward<Stream>(os) << std::forward<Type>(value);

@@ -7,7 +7,7 @@
  * functions (both for member and free functions).
  */
 
-#include "up_include.hpp"
+#include "up_detection_idiom.hpp"
 
 /**
  * @brief The namespace is used to find and invoke the proper non-member
@@ -45,35 +45,17 @@ namespace up_adl_swap
 namespace up_swap
 {
 
-    /**
-     * @private
-     *
-     * Internal helper class to check if there is a proper swap member
-     * function, i.e. it can be invoked with the given arguments. The class is
-     * required to choose between member and non-member function.
-     */
-    class invoke_swap_aux final
-    {
-    private:
-        template <typename Head, typename... Tail>
-        static auto test_member(Head&&, Tail&&...) noexcept
-            -> decltype(std::declval<Head>().swap(std::declval<Tail>()...));
-        static void test_member(...);
-        template <typename... Args>
-        static auto test_free(Args&&...) noexcept
-            -> decltype(up_adl_swap::invoke(std::declval<Args>()...));
-        static void test_free(...);
-    public:
-        template <typename... Args>
-        static constexpr auto member() -> bool
-        {
-            /* Prefer the member function if both exist. If neither exists,
-             * also prefer the member function, so that the compiler error
-             * message will point to the class with the missing overload. */
-            return noexcept(test_member(std::declval<Args>()...))
-                || !noexcept(test_free(std::declval<Args>()...));
-        }
-    };
+    template <typename Lhs, typename Rhs>
+    using member_swap_t = decltype(std::declval<Lhs>().swap(std::declval<Rhs>()));
+
+    template <typename Lhs, typename Rhs>
+    using has_member_swap = up::is_detected<member_swap_t, Lhs, Rhs>;
+
+    template <typename Lhs, typename Rhs>
+    using free_swap_t = decltype(up_adl_swap::invoke(std::declval<Lhs>(), std::declval<Rhs>()));
+
+    template <typename Lhs, typename Rhs>
+    using has_free_swap = up::is_detected<free_swap_t, Lhs, Rhs>;
 
 
     /**
@@ -83,14 +65,14 @@ namespace up_swap
      * will only take part in overload resolution if there is matching member
      * function.
      */
-    template <typename Head, typename... Tail>
-    auto invoke_swap(Head&& head, Tail&&... tail)
-        noexcept(noexcept(std::declval<Head>().swap(std::declval<Tail>()...)))
+    template <typename Lhs, typename Rhs>
+    auto invoke_swap(Lhs&& lhs, Rhs&& rhs)
+        noexcept(noexcept(std::declval<Lhs>().swap(std::declval<Rhs>())))
         -> std::enable_if_t<
-            invoke_swap_aux::member<Head, Tail...>(),
-            decltype(std::declval<Head>().swap(std::declval<Tail>()...))>
+            has_member_swap<Lhs, Rhs>() || !has_free_swap<Lhs, Rhs>(),
+            decltype(std::declval<Lhs>().swap(std::declval<Rhs>()))>
     {
-        return std::forward<Head>(head).swap(std::forward<Tail>(tail)...);
+        return std::forward<Lhs>(lhs).swap(std::forward<Rhs>(rhs));
     }
 
     /**
@@ -100,14 +82,14 @@ namespace up_swap
      * It will only take part in overload resolution if there is no matching
      * member function.
      */
-    template <typename... Args>
-    auto invoke_swap(Args&&... args)
-        noexcept(noexcept(up_adl_swap::invoke(std::declval<Args>()...)))
+    template <typename Lhs, typename Rhs>
+    auto invoke_swap(Lhs&& lhs, Rhs&& rhs)
+        noexcept(noexcept(up_adl_swap::invoke(std::declval<Lhs>(), std::declval<Rhs>())))
         -> std::enable_if_t<
-            !invoke_swap_aux::member<Args...>(),
-            decltype(up_adl_swap::invoke(std::declval<Args>()...))>
+            !has_member_swap<Lhs, Rhs>() && has_free_swap<Lhs, Rhs>(),
+            decltype(up_adl_swap::invoke(std::declval<Lhs>(), std::declval<Rhs>()))>
     {
-        return up_adl_swap::invoke(std::forward<Args>(args)...);
+        return up_adl_swap::invoke(std::forward<Lhs>(lhs), std::forward<Rhs>(rhs));
     }
 
 

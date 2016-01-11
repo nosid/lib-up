@@ -1,5 +1,6 @@
 #pragma once
 
+#include "up_detection_idiom.hpp"
 #include "up_string_view.hpp"
 
 /**
@@ -65,31 +66,17 @@ namespace up_adl_to_string
 namespace up_to_string
 {
 
-    /**
-     * Internal helper class to check if a to_string member or non-member
-     * function exists, that can be invoked with the given arguments (using
-     * SFINAE). This class is required to choose between member and non-member
-     * function.
-     */
-    class invoke_to_string_aux final
-    {
-    private:
-        template <typename Head, typename... Tail>
-        static auto test_member(Head&&, Tail&&...) noexcept
-            -> decltype(std::declval<Head>().to_string(std::declval<Tail>()...));
-        static void test_member(...);
-        template <typename... Args>
-        static auto test_free(Args&&...) noexcept
-            -> decltype(up_adl_to_string::invoke(std::declval<Args>()...));
-        static void test_free(...);
-    public:
-        template <typename... Args>
-        static constexpr auto member() -> bool
-        {
-            return noexcept(test_member(std::declval<Args>()...))
-                || !noexcept(test_free(std::declval<Args>()...));
-        }
-    };
+    template <typename Type>
+    using member_to_string_t = decltype(std::declval<Type>().to_string());
+
+    template <typename Type>
+    using has_member_to_string = up::is_detected<member_to_string_t, Type>;
+
+    template <typename Type>
+    using free_to_string_t = decltype(up_adl_to_string::invoke(std::declval<Type>()));
+
+    template <typename Type>
+    using has_free_to_string = up::is_detected<free_to_string_t, Type>;
 
 
     /**
@@ -97,13 +84,13 @@ namespace up_to_string
      * It will only take part in overload resolution if there is matching
      * member function.
      */
-    template <typename Head, typename... Tail>
-    auto invoke_to_string(Head&& head, Tail&&... tail)
+    template <typename Type>
+    auto invoke_to_string(Type&& value)
         -> std::enable_if_t<
-            invoke_to_string_aux::member<Head, Tail...>(),
-            decltype(std::declval<Head>().to_string(std::declval<Tail>()...))>
+            has_member_to_string<Type>() || !has_free_to_string<Type>(),
+            decltype(std::declval<Type>().to_string())>
     {
-        return std::forward<Head>(head).to_string(std::forward<Tail>(tail)...);
+        return std::forward<Type>(value).to_string();
     }
 
     /**
@@ -111,13 +98,13 @@ namespace up_to_string
      * function. It will only take part in overload resolution if there is
      * matching non-member function.
      */
-    template <typename... Args>
-    auto invoke_to_string(Args&&... args)
+    template <typename Type>
+    auto invoke_to_string(Type&& value)
         -> std::enable_if_t<
-            !invoke_to_string_aux::member<Args...>(),
-            decltype(up_adl_to_string::invoke(std::declval<Args>()...))>
+            !has_member_to_string<Type>() && has_free_to_string<Type>(),
+            decltype(up_adl_to_string::invoke(std::declval<Type>()))>
     {
-        return up_adl_to_string::invoke(std::forward<Args>(args)...);
+        return up_adl_to_string::invoke(std::forward<Type>(value));
     }
 
 }
