@@ -40,47 +40,47 @@ namespace up_widen
     }
 
 
-    template <typename To, typename From>
+    template <typename Result, typename Type>
     using is_widen_base = bool_constant<
-        std::is_signed<To>::value == std::is_signed<From>::value
-        && widest(std::numeric_limits<To>::min()) <= widest(std::numeric_limits<From>::min())
-        && widest(std::numeric_limits<To>::max()) >= widest(std::numeric_limits<From>::max())>;
+        std::is_signed<Result>::value == std::is_signed<Type>::value
+        && widest(std::numeric_limits<Result>::min()) <= widest(std::numeric_limits<Type>::min())
+        && widest(std::numeric_limits<Result>::max()) >= widest(std::numeric_limits<Type>::max())>;
 
-    template <typename To, typename From>
+    template <typename Result, typename Type>
     using is_widen = select<
-        std::is_integral<To>::value && std::is_integral<From>::value,
-        is_widen_base, false_t, To, From>;
+        std::is_integral<Result>::value && std::is_integral<Type>::value,
+        is_widen_base, false_t, Result, Type>;
 
 
-    template <typename From>
+    template <typename Type>
     class widener final
     {
     private: // --- state ---
-        From _value;
+        Type _value;
     public: // --- life ---
-        constexpr explicit widener(From value) noexcept
+        constexpr explicit widener(Type value) noexcept
             : _value(value)
         {
-            static_assert(noexcept(From(value)), "requires noexcept");
+            static_assert(noexcept(Type(value)), "requires noexcept");
         }
     public: // --- operations ---
-        template <typename To, typename = std::enable_if_t<is_widen<To, From>::value>>
-        constexpr operator To() const noexcept
+        template <typename Result, typename = std::enable_if_t<is_widen<Result, Type>::value>>
+        constexpr operator Result() const noexcept
         {
-            static_assert(noexcept(To{_value}), "requires noexcept");
+            static_assert(noexcept(Result{_value}), "requires noexcept");
             return {_value};
         }
     };
 
 
-    template <typename To>
+    template <typename Result>
     class widen_t final
     {
     public: // --- scope ---
-        template <typename From>
-        constexpr static auto widen(From value) noexcept -> To
+        template <typename Type>
+        constexpr static auto widen(Type value) noexcept -> Result
         {
-            static_assert(noexcept(To{value}), "requires noexcept");
+            static_assert(noexcept(Result{value}), "requires noexcept");
             return {value};
         }
     };
@@ -89,20 +89,20 @@ namespace up_widen
     class widen_t<void> final
     {
     public: // --- scope ---
-        template <typename From>
-        constexpr static auto widen(From value) noexcept -> widener<From>
+        template <typename Type>
+        constexpr static auto widen(Type value) noexcept -> widener<Type>
         {
-            static_assert(noexcept(widener<From>(value)), "requires noexcept");
-            return widener<From>(value);
+            static_assert(noexcept(widener<Type>(value)), "requires noexcept");
+            return widener<Type>(value);
         }
     };
 
 
-    template <typename To = void, typename From, typename = std::enable_if_t<
-        std::is_void<To>::value ? std::is_integral<From>::value : is_widen<To, From>::value>>
-    auto widen(From value)
+    template <typename Result = void, typename Type, typename = std::enable_if_t<
+        std::is_void<Result>::value ? std::is_integral<Type>::value : is_widen<Result, Type>::value>>
+    auto widen(Type value)
     {
-        return widen_t<To>::widen(value);
+        return widen_t<Result>::widen(value);
     }
 
 }
