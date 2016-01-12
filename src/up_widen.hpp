@@ -5,7 +5,7 @@
 namespace up_widen
 {
 
-    template <bool, template <typename...> typename True, template <typename...> typename False, typename... Types>
+    template <bool Condition, template <typename...> typename True, template <typename...> typename False, typename... Types>
     class select;
 
     template <template <typename...> typename True, template <typename...> typename False, typename... Types>
