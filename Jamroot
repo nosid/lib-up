@@ -9,6 +9,7 @@ project
       <cflags>-Wstrict-overflow # recommended by "Secure C++ Programming"
       <cflags>-Woverloaded-virtual # recommended by "Secure C++ Programming"
       <cflags>-Wreorder # recommended by "Secure C++ Programming"
+      <cflags>-Wsign-promo # recommended by "Secure C++ Programming"
       <cflags>-march=native
       <cxxflags>-std=c++1z
       # Workaround: Clang no longer supports -finline-functions (enabled on inlining=full

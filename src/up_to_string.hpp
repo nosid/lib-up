@@ -1,6 +1,7 @@
 #pragma once
 
 #include "up_detection_idiom.hpp"
+#include "up_promote.hpp"
 #include "up_string_view.hpp"
 
 /**
@@ -43,8 +44,32 @@ namespace up_adl_to_string
         return std::move(value);
     }
 
+
     // avoid choosing the overload with the const lvalue-reference
     auto to_string(const std::string&& value) -> std::string = delete;
+
+    /**
+     * Explicitly provide a template of integral types to avoid signed-ness
+     * issues caused by integral promotion.
+     */
+    template <typename Type>
+    auto to_string(Type value)
+        -> std::enable_if_t<std::is_integral<Type>::value, std::string>
+    {
+        return std::to_string(up::promote(value));
+    }
+
+    /**
+     * Explicitly provide a template of enum types to avoid signed-ness issues
+     * caused by integral promotion.
+     */
+    template <typename Type>
+    auto to_string(Type value)
+        -> std::enable_if_t<std::is_enum<Type>::value, std::string>
+    {
+        return std::to_string(up::promote(static_cast<std::underlying_type_t<Type>>(value)));
+    }
+
 
     /**
      * The substitution (intentionally) fails, if there is no matching
