@@ -1,0 +1,15 @@
+import testing ;
+
+lib up1
+    :
+    [ glob up_*.cpp ]
+    :
+    :
+    :
+    <include>.
+    ;
+
+run
+    test_main.cpp
+    [ glob test_up_*.cpp ]
+    up1 ;

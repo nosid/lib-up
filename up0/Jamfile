@@ -11,6 +11,7 @@ lib xslt ;
 lib up0
     :
     [ glob up_*.cpp ]
+    ../up1//up1
     :
     :
     <library>ssl
