@@ -1,6 +1,0 @@
-import testing ;
-
-run
-    main.cpp
-    [ glob test_*.cpp ]
-    ../src//up ;

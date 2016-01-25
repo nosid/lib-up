@@ -1,3 +1,3 @@
-exe test : test.cpp ../src//up ;
+exe test : test.cpp ../up0//up0 ;
 
-exe inet : inet.cpp ../src//up ;
+exe inet : inet.cpp ../up0//up0 ;

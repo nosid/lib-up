@@ -59,6 +59,5 @@ project
     : build-dir bin/
     ;
 
-build-project src ;
-build-project test ;
+build-project up0 ;
 build-project examples ;
