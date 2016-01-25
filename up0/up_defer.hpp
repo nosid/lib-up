@@ -11,8 +11,6 @@
  * much boilerplate, in particular for using C-libraries with C++.
  */
 
-#include "up_include.hpp"
-
 /// Designated namespace for the header file.
 namespace up_defer
 {

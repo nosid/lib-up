@@ -6,8 +6,6 @@
  * can be used with shorter names.
  */
 
-#include "up_include.hpp"
-
 #include <experimental/string_view>
 
 namespace up_string_view

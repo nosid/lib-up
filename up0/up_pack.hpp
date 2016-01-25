@@ -7,8 +7,6 @@
  * components.
  */
 
-#include "up_include.hpp"
-
 namespace up_pack
 {
 

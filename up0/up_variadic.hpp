@@ -7,8 +7,6 @@
  * added.
  */
 
-#include "up_include.hpp"
-
 namespace up_variadic
 {
 

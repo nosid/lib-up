@@ -1,5 +1,3 @@
-#include "up_include.hpp"
-
 #include <iostream>
 #include <sstream>
 

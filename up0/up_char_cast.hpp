@@ -1,7 +1,5 @@
 #pragma once
 
-#include "up_include.hpp"
-
 namespace up_char_cast
 {
 

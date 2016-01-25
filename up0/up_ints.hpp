@@ -8,8 +8,6 @@
  * different, even if they are identical on a particular platform.
  */
 
-#include "up_include.hpp"
-
 namespace up_ints
 {
 

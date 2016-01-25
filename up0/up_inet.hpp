@@ -1,7 +1,5 @@
 #pragma once
 
-#include "up_include.hpp"
-
 #include <cstdint>
 
 #include "up_impl_ptr.hpp"

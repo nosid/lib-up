@@ -7,8 +7,6 @@
  * types, which should simplify their usage.
  */
 
-#include "up_include.hpp"
-
 #include <chrono>
 
 namespace up_chrono

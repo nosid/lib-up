@@ -28,12 +28,14 @@ project
       <toolset>gcc:<linkflags>-Wsuggest-final-types
       <toolset>gcc:<linkflags>-Wsuggest-final-methods
       <toolset>gcc:<linkflags>-Wodr
-      <toolset>gcc:<cflags>-include\ workaround_gcc.hpp
+      <toolset>gcc:<cflags>-include\ ubiquitious.hpp
+      <toolset>gcc:<cflags>-include\ workaround_gcc.hpp 
       # CLANG
       <toolset>clang:<cxxflags>-stdlib=libc++
       <toolset>clang:<linkflags>-stdlib=libc++
       <toolset>clang:<include>/usr/include/libcxxabi
       <toolset>clang:<cflags>-fdiagnostics-color
+      <toolset>clang:<cflags>-include\ ubiquitious.hpp
       <toolset>clang:<cflags>-include\ workaround_clang.hpp
       # With Clang it is possible to enable all warnings and then
       # selectively disable a few of them. More static code analysis

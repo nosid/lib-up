@@ -24,12 +24,3 @@
 #include <typeinfo>
 #include <utility>
 #include <vector>
-
-/**
- * @brief Designated namespace for the @c up library.
- *
- * This namespace should be used by all internal and external consumers of
- * library components, even if the entities are actually declared in different
- * namespaces.
- */
-namespace up { }

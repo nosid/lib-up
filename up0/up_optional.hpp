@@ -6,8 +6,6 @@
  * be used with shorter names.
  */
 
-#include "up_include.hpp"
-
 #include <experimental/optional>
 
 #include "up_fabric.hpp"

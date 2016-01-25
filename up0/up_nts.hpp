@@ -1,7 +1,5 @@
 #pragma once
 
-#include "up_include.hpp"
-
 #include <array>
 
 #include "up_string_view.hpp"
