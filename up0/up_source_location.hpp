@@ -18,7 +18,7 @@ namespace up_source_location
         const char* _file;
         int _line;
     public: // --- life ---
-        source_location(internal = {}, const char* file = INVOCATION_FILE(), int line = INVOCATION_LINE())
+        source_location(internal = {}, const char* file = SOURCE_FILE(), int line = SOURCE_LINE())
             : _file(file), _line(line)
         { }
     public: // --- operations ---
