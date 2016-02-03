@@ -186,15 +186,6 @@ namespace up
     using up_exception::raise;
     using up_exception::errno_info;
     using up_exception::log_current_exception;
+    using up_exception::suppress_current_exception;
 
 }
-
-#define UP_RAISE(TAG, ...) \
-    do { \
-        ::up_exception::raise<TAG>( __VA_ARGS__);        \
-    } while (false)
-
-#define UP_SUPPRESS_CURRENT_EXCEPTION(...) \
-    do { \
-        ::up_exception::suppress_current_exception(__VA_ARGS__); \
-    } while (false)

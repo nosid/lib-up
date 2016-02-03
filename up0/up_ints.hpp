@@ -27,7 +27,7 @@ namespace up_ints
             Result result;
             if (__builtin_add_overflow(value, Type(), &result)) {
                 throw std::range_error("up-ints-bad-cast");
-                // TODO: UP_RAISE(bad_cast, "up-ints-bad-cast", value);
+                // TODO: up::raise<bad_cast>("up-ints-bad-cast", value);
             } else {
                 return result;
             }

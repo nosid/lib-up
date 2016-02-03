@@ -55,7 +55,7 @@ auto up_chunk::chunk::into_bulk_t::head() const -> const into&
             return chunks[i];
         } // else: next
     }
-    UP_RAISE(runtime, "bad-chunk", count(), total());
+    up::raise<runtime>("bad-chunk", count(), total());
 }
 
 
@@ -103,5 +103,5 @@ auto up_chunk::chunk::from_bulk_t::head() const -> const from&
             return chunks[i];
         } // else: next
     }
-    UP_RAISE(runtime, "bad-chunk", count(), total());
+    up::raise<runtime>("bad-chunk", count(), total());
 }

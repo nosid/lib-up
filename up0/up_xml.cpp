@@ -193,7 +193,7 @@ namespace
                     return nullptr;
                 }
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("xml-external-entity-loader");
+                up::suppress_current_exception("xml-external-entity-loader");
                 return nullptr;
             }
         }
@@ -213,10 +213,10 @@ namespace
         void raise(Args&&... args)
         {
             if (_errors.empty()) {
-                UP_RAISE(Type, std::forward<Args>(args)...);
+                up::raise<Type>(std::forward<Args>(args)...);
             } else {
                 errors errors(std::move(_errors));
-                UP_RAISE(Type, std::forward<Args>(args)..., std::move(errors));
+                up::raise<Type>(std::forward<Args>(args)..., std::move(errors));
             }
         }
     };
@@ -344,7 +344,7 @@ namespace
                     if (node->type == XML_TEXT_NODE || node->type == XML_CDATA_SECTION_NODE) {
                         value.append(_chars(node->content));
                     } else {
-                        UP_RAISE(runtime, "xml-bad-attr-node-type", node->type);
+                        up::raise<runtime>("xml-bad-attr-node-type", node->type);
                     }
                 }
                 result.emplace_back(_qname(attr->name, attr->ns), up::istring(value));
@@ -379,7 +379,7 @@ namespace
                 case XML_COMMENT_NODE:
                     break; // skip
                 default:
-                    UP_RAISE(runtime, "xml-bad-element-node-type", node->type);
+                    up::raise<runtime>("xml-bad-element-node-type", node->type);
                 }
             }
             if (pending) {
@@ -456,7 +456,7 @@ namespace
                     } else if (p->second.first == uri) {
                         return p->second.second;
                     } else {
-                        UP_RAISE(runtime, "xml-inconsistent-namespace-error",
+                        up::raise<runtime>("xml-inconsistent-namespace-error",
                             prefix, uri, p->second.first);
                     }
                 } else {
@@ -611,7 +611,7 @@ public: // --- operations ---
                 return internalizer()(root);
             }
         }
-        UP_RAISE(runtime, "xml-bad-root-error");
+        up::raise<runtime>("xml-bad-root-error");
     }
 };
 
@@ -717,7 +717,7 @@ public: // --- operations ---
                     b->produce(n);
                     return size;
                 } catch (...) {
-                    UP_SUPPRESS_CURRENT_EXCEPTION("xml-output-write-callback");
+                    up::suppress_current_exception("xml-output-write-callback");
                     return -1;
                 }
             },
@@ -845,7 +845,7 @@ private: // --- scope ---
             for (std::size_t i = 0; i != size; ++i) {
                 char c = data[i];
                 if (!std::isalnum(c) && c != '-' && c != '.' && c != '/' && c != ':' && c != '_') {
-                    UP_RAISE(runtime, "xslt-bad-string-parameter-character", c, std::string(data, size));
+                    up::raise<runtime>("xslt-bad-string-parameter-character", c, std::string(data, size));
                 }
                 result.push_back(c);
             }

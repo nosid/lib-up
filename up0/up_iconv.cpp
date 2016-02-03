@@ -37,7 +37,7 @@ namespace
             : _iconv(::iconv_open(up::nts(to), up::nts(from)))
         {
             if (_iconv == iconv_t(-1)) {
-                UP_RAISE(runtime, "iconv-bad-encoding", to, from, up::errno_info(errno));
+                up::raise<runtime>("iconv-bad-encoding", to, from, up::errno_info(errno));
             }
         }
         wrapper(const self& rhs) = delete;
@@ -54,7 +54,7 @@ namespace
             constexpr auto error = std::size_t(-1);
             if (_dirty) {
                 if (::iconv(_iconv, nullptr, nullptr, nullptr, nullptr) == error) {
-                    UP_RAISE(runtime, "iconv-bad-reset", to, from, up::errno_info(errno));
+                    up::raise<runtime>("iconv-bad-reset", to, from, up::errno_info(errno));
                 }
             }
             _dirty = true;
@@ -78,12 +78,12 @@ namespace
                         buffer.produce(buffer.capacity() - into_size);
                         break; // done
                     } else if (from_size == 0) {
-                        UP_RAISE(runtime, "iconv-bad-conversion", to, from);
+                        up::raise<runtime>("iconv-bad-conversion", to, from);
                     } else if (errno != E2BIG) {
-                        UP_RAISE(runtime, "iconv-bad-conversion", to, from, up::errno_info(errno));
+                        up::raise<runtime>("iconv-bad-conversion", to, from, up::errno_info(errno));
                     } else if (buffer.capacity() == into_size) {
                         // strange, apparently there was no progress
-                        UP_RAISE(runtime, "iconv-bad-conversion", to, from, into_size);
+                        up::raise<runtime>("iconv-bad-conversion", to, from, into_size);
                     } else {
                         buffer.produce(buffer.capacity() - into_size);
                         // continue

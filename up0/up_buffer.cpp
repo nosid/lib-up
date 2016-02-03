@@ -54,7 +54,7 @@ namespace
         if (core) {
             return *reinterpret_cast<header*>(core);
         } else {
-            UP_RAISE(runtime, "buffer-null-state");
+            up::raise<runtime>("buffer-null-state");
         }
     }
 
@@ -77,7 +77,7 @@ namespace
             new (temp) header(h);
             return temp;
         } else {
-            UP_RAISE(runtime, "buffer-out-of-memory", h);
+            up::raise<runtime>("buffer-out-of-memory", h);
         }
     }
 
@@ -163,12 +163,12 @@ void up_buffer::buffer::consume(size_type n)
         auto&& h = get_mutable_header(_core);
         auto pos = sizes::or_range_error<runtime>::add(h._warm_pos, n);
         if (pos > h._cold_pos) {
-            UP_RAISE(out_of_range, "buffer-consume-overflow", h, n);
+            up::raise<out_of_range>("buffer-consume-overflow", h, n);
         } else {
             h._warm_pos = pos;
         }
     } else if (n) {
-        UP_RAISE(out_of_range, "buffer-consume-overflow", null_header, n);
+        up::raise<out_of_range>("buffer-consume-overflow", null_header, n);
     } // else: nothing
 }
 
@@ -238,12 +238,12 @@ void up_buffer::buffer::produce(size_type n)
         auto&& h = get_mutable_header(_core);
         auto pos = sizes::or_range_error<runtime>::add(h._cold_pos, n);
         if (pos > h._size) {
-            UP_RAISE(out_of_range, "buffer-produce-overflow", h, n);
+            up::raise<out_of_range>("buffer-produce-overflow", h, n);
         } else {
             h._cold_pos = pos;
         }
     } else if (n) {
-        UP_RAISE(out_of_range, "buffer-produce-overflow", null_header, n);
+        up::raise<out_of_range>("buffer-produce-overflow", null_header, n);
     } // else: nothing
 }
 
