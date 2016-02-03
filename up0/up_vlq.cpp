@@ -15,11 +15,11 @@ namespace
 [[noreturn]]
 void up_vlq::raise_vlq_overflow_error(std::size_t offset, uintmax_t value, uintmax_t limit)
 {
-    UP_RAISE(overflow_error, "vlq-overflow-error"_sl, offset, value, limit);
+    UP_RAISE(overflow_error, "vlq-overflow-error", offset, value, limit);
 }
 
 [[noreturn]]
 void up_vlq::raise_vlq_incomplete_error(std::size_t offset, uintmax_t value)
 {
-    UP_RAISE(incomplete_error, "vlq-incomplete-error"_sl, offset, value);
+    UP_RAISE(incomplete_error, "vlq-incomplete-error", offset, value);
 }

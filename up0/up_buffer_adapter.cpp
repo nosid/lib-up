@@ -32,7 +32,7 @@ namespace
             _file = ::fopencookie(static_cast<Derived*>(this), mode,
                 cookie_io_functions_t{read, write, nullptr, nullptr});
             if (_file == nullptr) {
-                UP_RAISE(runtime, "buffer-adapter-error"_sl);
+                UP_RAISE(runtime, "buffer-adapter-error");
             }
         }
         adapter(const self& rhs) = delete;
@@ -139,7 +139,7 @@ public: // --- operations ---
             _buffer.produce(size);
             return up::ints::caster(size);
         } catch (...) {
-            UP_SUPPRESS_CURRENT_EXCEPTION("buffer-adapter"_sl);
+            UP_SUPPRESS_CURRENT_EXCEPTION("buffer-adapter");
             return 0; // signal error (see also man page for fopencookie)
         }
     }

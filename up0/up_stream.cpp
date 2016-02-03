@@ -7,6 +7,7 @@
 #include "up_exception.hpp"
 #include "up_ints.hpp"
 #include "up_utility.hpp"
+#include "up_string_literal.hpp"
 #include "up_terminate.hpp"
 
 
@@ -20,7 +21,7 @@ namespace
     void check_state(const std::unique_ptr<up::stream::engine>& engine)
     {
         if (!engine) {
-            UP_RAISE(runtime, "invalid-stream-engine-state"_sl);
+            UP_RAISE(runtime, "invalid-stream-engine-state");
         }
     }
 
@@ -64,7 +65,7 @@ namespace
             int temp = std::exchange(fd, -1);
             int rv = ::close(temp);
             if (rv != 0) {
-                up::terminate("bad-close"_sl, temp);
+                up::terminate("bad-close", temp);
             }
         } // else: nothing
     }
@@ -77,7 +78,7 @@ namespace
         case up_stream::stream::patience::operation::write:
             return POLLOUT;
         }
-        UP_RAISE(runtime, "unexpected-stream-patience-operation"_sl, op);
+        UP_RAISE(runtime, "unexpected-stream-patience-operation", op);
     }
 
     template <typename... Handles>
@@ -98,7 +99,7 @@ namespace
                 constexpr auto valid = POLLIN | POLLOUT | POLLHUP | POLLERR;
                 for (std::size_t i = 0; i != nfds; ++i) {
                     if (fds[i].revents & ~valid) {
-                        UP_RAISE(runtime, "invalid-stream-poll-events"_sl,
+                        UP_RAISE(runtime, "invalid-stream-poll-events",
                             op, fds[i].events, fds[i].revents);
                     }
                 }
@@ -107,13 +108,13 @@ namespace
                         return i;
                     }
                 }
-                UP_RAISE(runtime, "unexpected-stream-poll-status"_sl, op);
+                UP_RAISE(runtime, "unexpected-stream-poll-status", op);
             } else if (rv == 0) {
-                UP_RAISE(runtime, "unexpected-stream-poll-status"_sl, op);
+                UP_RAISE(runtime, "unexpected-stream-poll-status", op);
             } else if (errno == EINTR) {
                 // restart
             } else {
-                UP_RAISE(runtime, "stream-poll-error"_sl, op, up::errno_info(errno));
+                UP_RAISE(runtime, "stream-poll-error", op, up::errno_info(errno));
             }
         }
     }
@@ -141,7 +142,7 @@ void up_stream::stream::graceful_close(patience& patience) const
         try {
             char c;
             if (_engine->read_some({&c, 1})) {
-                UP_RAISE(runtime, "stream-graceful-close-error"_sl,
+                UP_RAISE(runtime, "stream-graceful-close-error",
                     up::to_underlying_type(_engine->get_native_handle()));
             } else {
                 break;
@@ -232,7 +233,7 @@ auto up_stream::to_string(stream::patience::operation op) -> std::string
     case stream::patience::operation::write:
         return up::invoke_to_string("write"_sl);
     }
-    UP_RAISE(runtime, "unexpected-stream-patience-operation"_sl, op);
+    UP_RAISE(runtime, "unexpected-stream-patience-operation", op);
 }
 
 
@@ -248,20 +249,20 @@ void up_stream::stream::steady_patience::_wait(native_handle handle, operation o
         if (rv > 0) {
             auto valid = POLLIN | POLLOUT | POLLHUP | POLLERR;
             if (fds.revents & ~valid) {
-                UP_RAISE(runtime, "invalid-stream-poll-events"_sl, op, fds.events, fds.revents);
+                UP_RAISE(runtime, "invalid-stream-poll-events", op, fds.events, fds.revents);
             } else if (fds.revents & valid) {
                 return;
             } else {
-                UP_RAISE(runtime, "unexpected-stream-poll-status"_sl, op, fds.events, fds.revents);
+                UP_RAISE(runtime, "unexpected-stream-poll-status", op, fds.events, fds.revents);
             }
         } else if (rv == 0) {
             _now = up::steady_clock::now();
-            UP_RAISE(timeout, "stream-steady-patience-timeout"_sl, op, _deadline, _duration);
+            UP_RAISE(timeout, "stream-steady-patience-timeout", op, _deadline, _duration);
         } else if (errno == EINTR) {
             // restart
             _now = up::steady_clock::now();
         } else {
-            UP_RAISE(runtime, "stream-steady-patience-error"_sl, op, up::errno_info(errno));
+            UP_RAISE(runtime, "stream-steady-patience-error", op, up::errno_info(errno));
         }
     }
 }
@@ -301,7 +302,7 @@ private:
         , _fd(::timerfd_create(_clockid, TFD_CLOEXEC | TFD_NONBLOCK))
     {
         if (_fd == -1) {
-            UP_RAISE(runtime, "deadline-timer-creation-error"_sl, _clockid, up::errno_info(errno));
+            UP_RAISE(runtime, "deadline-timer-creation-error", _clockid, up::errno_info(errno));
         }
     }
 public: // --- operations ---
@@ -321,7 +322,7 @@ public: // --- operations ---
             itimerspec old = {{0, 0}, {0, 0}};
             int rv = ::timerfd_settime(_fd, absolute ? TFD_TIMER_ABSTIME : 0, &its, &old);
             if (rv != 0) {
-                UP_RAISE(runtime, "deadline-timer-set-failed"_sl,
+                UP_RAISE(runtime, "deadline-timer-set-failed",
                     _clockid, duration, absolute, up::errno_info(errno));
             }
             return old.it_value.tv_sec || old.it_value.tv_nsec;
@@ -332,7 +333,7 @@ public: // --- operations ---
     void wait(native_handle handle, operation op) const
     {
         if (do_poll(op, handle, _fd) == 1) {
-            UP_RAISE(timeout, "stream-deadline-patience-timeout"_sl, op, _clockid);
+            UP_RAISE(timeout, "stream-deadline-patience-timeout", op, _clockid);
         }
     }
 };

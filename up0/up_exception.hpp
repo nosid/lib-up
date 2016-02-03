@@ -17,7 +17,7 @@
 #include "up_fabric.hpp"
 #include "up_out.hpp"
 #include "up_pack.hpp"
-#include "up_source_location.hpp"
+#include "up_source.hpp"
 
 namespace up_exception
 {
@@ -79,20 +79,17 @@ namespace up_exception
         public: // --- scope ---
             using self = throwable;
         private: // --- state ---
-            up::source_location _location;
-            up::string_literal _message;
+            up::source _source;
             up::pack<Types...> _args;
         public: // --- life ---
             template <typename... Args>
-            explicit throwable(up::source_location location, up::string_literal message, Args&&... args)
-                : _location(std::move(location))
-                , _message(std::move(message))
+            explicit throwable(up::source source, Args&&... args)
+                : _source(std::move(source))
                 , _args(std::forward<Args>(args)...)
             { }
             throwable(const self& rhs) = delete;
             throwable(self&& rhs) noexcept
-                : _location(std::move(rhs._location))
-                , _message(std::move(rhs._message))
+                : _source(std::move(rhs._source))
                 , _args(std::move(rhs._args))
             { }
             ~throwable() noexcept = default;
@@ -102,7 +99,7 @@ namespace up_exception
         private:
             virtual auto what() const noexcept -> const char* override
             {
-                return _message.data();
+                return _source.label_c_str();
             }
             virtual auto _to_fabric() const -> up::fabric override
             {
@@ -111,7 +108,7 @@ namespace up_exception
             template <std::size_t... Indexes>
             auto _to_fabric_aux(std::index_sequence<Indexes...>) const
             {
-                return up::fabric(typeid(*this), _message.to_string(),
+                return up::fabric(typeid(*this), _source.label(),
                     up::invoke_to_fabric_with_fallback(up::pack_get<Indexes>(_args))...);
             }
         };
@@ -123,13 +120,13 @@ namespace up_exception
      */
     template <typename... Tags, typename... Args>
     [[noreturn]]
-    void raise(up::source_location location, up::string_literal message, Args&&... args)
+    void raise(up::source source, Args&&... args)
     {
         /* The arguments will always be copied into the thrown exception
          * object, because it is unknown where the exception will be thrown,
          * and the arguments might refer to local variables. */
         throw typename tagged<Tags...>::template throwable<std::decay_t<Args>...>{
-            location, message, std::forward<Args>(args)...};
+            std::move(source), std::forward<Args>(args)...};
     }
 
 
@@ -178,7 +175,7 @@ namespace up_exception
      * to mark all locations where exceptions are suppressed. In the future, a
      * handler for suppressed exceptions might be registered.
      */
-    void suppress_current_exception(up::source_location location, up::string_literal message);
+    void suppress_current_exception(const up::source& source);
 
 }
 
@@ -186,6 +183,7 @@ namespace up
 {
 
     using up_exception::exception;
+    using up_exception::raise;
     using up_exception::errno_info;
     using up_exception::log_current_exception;
 
@@ -193,12 +191,10 @@ namespace up
 
 #define UP_RAISE(TAG, ...) \
     do { \
-        using namespace up::literals; \
-        ::up_exception::raise<TAG>(up::source_location(), __VA_ARGS__);        \
+        ::up_exception::raise<TAG>( __VA_ARGS__);        \
     } while (false)
 
 #define UP_SUPPRESS_CURRENT_EXCEPTION(...) \
     do { \
-        using namespace up::literals; \
-        ::up_exception::suppress_current_exception(up::source_location(), __VA_ARGS__); \
+        ::up_exception::suppress_current_exception(__VA_ARGS__); \
     } while (false)

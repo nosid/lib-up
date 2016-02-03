@@ -193,7 +193,7 @@ namespace
                     return nullptr;
                 }
             } catch (...) {
-                UP_SUPPRESS_CURRENT_EXCEPTION("xml-external-entity-loader"_sl);
+                UP_SUPPRESS_CURRENT_EXCEPTION("xml-external-entity-loader");
                 return nullptr;
             }
         }
@@ -255,9 +255,6 @@ namespace
         return std::make_shared<Type>(std::forward<Args>(args)...);
     }
 
-
-    // required so that string_literals can be passed to raise
-    using namespace up::literals;
 
     template <typename Type, typename... Args>
     [[noreturn]]
@@ -347,7 +344,7 @@ namespace
                     if (node->type == XML_TEXT_NODE || node->type == XML_CDATA_SECTION_NODE) {
                         value.append(_chars(node->content));
                     } else {
-                        UP_RAISE(runtime, "xml-bad-attr-node-type"_sl, node->type);
+                        UP_RAISE(runtime, "xml-bad-attr-node-type", node->type);
                     }
                 }
                 result.emplace_back(_qname(attr->name, attr->ns), up::istring(value));
@@ -382,7 +379,7 @@ namespace
                 case XML_COMMENT_NODE:
                     break; // skip
                 default:
-                    UP_RAISE(runtime, "xml-bad-element-node-type"_sl, node->type);
+                    UP_RAISE(runtime, "xml-bad-element-node-type", node->type);
                 }
             }
             if (pending) {
@@ -432,7 +429,7 @@ namespace
         {
             auto node = ::xmlNewChild(parent, nullptr, _as_c_str(element.tag().local_name()), nullptr);
             if (node == nullptr) {
-                raise<runtime>("xml-new-node-error"_sl);
+                raise<runtime>("xml-new-node-error");
             }
             prefixes overwrite;
             auto put_ns = [&defaults,&overwrite,node](auto&& qname) -> xmlNs* {
@@ -451,7 +448,7 @@ namespace
                                 ns = ::xmlSearchNs(node->doc, node, _chars("xml"));
                             }
                             if (ns == nullptr) {
-                                raise<runtime>("xml-new-ns-error"_sl);
+                                raise<runtime>("xml-new-ns-error");
                             }
                             q = overwrite.emplace(prefix, std::make_pair(uri, ns)).first;
                         }
@@ -459,7 +456,7 @@ namespace
                     } else if (p->second.first == uri) {
                         return p->second.second;
                     } else {
-                        UP_RAISE(runtime, "xml-inconsistent-namespace-error"_sl,
+                        UP_RAISE(runtime, "xml-inconsistent-namespace-error",
                             prefix, uri, p->second.first);
                     }
                 } else {
@@ -473,7 +470,7 @@ namespace
             for (auto&& attr : element.attrs()) {
                 auto prop = ::xmlNewNsProp(node, put_ns(attr.name()), _as_c_str(attr.name().local_name()), nullptr);
                 if (prop == nullptr) {
-                    raise<runtime>("xml-new-attr-error"_sl);
+                    raise<runtime>("xml-new-attr-error");
                 }
                 _add_text(reinterpret_cast<xmlNode*>(prop), attr.value());
             }
@@ -494,7 +491,7 @@ namespace
             auto text = ::xmlNewDocTextLen(
                 parent->doc, _chars(value.data()), up::ints::caster(value.size()));
             if (text == nullptr) {
-                raise<runtime>("xml-new-text-error"_sl);
+                raise<runtime>("xml-new-text-error");
             }
             text->parent = parent;
             if (parent->children) {
@@ -614,7 +611,7 @@ public: // --- operations ---
                 return internalizer()(root);
             }
         }
-        UP_RAISE(runtime, "xml-bad-root-error"_sl);
+        UP_RAISE(runtime, "xml-bad-root-error");
     }
 };
 
@@ -640,7 +637,7 @@ public: // --- life ---
         libxml_thread::context context(loader);
         auto parser = ::xmlNewParserCtxt();
         if (parser == nullptr) {
-            raise<runtime>("xml-new-parser-error"_sl);
+            raise<runtime>("xml-new-parser-error");
         }
         UP_DEFER { ::xmlFreeParserCtxt(parser); };
         // parser settings recommended by libxslt1
@@ -672,10 +669,10 @@ public: // --- life ---
             /* In some cases, a valid _ptr is returned, even if there were
              * errors. For example if a NS URIs is not absolute. */
             UP_DEFER { ::xmlCtxtResetLastError(parser); };
-            raise<runtime>("xml-parser-error"_sl, URL, encoding, options,
+            raise<runtime>("xml-parser-error", URL, encoding, options,
                 error->domain, error->code, error->level, std::string(error->message));
         } else if (_ptr == nullptr || parser->valid == 0) {
-            raise<runtime>("xml-parser-error"_sl, URL, encoding, options);
+            raise<runtime>("xml-parser-error", URL, encoding, options);
         }
         if (flags & XML_PARSE_XINCLUDE) {
             /* Even if the option XML_PARSE_XINCLUDE is passed to the
@@ -685,10 +682,10 @@ public: // --- life ---
                 // OK
             } else if (auto error = ::xmlCtxtGetLastError(parser)) {
                 UP_DEFER { ::xmlCtxtResetLastError(parser); };
-                raise<runtime>("xml-parser-xinclude-error"_sl, URL, encoding, options,
+                raise<runtime>("xml-parser-xinclude-error", URL, encoding, options,
                     error->domain, error->code, error->level, std::string(error->message));
             } else {
-                raise<runtime>("xml-parser-xinclude-error"_sl, URL, encoding, options);
+                raise<runtime>("xml-parser-xinclude-error", URL, encoding, options);
             }
         }
         if (options.all(option::strip_blanks)) {
@@ -701,7 +698,7 @@ public: // --- life ---
     {
         _ptr = ::xmlNewDoc(nullptr);
         if (_ptr == nullptr) {
-            raise<runtime>("xml-new-document-error"_sl);
+            raise<runtime>("xml-new-document-error");
         }
         externalizer(reinterpret_cast<xmlNode*>(_ptr), root);
     }
@@ -720,20 +717,20 @@ public: // --- operations ---
                     b->produce(n);
                     return size;
                 } catch (...) {
-                    UP_SUPPRESS_CURRENT_EXCEPTION("xml-output-write-callback"_sl);
+                    UP_SUPPRESS_CURRENT_EXCEPTION("xml-output-write-callback");
                     return -1;
                 }
             },
             nullptr, &buffer, encoding, XML_SAVE_FORMAT);
         if (ctxt == nullptr) {
-            raise<runtime>("xml-serialize-error"_sl);
+            raise<runtime>("xml-serialize-error");
         }
         if (::xmlSaveDoc(ctxt, _ptr) < 0) {
             ::xmlSaveFlush(ctxt);
-            raise<runtime>("xml-serialize-error"_sl);
+            raise<runtime>("xml-serialize-error");
         }
         if (::xmlSaveFlush(ctxt) < 0) {
-            raise<runtime>("xml-serialize-error"_sl);
+            raise<runtime>("xml-serialize-error");
         }
         return buffer;
     }
@@ -807,7 +804,7 @@ public: // --- life ---
         libxml_thread::context context(loader);
         _ptr = ::xsltParseStylesheetDoc(_document->native_handle());
         if (_ptr == nullptr) {
-            raise<runtime>("xslt-parser-error"_sl);
+            raise<runtime>("xslt-parser-error");
         }
     }
     impl(const impl& rhs) = delete;
@@ -848,7 +845,7 @@ private: // --- scope ---
             for (std::size_t i = 0; i != size; ++i) {
                 char c = data[i];
                 if (!std::isalnum(c) && c != '-' && c != '.' && c != '/' && c != ':' && c != '_') {
-                    UP_RAISE(runtime, "xslt-bad-string-parameter-character"_sl, c, std::string(data, size));
+                    UP_RAISE(runtime, "xslt-bad-string-parameter-character", c, std::string(data, size));
                 }
                 result.push_back(c);
             }
@@ -899,7 +896,7 @@ public: // --- life ---
         _ptr = ::xsltApplyStylesheet(
             _stylesheet->_ptr, source.native_handle(), params(parameters)());
         if (_ptr == nullptr) {
-            raise<runtime>("xslt-transformation-error"_sl);
+            raise<runtime>("xslt-transformation-error");
         }
     }
 public: // --- operations ---
@@ -909,7 +906,7 @@ public: // --- operations ---
         up::buffer result;
         auto rv = ::xsltSaveResultToFile(up::buffer_adapter::producer(result), _ptr, _stylesheet->_ptr);
         if (rv < 0) {
-            raise<runtime>("xslt-serialization-error"_sl);
+            raise<runtime>("xslt-serialization-error");
         }
         return result;
     }

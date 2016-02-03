@@ -23,7 +23,7 @@ namespace
         {
             std::size_t size = std::strlen(text);
             if (size % 2 != 0) {
-                UP_RAISE(runtime, "bad-hex-size"_sl, size);
+                UP_RAISE(runtime, "bad-hex-size", size);
             }
             up::buffer buffer;
             buffer.reserve(size / 2);
@@ -43,7 +43,7 @@ namespace
             } else if (c >= 'a' && c <= 'f') {
                 return c - 'a' + 10;
             } else {
-                UP_RAISE(runtime, "bad-hex-char"_sl, c);
+                UP_RAISE(runtime, "bad-hex-char", c);
             }
         }
     private: // --- fields ---

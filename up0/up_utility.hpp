@@ -8,7 +8,7 @@
 #include "up_buffer.hpp"
 #include "up_fabric.hpp"
 #include "up_pack.hpp"
-#include "up_source_location.hpp"
+#include "up_source.hpp"
 #include "up_swap.hpp"
 
 namespace up_utility
@@ -47,7 +47,7 @@ namespace up_utility
 
     // for internal use only
     [[noreturn]]
-    void raise_enum_set_runtime_error(up::string_literal message, up::fabric fabric);
+    void raise_enum_set_runtime_error(const up::source& source, up::fabric fabric);
 
 
     /**
@@ -74,8 +74,7 @@ namespace up_utility
                 if (raw < std::numeric_limits<underlying_type>::digits) {
                     _bits |= underlying_type(1) << raw;
                 } else {
-                    using namespace up::literals;
-                    raise_enum_set_runtime_error("enum-value-out-of-range"_sl,
+                    raise_enum_set_runtime_error("enum-value-out-of-range",
                         up::invoke_to_fabric_with_fallback(raw));
                 }
             }
@@ -127,7 +126,7 @@ namespace up_utility
     private: // --- scope ---
         static thread_local context_frame_base* top;
     public:
-        using visitor = std::function<void(const up::source_location&, const up::fabrics&)>;
+        using visitor = std::function<void(const up::source&, const up::fabrics&)>;
         static void walk(const visitor& visitor);
     private: // --- state ---
         context_frame_base* _parent;
@@ -166,11 +165,11 @@ namespace up_utility
     class context_frame final : context_frame_base
     {
     private: // --- state ---
-        up::source_location _location;
+        up::source _source;
         up::pack<Types...> _args;
     public: // --- life ---
-        explicit context_frame(up::source_location location, Types&&... args)
-            : _location(location), _args(std::forward<Types>(args)...)
+        explicit context_frame(up::source source, Types&&... args)
+            : _source(std::move(source)), _args(std::forward<Types>(args)...)
         { }
     private: // --- operations ---
         virtual void _walk(const visitor& visitor) const override
@@ -180,7 +179,7 @@ namespace up_utility
         template <std::size_t... Indexes>
             void _walk_aux(const visitor& visitor, std::index_sequence<Indexes...>) const
         {
-            visitor(_location,
+            visitor(_source,
                 up::fabrics{
                     up::invoke_to_fabric_with_fallback(up::pack_get<Indexes>(_args))...});
         }
@@ -212,7 +211,7 @@ namespace up
 #define UP_CONTEXT_FRAME_CONCATENATE_AUX(prefix, suffix) prefix ## suffix
 #define UP_CONTEXT_FRAME_CONCATENATE(prefix, suffix) UP_CONTEXT_FRAME_CONCATENATE_AUX(prefix, suffix)
 
-#define UP_CONTEXT_FRAME(...)                                      \
+#define UP_CONTEXT_FRAME(label, ...) \
     __attribute__((unused)) \
     decltype(::up_utility::context_frame_deduce_type(__VA_ARGS__)) \
-    UP_CONTEXT_FRAME_CONCATENATE(UP_CONTEXT_FRAME_STATE_, __COUNTER__){up::source_location(), __VA_ARGS__}
+    UP_CONTEXT_FRAME_CONCATENATE(UP_CONTEXT_FRAME_STATE_, __COUNTER__){label, __VA_ARGS__}

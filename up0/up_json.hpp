@@ -101,8 +101,7 @@ namespace up_json
                 return std::forward<Visitor>(visitor)(get_object());
             default:
                 // Check this condition with kind()
-                using namespace up::literals;
-                up::terminate("invalid json kind"_sl, k);
+                up::terminate("invalid json kind", k);
             }
         }
     };
