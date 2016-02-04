@@ -35,8 +35,6 @@
 namespace
 {
 
-    using namespace up::literals;
-
     class ai_error_info
     {
     private: // --- state ---
@@ -86,6 +84,7 @@ namespace
 
     auto to_string(address_family value)
     {
+        using namespace up::literals;
         if (value == address_family::v4) {
             return up::invoke_to_string("IPv4"_sl);
         } else if (value == address_family::v6) {
@@ -464,6 +463,7 @@ auto up_inet::ip::resolve_name(const endpoint& endpoint) -> std::string
 
 auto up_inet::to_string(ip::version value) -> std::string
 {
+    using namespace up::literals;
     switch (value) {
     case ip::version::v4:
         return up::invoke_to_string("ipv4"_sl);

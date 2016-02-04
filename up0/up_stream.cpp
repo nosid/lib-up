@@ -14,8 +14,6 @@
 namespace
 {
 
-    using namespace up::literals;
-
     struct runtime { };
 
     void check_state(const std::unique_ptr<up::stream::engine>& engine)
@@ -227,6 +225,7 @@ void up_stream::stream::patience::_vtable_dummy() const { }
 
 auto up_stream::to_string(stream::patience::operation op) -> std::string
 {
+    using namespace up::literals;
     switch (op) {
     case stream::patience::operation::read:
         return up::invoke_to_string("read"_sl);
