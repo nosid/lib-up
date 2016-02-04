@@ -164,7 +164,7 @@ namespace
 
     template <typename... Args>
     [[noreturn]]
-    void raise_ssl_error(const up::source& source, Args&&... args)
+    void raise_ssl_error(up::source source, Args&&... args)
     {
         if (auto code = ::ERR_get_error()) {
             /* Throw first error and discard all others silently. */
@@ -172,9 +172,9 @@ namespace
             auto func = ::ERR_lib_error_string(code);
             auto reason = ::ERR_reason_error_string(code);
             ::ERR_clear_error();
-            up::raise<runtime>(source, code, lib, func, reason, std::forward<Args>(args)...);
+            up::raise<runtime>(std::move(source), code, lib, func, reason, std::forward<Args>(args)...);
         } else {
-            up::raise<runtime>(source, std::forward<Args>(args)...);
+            up::raise<runtime>(std::move(source), std::forward<Args>(args)...);
         }
     }
 

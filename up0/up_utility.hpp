@@ -47,7 +47,7 @@ namespace up_utility
 
     // for internal use only
     [[noreturn]]
-    void raise_enum_set_runtime_error(const up::source& source, up::fabric fabric);
+    void raise_enum_set_runtime_error(up::source source, up::fabric fabric);
 
 
     /**

@@ -11,7 +11,9 @@ namespace up_source
      *
      * - information about the origin of an event with the source code,
      * - minimal overhead, in particular no memory allocation,
-     * - implicitly constructible from a string literal.
+     * - implicitly constructible from a string literal,
+     * - all member functions are declared as noexcept to make them easily
+     *   usable in exception-handling code.
      */
     class source final
     {
@@ -40,7 +42,7 @@ namespace up_source
          * keep it as simple as possible).
          */
         const char* _label;
-        std::size_t _length;
+        std::size_t _size;
         const char* _file;
         line_t _line;
     public: // --- life ---
@@ -58,8 +60,8 @@ namespace up_source
             const char (&label)[N],
             const protect& = protect{}, // protect the following default args
             const char* file = SOURCE_FILE(),
-            line_t line = up::widen(SOURCE_LINE()))
-            : _label(label), _length(N - 1), _file(file), _line(line)
+            line_t line = up::widen(SOURCE_LINE())) noexcept
+            : _label(label), _size(N), _file(file), _line(line)
         {
             static_assert(N > 0, "invalid array for string literal");
         }
@@ -68,21 +70,22 @@ namespace up_source
          * constructor.
          */
         template <typename... Args>
-        source(Args&&...) = delete;
-        // explicitly declared because of the catch-all constructor
+        source(Args&&...) noexcept = delete;
+        /*
+         * The 5 special member functions are explicitly declared because of
+         * the above catch-all function. The copy constructor and copy
+         * assignment operator are intentionally declared as noexcept to make
+         * them easily usable in exception-handling code.
+         */
         source(const self& rhs) noexcept = default;
-        // explicitly declared because of the catch-all constructor
         source(self&& rhs) noexcept = default;
-        // explicitly declared because of the catch-all constructor
         ~source() noexcept = default;
     public: // --- operations ---
-        // explicitly declared because of the catch-all constructor
         auto operator=(const self& rhs) & noexcept -> self& = default;
-        // explicitly declared because of the catch-all constructor
         auto operator=(self&& rhs) & noexcept -> self& = default;
         auto label() const noexcept -> up::string_view
         {
-            return {_label, _length};
+            return {_label, _size - 1};
         }
         auto label_c_str() const noexcept -> const char*
         {
