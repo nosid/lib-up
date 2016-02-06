@@ -59,8 +59,8 @@ namespace up_source
         source(
             const char (&label)[N],
             const protect& = protect{}, // protect the following default args
-            const char* file = SOURCE_FILE(),
-            line_t line = up::widen(SOURCE_LINE())) noexcept
+            const char* file = WORKAROUND_SOURCE_FILE(),
+            line_t line = up::widen(WORKAROUND_SOURCE_LINE())) noexcept
             : _label(label), _size(N), _file(file), _line(line)
         {
             static_assert(N > 0, "invalid array for string literal");

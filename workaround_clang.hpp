@@ -8,5 +8,5 @@
 // GCC supports builtin functions to get source information about the location
 // of an invocation. For Clang we fallback to __FILE__ and __LINE__. These
 // replacements return the wrong information, but at least it compiles.
-#define SOURCE_FILE() __FILE__
-#define SOURCE_LINE() __LINE__
+#define WORKAROUND_SOURCE_FILE() __FILE__
+#define WORKAROUND_SOURCE_LINE() __LINE__
