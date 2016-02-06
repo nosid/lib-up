@@ -58,6 +58,7 @@ project
       <toolset>clang:<cflags>-Wno-switch-enum
       <toolset>clang:<cflags>-Wno-used-but-marked-unused
       <toolset>clang:<cflags>-Wno-weak-vtables # false positives for classes defined in cpp files
+      <toolset>clang:<cflags>-Wno-weak-template-vtables # false positives for classes defined in cpp files
     : build-dir bin/
     ;
 
