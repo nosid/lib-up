@@ -418,7 +418,7 @@ namespace
             _buffer.consume(_buffer.available());
             auto data = value.data();
             auto size = value.size();
-            using sizes = up::ints::domain<up::buffer::size_type>::or_range_error<runtime>;
+            using sizes = up::ints::domain<up::buffer::size_type>::or_range_error;
             _buffer.reserve(sizes::add(size, 1));
             std::memcpy(_buffer.cold(), data, size);
             _buffer.cold()[size] = '\0';
@@ -839,7 +839,7 @@ private: // --- scope ---
              * safe side, the list of allowed characters is very restrictive,
              * but may be relaxed in the future. */
             std::string result;
-            using sizes = up::ints::domain<std::string::size_type>::or_range_error<runtime>;
+            using sizes = up::ints::domain<std::string::size_type>::or_range_error;
             result.reserve(sizes::add(size, 2));
             result.push_back('"');
             for (std::size_t i = 0; i != size; ++i) {
@@ -866,7 +866,7 @@ private: // --- scope ---
                 for (auto&& parameter : parameters) {
                     _values.push_back(escape(parameter.second.data(), parameter.second.size()));
                 }
-                using sizes = up::ints::domain<decltype(size)>::or_range_error<runtime>;
+                using sizes = up::ints::domain<decltype(size)>::or_range_error;
                 _result.reserve(sizes::sum(size, size, 1));
                 for (auto&& parameter : parameters) {
                     _result.push_back(parameter.first.c_str());

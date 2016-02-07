@@ -65,7 +65,7 @@ namespace
 
     auto core_size(const header& h)
     {
-        return sizes::or_length_error<runtime>::add(sizeof(header), h._size);
+        return sizes::or_length_error::add(sizeof(header), h._size);
     }
 
     auto core_reallocate(char* core, const header& h) -> char*
@@ -161,7 +161,7 @@ void up_buffer::buffer::consume(size_type n)
 {
     if (_core) {
         auto&& h = get_mutable_header(_core);
-        auto pos = sizes::or_range_error<runtime>::add(h._warm_pos, n);
+        auto pos = sizes::or_range_error::add(h._warm_pos, n);
         if (pos > h._cold_pos) {
             up::raise<out_of_range>("buffer-consume-overflow", h, n);
         } else {
@@ -196,7 +196,7 @@ auto up_buffer::buffer::reserve(size_type required_cold_size) -> self&
     auto warm_size = h._cold_pos - h._warm_pos;
     auto cold_size = h._size - h._cold_pos;
     auto free_size = bias_size + cold_size;
-    auto required_size = sizes::or_length_error<runtime>::add(warm_size, required_cold_size);
+    auto required_size = sizes::or_length_error::add(warm_size, required_cold_size);
     if (_core == nullptr) {
         /* Initial allocation. */
         size_type size = std::max(required_cold_size, size_type(32));
@@ -236,7 +236,7 @@ void up_buffer::buffer::produce(size_type n)
 {
     if (_core) {
         auto&& h = get_mutable_header(_core);
-        auto pos = sizes::or_range_error<runtime>::add(h._cold_pos, n);
+        auto pos = sizes::or_range_error::add(h._cold_pos, n);
         if (pos > h._size) {
             up::raise<out_of_range>("buffer-produce-overflow", h, n);
         } else {

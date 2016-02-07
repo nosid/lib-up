@@ -44,7 +44,7 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
     if (size < buffer.capacity()) {
         buffer.produce(size);
     } else {
-        using sizes = up::ints::domain<up::buffer::size_type>::or_range_error<runtime>;
+        using sizes = up::ints::domain<up::buffer::size_type>::or_range_error;
         buffer.reserve(sizes::add(size, 1));
         rv = std::vsnprintf(buffer.cold(), buffer.capacity(), format, ap);
         if (rv < 0) {

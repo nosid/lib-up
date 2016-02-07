@@ -228,10 +228,10 @@ namespace up_string
             _apply_fills(ptr + size, std::forward<Tail>(tail)...);
         }
 
-        static void _range_check(bool condition, const char* message)
+        static void _range_check(bool condition, up::source&& source)
         {
             if (!condition) {
-                throw std::out_of_range(message);
+                up::throw_error<std::out_of_range>(std::move(source));
             }
         }
         static auto _const_iterator(const_pointer ptr, size_type pos) -> const_iterator
@@ -281,7 +281,7 @@ namespace up_string
     private:
         template <typename... Fills>
         explicit basic_string(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
-            : basic_string(tags::capacity(), baseline, headroom, sizes::template or_length_error<runtime>::sum(headroom, fills.size()...))
+            : basic_string(tags::capacity(), baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...))
         {
             _apply_fills(_span().first, std::forward<Fills>(fills)...);
         }
@@ -455,14 +455,14 @@ namespace up_string
         auto at(size_type n) const -> const_reference
         {
             auto span = _const_span();
-            _range_check(n < span.second, "up::basic_string::at: position out of bounds");
+            _range_check(n < span.second, "up-string-bad-position");
             return span.first[n];
         }
         // MUTATION
         auto at(size_type n) -> reference
         {
             auto span = _span();
-            _range_check(n < span.second, "up::basic_string::at: position out of bounds");
+            _range_check(n < span.second, "up-string-bad-position");
             return span.first[n];
         }
 
@@ -650,7 +650,7 @@ namespace up_string
         auto erase(size_type pos = {}, size_type n = npos) -> self&
         {
             auto size = _size();
-            _range_check(pos <= size, "up::basic_string::erase: position out of bounds");
+            _range_check(pos <= size, "up-string-bad-position");
             return _erase(pos, std::min(n, size - pos));
         }
         // MUTATION
@@ -855,7 +855,7 @@ namespace up_string
         auto substr(size_type pos = {}, size_type n = npos) const -> self
         {
             auto span = _const_span();
-            _range_check(pos <= span.second, "up::basic_string::subtr: position out of bounds");
+            _range_check(pos <= span.second, "up-string-bad-position");
             return self(tags::fill(), {}, {},
                 copy_fill(span.first + pos, std::min(n, span.second - pos)));
         }
@@ -922,7 +922,7 @@ namespace up_string
         }
         bool _increase_size(size_type n)
         {
-            size_type size = sizes::template or_length_error<runtime>::add(_size(), n);
+            size_type size = sizes::or_length_error::add(_size(), n);
             if (size <= _capacity()) {
                 Core::set_size(size);
                 return true;
@@ -967,7 +967,7 @@ namespace up_string
         auto _insert_fill(size_type pos, Fill&& fill) -> self&
         {
             auto span = _span();
-            _range_check(pos <= span.second, "up::basic_string::insert: position out of bounds");
+            _range_check(pos <= span.second, "up-string-bad-position");
             size_type n = fill.size();
             if (_increase_size(n)) {
                 traits_type::move(span.first + pos + n, span.first + pos, span.second - pos);

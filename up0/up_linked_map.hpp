@@ -713,7 +713,7 @@ namespace up_linked_map
             if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
-                throw std::out_of_range("up::linked_map::at: key not found");
+                up::throw_error<std::out_of_range>("up-linked-map-at-key-not-found");
             }
         }
         auto at(const key_type& key) const -> const mapped_type&
@@ -721,7 +721,7 @@ namespace up_linked_map
             if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
-                throw std::out_of_range("up::linked_map::at: key not found");
+                up::throw_error<std::out_of_range>("up-linked-map-at-key-not-found");
             }
         }
 
@@ -849,7 +849,7 @@ namespace up_linked_map
         auto _put_node(list_node* position, std::unique_ptr<node> n) -> iterator
         {
             if (_bucket_count == 0 || _size >= _bucket_count * _max_load_factor) {
-                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                using sizes = up::ints::domain<size_type>::or_length_error;
                 reserve(sizes::sum(_size, _size / 2, 1));
             }
             node* node = n.release();

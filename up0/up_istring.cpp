@@ -68,7 +68,7 @@ namespace
     auto tail_n(std::size_t size, std::size_t pos) -> std::size_t
     {
         if (pos > size) {
-            throw std::out_of_range("up::istring::compare");
+            up::throw_error<std::out_of_range>("up-istring-compare");
         } else {
             return size - pos;
         }
@@ -100,7 +100,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
             std::memcpy(temp, data, size);
         }
     } else {
-        using sizes = up::ints::domain<std::size_t>::or_length_error<runtime>;
+        using sizes = up::ints::domain<std::size_t>::or_length_error;
         auto total = sizes::add(size, sizeof(size));
         _core[0] = uchar_max();
         std::memcpy(_core + 1, data, core_size / 2 - 1);

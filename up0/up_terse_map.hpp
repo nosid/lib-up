@@ -187,7 +187,7 @@ namespace up_terse_map
         {
             if (capacity) {
                 // conservative overflow check (covering the following ops)
-                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                using sizes = up::ints::domain<size_type>::or_length_error;
                 sizes::mul(sizes::add(alignof(value_type), capacity), sizes::add(sizeof(value_type), sizeof(tag)));
                 capacity += (_aligned(_tag_size(capacity)) - _tag_size(capacity)) / sizeof(tag);
                 _raw = std::make_unique<char[]>(_aligned(_tag_size(capacity)) + _capacity * sizeof(value_type));
@@ -466,7 +466,7 @@ namespace up_terse_map
         {
             auto p = find(key);
             if (p == end()) {
-                throw std::out_of_range("up::terse_map::at: key not found");
+                up::throw_error<std::out_of_range>("up-terse-map-at-key-not-found");
             } else {
                 return p->second;
             }
@@ -475,7 +475,7 @@ namespace up_terse_map
         {
             auto p = find(key);
             if (p == end()) {
-                throw std::out_of_range("up::terse_map::at: key not found");
+                up::throw_error<std::out_of_range>("up-terse-map-at-key-not-found");
             } else {
                 return p->second;
             }
@@ -631,7 +631,7 @@ namespace up_terse_map
                 ++_size;
                 return {iterator(tags + index.second, values + index.second), true};
             } else if (_capacity == 0 || _size >= _capacity * _max_load_factor) {
-                using sizes = up::ints::domain<size_type>::or_length_error<struct runtime>;
+                using sizes = up::ints::domain<size_type>::or_length_error;
                 reserve(sizes::sum(_size, _size / 2, 1));
                 return _insert_final(std::forward<K>(key), std::forward<M>(mapped));
             } else {
