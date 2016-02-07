@@ -5,6 +5,20 @@
 namespace up_error
 {
 
+    /**
+     * Core exception class that can be used to catch exceptions thrown from
+     * the up code base. The whole design rationale is a bit more complicated:
+     *
+     * (a) The core exception class should provide useful and generic
+     * information (i.e. up::source), while still being fully noexcept
+     * (i.e. no dynamically allocated memory).
+     *
+     * (b) All exceptions should also be derived from std::exception, and in
+     * some cases from more specific exception classes of the standard
+     * library. For this reason, this class is intentionally not derived from
+     * those classes. Instead the code for creating an exception will
+     * automatically mix-in std::exception.
+     */
     class error
     {
     private: // --- scope ---
@@ -29,6 +43,12 @@ namespace up_error
     };
 
 
+    /**
+     * Some exception classes from the standard library are not default
+     * constructible. This class template is used to wrap them into a
+     * constructible class if required (where "wrap into" means "inherit
+     * from").
+     */
     template <typename Error, bool = std::is_default_constructible<Error>::value>
     class default_constructible final
     {
@@ -43,9 +63,22 @@ namespace up_error
         class type : public Error
         {
         public: // --- life ---
+            /**
+             * The empty string is passed to the base constructor, because the
+             * function 'what()' will be overridden in a derived class, and
+             * the empty is usually constructed without dynamic memory
+             * allocation.
+             */
             explicit type() noexcept
                 : Error(std::string())
             { }
+            using Error::Error;
+        public: // --- operations ---
+            /**
+             * The function must be overridden in a derived class, even if it
+             * has already been defined in a base class.
+             */
+            virtual auto what() const noexcept -> const char* override = 0;
         };
     };
 
@@ -65,14 +98,25 @@ namespace up_error
     using default_constructible_t = typename default_constructible<Error>::type;
 
 
-    template <typename Error>
-    class unified : public error, public default_constructible_t<Error>
+    template <typename Derived>
+    class catchable { };
+
+
+    /**
+     * Use multiple inheritance for exception classes, so that they are
+     * derived from up::error, directly or indirectly from std::exception, and
+     * from an arbitrary number of further classes catch specific error
+     * conditions (with minimal boiler-plate for defining those classes).
+     */
+    template <typename Error, typename... Catchables>
+    class unified : public error, public default_constructible_t<Error>, public Catchables...
     {
     public: // --- life ---
-        explicit unified(up::source source) noexcept
-            : error(std::move(source)), default_constructible_t<Error>()
+        template <typename... Args>
+        explicit unified(up::source source, Args&&... args) noexcept
+            : error(std::move(source)), default_constructible_t<Error>(), Catchables(std::forward<Args>(args))...
         {
-            static_assert(noexcept(default_constructible_t<Error>()), "requires noexcept");
+            static_assert(std::is_base_of<std::exception, Error>::value, "must be derived from std::exception");
         }
     private: // --- operations ---
         virtual auto what() const noexcept -> const char* override final
@@ -94,51 +138,31 @@ namespace up_error
     extern template class unified<std::underflow_error>;
 
 
-    template <typename Derived>
-    class catchable { };
-
     template <typename Catchable>
     using enable_if_catchable_t = std::enable_if_t<
-        std::is_base_of<catchable<Catchable>, Catchable>::value, Catchable>;
-
-
-    template <typename Error, typename... Catchables>
-    class mixed final
-    {
-    public: // --- scope ---
-        class type : public unified<Error>, public Catchables...
-        {
-        public: // --- life ---
-            explicit type(up::source source, Catchables... catchables)
-                : unified<Error>(std::move(source)), Catchables(std::move(catchables))...
-            { }
-        };
-    };
-
-    template <typename Error>
-    class mixed<Error> final
-    {
-    public: // --- scope ---
-        // avoid creating a new type (with virtual destructor) in this case
-        using type = unified<Error>;
-    };
+        std::is_base_of<catchable<Catchable>, Catchable>::value
+        && !std::is_base_of<std::exception, Catchable>::value,
+        Catchable>;
 
     template <typename Error, typename... Catchables>
-    using mixed_t = typename mixed<Error, Catchables...>::type;
-
+    using make_error_result_t = unified<
+        std::enable_if_t<std::is_base_of<std::exception, Error>::value, Error>,
+        enable_if_catchable_t<std::decay_t<Catchables>>...>;
 
     template <typename Error = std::exception, typename... Catchables>
-    auto make_error(up::source source, Catchables... catchables)
-        -> mixed_t<Error, enable_if_catchable_t<Catchables>...>
+    auto make_error(up::source source, Catchables&&... catchables)
+        -> make_error_result_t<Error, Catchables...>
     {
-        return mixed_t<Error, Catchables...>(std::move(source), std::move(catchables)...);
+        return make_error_result_t<Error, Catchables...>(
+            std::move(source), std::forward<Catchables>(catchables)...);
     }
 
     template <typename Error = std::exception, typename... Catchables>
     [[noreturn]]
-    void throw_error(up::source source, Catchables... catchables)
+    void throw_error(up::source source, Catchables&&... catchables)
     {
-        throw make_error<Error, Catchables...>(std::move(source), std::move(catchables)...);
+        throw make_error<Error, Catchables...>(
+            std::move(source), std::forward<Catchables>(catchables)...);
     }
 
 }
