@@ -78,7 +78,7 @@ namespace up_error
              * The function must be overridden in a derived class, even if it
              * has already been defined in a base class.
              */
-            virtual auto what() const noexcept -> const char* override = 0;
+            auto what() const noexcept -> const char* override = 0;
         };
     };
 
@@ -119,7 +119,7 @@ namespace up_error
             static_assert(std::is_base_of<std::exception, Error>::value, "must be derived from std::exception");
         }
     private: // --- operations ---
-        virtual auto what() const noexcept -> const char* override final
+        auto what() const noexcept -> const char* override final
         {
             return error::source().label_c_str();
         }

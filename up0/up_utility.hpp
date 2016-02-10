@@ -172,7 +172,7 @@ namespace up_utility
             : _source(std::move(source)), _args(std::forward<Types>(args)...)
         { }
     private: // --- operations ---
-        virtual void _walk(const visitor& visitor) const override
+        void _walk(const visitor& visitor) const override
         {
             return _walk_aux(visitor, std::index_sequence_for<Types...>{});
         }

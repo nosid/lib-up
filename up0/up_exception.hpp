@@ -97,11 +97,11 @@ namespace up_exception
             auto operator=(const self& rhs) & -> self& = delete;
             auto operator=(self&& rhs) & noexcept -> self& = delete;
         private:
-            virtual auto what() const noexcept -> const char* override
+            auto what() const noexcept -> const char* override
             {
                 return _source.label_c_str();
             }
-            virtual auto _to_fabric() const -> up::fabric override
+            auto _to_fabric() const -> up::fabric override
             {
                 return _to_fabric_aux(std::index_sequence_for<Types...>{});
             }

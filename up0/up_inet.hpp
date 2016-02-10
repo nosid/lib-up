@@ -195,7 +195,7 @@ namespace up_inet
     private:
         // classes with vtables should have at least one out-of-line virtual method definition
         __attribute__((unused))
-        virtual void _vtable_dummy() const override;
+        void _vtable_dummy() const override;
     };
 
 

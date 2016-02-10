@@ -425,7 +425,7 @@ namespace
         }
         ~base_engine() noexcept = default;
     private: // --- operations ---
-        void shutdown() const override
+        void shutdown() const override final
         {
             try {
                 sentry sentry(this, state::shutdown_in_progress);
@@ -436,12 +436,12 @@ namespace
             }
             _underlying->shutdown();
         }
-        void hard_close() const override
+        void hard_close() const override final
         {
             _state = state::bad;
             _underlying->hard_close();
         }
-        auto read_some(up::chunk::into chunk) const -> std::size_t override
+        auto read_some(up::chunk::into chunk) const -> std::size_t override final
         {
             try {
                 sentry sentry(this, state::read_in_progress);
@@ -454,36 +454,36 @@ namespace
                 return 0;
             }
         }
-        auto write_some(up::chunk::from chunk) const -> std::size_t override
+        auto write_some(up::chunk::from chunk) const -> std::size_t override final
         {
             sentry sentry(this, state::write_in_progress);
             openssl_thread::instance();
             return _handle_io_result(
                 ::SSL_write(_ssl.get(), chunk.data(), up::ints::caster(chunk.size())), false);
         }
-        auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t override
+        auto read_some_bulk(up::chunk::into_bulk_t& chunks) const -> std::size_t override final
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */
             return read_some(chunks.head());
         }
-        auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t override
+        auto write_some_bulk(up::chunk::from_bulk_t& chunks) const -> std::size_t override final
         {
             /* Unfortunately, OpenSSL has no support for multiple buffers. So,
              * we only process the first non-empty buffer. */
             return write_some(chunks.head());
         }
-        auto downgrade() -> std::unique_ptr<up::stream::engine> override
+        auto downgrade() -> std::unique_ptr<up::stream::engine> override final
         {
             sentry sentry(this, state::shutdown_in_progress);
             _graceful_shutdown();
             return std::move(_underlying);
         }
-        auto get_underlying_engine() const -> const engine* override
+        auto get_underlying_engine() const -> const engine* override final
         {
             return _underlying->get_underlying_engine();
         }
-        auto get_native_handle() const -> up::stream::native_handle override
+        auto get_native_handle() const -> up::stream::native_handle override final
         {
             return _underlying->get_native_handle();
         }

@@ -134,7 +134,7 @@ namespace up_stream
             : self(now, now + duration)
         { }
     private: // --- operations ---
-        virtual void _wait(native_handle handle, operation op) override;
+        void _wait(native_handle handle, operation op) override;
     };
 
 
@@ -169,7 +169,7 @@ namespace up_stream
             lhs.swap(rhs);
         }
     private:
-        virtual void _wait(native_handle handle, operation op) override;
+        void _wait(native_handle handle, operation op) override;
     };
 
 
@@ -188,7 +188,7 @@ namespace up_stream
         void swap(self& rhs __attribute__((unused))) noexcept { }
         friend void swap(self& lhs __attribute__((unused)), self& rhs __attribute__((unused))) noexcept { }
     private:
-        virtual void _wait(native_handle handle, operation op) override;
+        void _wait(native_handle handle, operation op) override;
     };
 
 
