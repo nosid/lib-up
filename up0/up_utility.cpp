@@ -69,9 +69,9 @@ auto up_utility::cformat(const char* format, va_list ap) -> std::string
 }
 
 
-void up_utility::raise_enum_set_runtime_error(up::source source, up::fabric fabric)
+void up_utility::raise_enum_set_runtime_error(up::source source, up::insight insight)
 {
-    up::raise<runtime>(std::move(source), std::move(fabric));
+    up::raise<runtime>(std::move(source), std::move(insight));
 }
 
 

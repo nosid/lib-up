@@ -25,12 +25,12 @@ namespace
         {
             ++top->_passed;
         }
-        static void check_failed(location location, up::string_literal type, up::fabrics fabrics)
+        static void check_failed(location location, up::string_literal type, up::insights insights)
         {
             ++top->_failed;
             up::out(std::cerr, location.file(), ':', location.line(), ": failure: ", type, "\n");
-            for (auto&& fabric : fabrics) {
-                up::out(std::cerr, fabric, '\n');
+            for (auto&& insight : insights) {
+                up::out(std::cerr, insight, '\n');
             }
         }
     private: // --- state ---
@@ -139,9 +139,9 @@ void up_test::check::_passed(location location, up::string_literal type)
     runner::check_passed(location, type);
 }
 
-void up_test::check::_failed(location location, up::string_literal type, up::fabrics fabrics)
+void up_test::check::_failed(location location, up::string_literal type, up::insights insights)
 {
-    runner::check_failed(location, type, std::move(fabrics));
+    runner::check_failed(location, type, std::move(insights));
 }
 
 

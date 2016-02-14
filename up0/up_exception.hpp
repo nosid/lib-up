@@ -14,7 +14,7 @@
  * (c) make it easy to add exception types.
  */
 
-#include "up_fabric.hpp"
+#include "up_insight.hpp"
 #include "up_out.hpp"
 #include "up_pack.hpp"
 #include "up_source.hpp"
@@ -43,12 +43,12 @@ namespace up_exception
     protected: // --- life ---
         virtual ~exception() noexcept = default;
     public: // --- operations ---
-        auto to_fabric() const
+        auto to_insight() const
         {
-            return _to_fabric();
+            return _to_insight();
         }
     private:
-        virtual auto _to_fabric() const -> up::fabric = 0;
+        virtual auto _to_insight() const -> up::insight = 0;
     };
 
 
@@ -101,15 +101,15 @@ namespace up_exception
             {
                 return _source.label_c_str();
             }
-            auto _to_fabric() const -> up::fabric override
+            auto _to_insight() const -> up::insight override
             {
-                return _to_fabric_aux(std::index_sequence_for<Types...>{});
+                return _to_insight_aux(std::index_sequence_for<Types...>{});
             }
             template <std::size_t... Indexes>
-            auto _to_fabric_aux(std::index_sequence<Indexes...>) const
+            auto _to_insight_aux(std::index_sequence<Indexes...>) const
             {
-                return up::fabric(typeid(*this), _source.label(),
-                    up::invoke_to_fabric_with_fallback(up::pack_get<Indexes>(_args))...);
+                return up::insight(typeid(*this), _source.label(),
+                    up::invoke_to_insight_with_fallback(up::pack_get<Indexes>(_args))...);
             }
         };
     };
@@ -143,7 +143,7 @@ namespace up_exception
             : _value(value)
         { }
     public: // --- operations ---
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
     };
 
 

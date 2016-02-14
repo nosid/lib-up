@@ -160,7 +160,7 @@ namespace up_fs
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto working() const -> origin;
         auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         // operator for convenience - same as working()
@@ -191,7 +191,7 @@ namespace up_fs
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto working() const -> origin;
         auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         auto location() const -> std::string;
@@ -220,7 +220,7 @@ namespace up_fs
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto get_impl() const -> const std::shared_ptr<const impl>&
         {
             return _impl;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "up_fabric.hpp"
+#include "up_insight.hpp"
 #include "up_string_literal.hpp"
 
 /**
@@ -118,11 +118,11 @@ namespace up_test
         }
     private:
         static void _passed(location location, up::string_literal type);
-        static void _failed(location location, up::string_literal type, up::fabrics fabrics);
+        static void _failed(location location, up::string_literal type, up::insights insights);
         template <typename... Args>
         static void _failed_aux(location location, up::string_literal type, Args&&... args)
         {
-            _failed(location, type, {up::invoke_to_fabric_with_fallback(std::forward<Args>(args))...});
+            _failed(location, type, {up::invoke_to_insight_with_fallback(std::forward<Args>(args))...});
         }
     };
 

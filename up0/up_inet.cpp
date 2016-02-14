@@ -44,10 +44,10 @@ namespace
             : _value(value)
         { }
     public: // --- operations ---
-        auto to_fabric() const
+        auto to_insight() const
         {
-            return up::fabric(typeid(*this), std::string(::gai_strerror(_value)),
-                up::invoke_to_fabric_with_fallback(_value));
+            return up::insight(typeid(*this), std::string(::gai_strerror(_value)),
+                up::invoke_to_insight_with_fallback(_value));
         }
     };
 
@@ -804,11 +804,11 @@ auto up_inet::to_string(tcp::port value) -> std::string
 const up_inet::tcp::endpoint up_inet::tcp::endpoint::any(ipv4::endpoint::any, tcp::port::any);
 
 
-auto up_inet::tcp::endpoint::to_fabric() const -> up::fabric
+auto up_inet::tcp::endpoint::to_insight() const -> up::insight
 {
-    return up::fabric(typeid(*this), "tcp-endpoint",
-        up::invoke_to_fabric_with_fallback(_address),
-        up::invoke_to_fabric_with_fallback(_port));
+    return up::insight(typeid(*this), "tcp-endpoint",
+        up::invoke_to_insight_with_fallback(_address),
+        up::invoke_to_insight_with_fallback(_port));
 }
 
 
@@ -875,11 +875,11 @@ public: // --- operations ---
                 _fd, level, option, up::errno_info(errno));
         }
     }
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "tcp-socket-impl",
-            up::invoke_to_fabric_with_fallback(_endpoint),
-            up::invoke_to_fabric_with_fallback(_fd));
+        return up::insight(typeid(*this), "tcp-socket-impl",
+            up::invoke_to_insight_with_fallback(_endpoint),
+            up::invoke_to_insight_with_fallback(_fd));
     }
     void hard_close(bool reset = false)
     {
@@ -923,11 +923,11 @@ public: // --- life ---
 public: // --- operations ---
     auto operator=(const self& rhs) & -> self& = delete;
     auto operator=(self&& rhs) & noexcept -> self& = delete;
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "tcp-connection-engine",
-            up::invoke_to_fabric_with_fallback(*_socket),
-            up::invoke_to_fabric_with_fallback(_remote));
+        return up::insight(typeid(*this), "tcp-connection-engine",
+            up::invoke_to_insight_with_fallback(*_socket),
+            up::invoke_to_insight_with_fallback(_remote));
     }
 private:
     void shutdown() const override
@@ -1009,9 +1009,9 @@ up_inet::tcp::connection::connection(std::unique_ptr<engine> engine)
     : stream(std::move(engine))
 { }
 
-auto up_inet::tcp::connection::to_fabric() const -> up::fabric
+auto up_inet::tcp::connection::to_insight() const -> up::insight
 {
-    return static_cast<const engine*>(get_underlying_engine())->to_fabric();
+    return static_cast<const engine*>(get_underlying_engine())->to_insight();
 }
 
 auto up_inet::tcp::connection::local() const -> tcp::endpoint
@@ -1072,10 +1072,10 @@ public: // --- life ---
 public: // --- operations ---
     auto operator=(const self& rhs) & -> self& = delete;
     auto operator=(self&& rhs) & noexcept -> self& = delete;
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "tcp-listener-impl",
-            up::invoke_to_fabric_with_fallback(*_socket));
+        return up::insight(typeid(*this), "tcp-listener-impl",
+            up::invoke_to_insight_with_fallback(*_socket));
     }
 };
 
@@ -1089,9 +1089,9 @@ up_inet::tcp::listener::listener(up::impl_ptr<impl, destroy> impl)
     : _impl(std::move(impl))
 { }
 
-auto up_inet::tcp::listener::to_fabric() const -> up::fabric
+auto up_inet::tcp::listener::to_insight() const -> up::insight
 {
-    return _impl->to_fabric();
+    return _impl->to_insight();
 }
 
 auto up_inet::tcp::listener::accept(up::stream::patience& patience) -> connection
@@ -1154,9 +1154,9 @@ up_inet::tcp::socket::socket(const tcp::endpoint& endpoint, up::enum_set<option>
     }
 }
 
-auto up_inet::tcp::socket::to_fabric() const -> up::fabric
+auto up_inet::tcp::socket::to_insight() const -> up::insight
 {
-    return _impl->to_fabric();
+    return _impl->to_insight();
 }
 
 auto up_inet::tcp::socket::endpoint() const -> const tcp::endpoint&

@@ -8,7 +8,7 @@
 
 #include <experimental/optional>
 
-#include "up_fabric.hpp"
+#include "up_insight.hpp"
 
 namespace up_optional
 {
@@ -26,21 +26,21 @@ namespace std
     {
 
         /**
-         * up::fabric relies on ADL. For this reason, the following function
+         * up::insight relies on ADL. For this reason, the following function
          * is added to the std namespace, although that is not allowed
          * (according to the C++ standard).
          */
         template <typename... Types>
-        auto to_fabric(const optional<Types...>& arg)
+        auto to_insight(const optional<Types...>& arg)
         {
             return arg
-                ? up::fabric(typeid(arg), "exists", up::invoke_to_fabric_with_fallback(*arg))
-                : up::fabric(typeid(arg), "nullopt");
+                ? up::insight(typeid(arg), "exists", up::invoke_to_insight_with_fallback(*arg))
+                : up::insight(typeid(arg), "nullopt");
         }
 
         // avoid accidental (implicit) conversion from an actual type to optional.
         template <typename... Types>
-        auto to_fabric(const optional<Types...>&& arg) = delete;
+        auto to_insight(const optional<Types...>&& arg) = delete;
 
     }
 

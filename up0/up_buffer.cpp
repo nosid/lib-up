@@ -31,12 +31,12 @@ namespace
             : _size(size), _warm_pos(warm_pos), _cold_pos(cold_pos)
         { }
     public: // --- operations ---
-        auto to_fabric() const -> up::fabric
+        auto to_insight() const -> up::insight
         {
-            return up::fabric(typeid(*this), "buffer-header",
-                up::invoke_to_fabric_with_fallback(_size),
-                up::invoke_to_fabric_with_fallback(_warm_pos),
-                up::invoke_to_fabric_with_fallback(_cold_pos));
+            return up::insight(typeid(*this), "buffer-header",
+                up::invoke_to_insight_with_fallback(_size),
+                up::invoke_to_insight_with_fallback(_warm_pos),
+                up::invoke_to_insight_with_fallback(_cold_pos));
         }
     };
 

@@ -7,21 +7,21 @@
  */
 
 
-#include "up_fabric.hpp"
+#include "up_insight.hpp"
 #include "up_source.hpp"
 
 namespace up_terminate
 {
 
     [[noreturn]]
-    void terminate_aux(const up::source& source, const up::fabrics& details);
+    void terminate_aux(const up::source& source, const up::insights& insights);
 
     template <typename... Args>
     [[noreturn]]
     void terminate(const up::source& source, Args&&... args)
     {
         terminate_aux(source,
-            up::fabrics{up::invoke_to_fabric_with_fallback(std::forward<Args>(args))...});
+            up::insights{up::invoke_to_insight_with_fallback(std::forward<Args>(args))...});
     }
 
 }

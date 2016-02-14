@@ -117,13 +117,13 @@ namespace
                 swap(values, _values);
             }
         public: // --- operations ---
-            auto to_fabric() const -> up::fabric
+            auto to_insight() const -> up::insight
             {
-                up::fabrics details;
+                up::insights insights;
                 for (auto&& value : _values) {
-                    details.emplace_back(typeid(value), value);
+                    insights.emplace_back(typeid(value), value);
                 }
-                return up::fabric(typeid(*this), "details", std::move(details));
+                return up::insight(typeid(*this), "insights", std::move(insights));
             }
         };
         __attribute__((__format__(__printf__, 2, 0)))

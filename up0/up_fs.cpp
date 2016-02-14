@@ -110,10 +110,10 @@ namespace
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric
+        auto to_insight() const -> up::insight
         {
-            return up::fabric(typeid(*this), "fs-handle",
-                up::invoke_to_fabric_with_fallback(_fd));
+            return up::insight(typeid(*this), "fs-handle",
+                up::invoke_to_insight_with_fallback(_fd));
         }
         auto get() const { return _fd; }
         auto get_or(int alternate) const
@@ -564,12 +564,12 @@ public: // --- life ---
         , _avoid_access_time(std::move(avoid_access_time))
     { }
 public: // --- operations ---
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "fs-context-impl",
-            up::invoke_to_fabric_with_fallback(_name),
-            up::invoke_to_fabric_with_fallback(_additional_open_flags),
-            up::invoke_to_fabric_with_fallback(_avoid_access_time));
+        return up::insight(typeid(*this), "fs-context-impl",
+            up::invoke_to_insight_with_fallback(_name),
+            up::invoke_to_insight_with_fallback(_additional_open_flags),
+            up::invoke_to_insight_with_fallback(_avoid_access_time));
     }
     auto openat(int dir_fd, const char* pathname, int flags, mode_t mode = ignored_mode) const
         -> int
@@ -606,9 +606,9 @@ up_fs::fs::context::context(std::string name)
     : _impl(std::make_shared<const impl>(std::move(name), O_CLOEXEC | O_NOCTTY | O_NONBLOCK, false))
 { }
 
-auto up_fs::fs::context::to_fabric() const -> up::fabric
+auto up_fs::fs::context::to_insight() const -> up::insight
 {
-    return up::fabric(typeid(*this), "fs-context", _impl->to_fabric());
+    return up::insight(typeid(*this), "fs-context", _impl->to_insight());
 }
 
 auto up_fs::fs::context::working() const -> origin
@@ -650,11 +650,11 @@ public: // --- life ---
         _handle = handle(_context->openat(dir_fd, up::nts(pathname), flags));
     }
 public: // --- operations ---
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "fs-origin-impl",
-            up::invoke_to_fabric_with_fallback(*_context),
-            up::invoke_to_fabric_with_fallback(_handle));
+        return up::insight(typeid(*this), "fs-origin-impl",
+            up::invoke_to_insight_with_fallback(*_context),
+            up::invoke_to_insight_with_fallback(_handle));
     }
     auto get_context() const -> const std::shared_ptr<const context::impl>&
     {
@@ -763,9 +763,9 @@ private:
 };
 
 
-auto up_fs::fs::origin::to_fabric() const -> up::fabric
+auto up_fs::fs::origin::to_insight() const -> up::insight
 {
-    return up::fabric(typeid(*this), "fs-origin", _impl->to_fabric());
+    return up::insight(typeid(*this), "fs-origin", _impl->to_insight());
 }
 
 auto up_fs::fs::origin::working() const -> origin
@@ -804,12 +804,12 @@ public: // --- life ---
         , _follow(std::move(follow))
     { }
 public: // --- operations ---
-    auto to_fabric() const -> up::fabric
+    auto to_insight() const -> up::insight
     {
-        return up::fabric(typeid(*this), "fs-path-impl",
-            up::invoke_to_fabric_with_fallback(*_origin),
-            up::invoke_to_fabric_with_fallback(_pathname),
-            up::invoke_to_fabric_with_fallback(_follow));
+        return up::insight(typeid(*this), "fs-path-impl",
+            up::invoke_to_insight_with_fallback(*_origin),
+            up::invoke_to_insight_with_fallback(_pathname),
+            up::invoke_to_insight_with_fallback(_follow));
     }
     auto get_context() const -> const std::shared_ptr<const context::impl>&
     {
@@ -948,9 +948,9 @@ private:
 };
 
 
-auto up_fs::fs::path::to_fabric() const -> up::fabric
+auto up_fs::fs::path::to_insight() const -> up::insight
 {
-    return up::fabric(typeid(*this), "fs-path", _impl->to_fabric());
+    return up::insight(typeid(*this), "fs-path", _impl->to_insight());
 }
 
 auto up_fs::fs::path::follow(bool value) const -> self

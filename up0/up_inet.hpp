@@ -170,7 +170,7 @@ namespace up_inet
             : _address(std::move(address)), _port(std::move(port))
         { }
     public: // --- operations ---
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto address() const -> const ip::endpoint& { return _address; }
         auto port() const -> tcp::port { return _port; }
     };
@@ -186,7 +186,7 @@ namespace up_inet
     public: // --- life ---
         explicit connection(std::unique_ptr<engine> engine);
     public: // --- operations ---
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto local() const -> tcp::endpoint;
         auto remote() const -> const tcp::endpoint&;
         void qos(qos_priority priority, qos_drop drop) const;
@@ -223,7 +223,7 @@ namespace up_inet
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto accept(up::stream::patience& patience) -> connection;
         auto accept(up::stream::patience&& patience) -> connection
         {
@@ -259,7 +259,7 @@ namespace up_inet
         {
             lhs.swap(rhs);
         }
-        auto to_fabric() const -> up::fabric;
+        auto to_insight() const -> up::insight;
         auto endpoint() const -> const tcp::endpoint&;
         auto connect(const tcp::endpoint& remote, up::stream::patience& patience) && -> connection;
         auto connect(const tcp::endpoint& remote, up::stream::patience&& patience) && -> connection

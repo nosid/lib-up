@@ -6,7 +6,7 @@
  */
 
 #include "up_buffer.hpp"
-#include "up_fabric.hpp"
+#include "up_insight.hpp"
 #include "up_pack.hpp"
 #include "up_source.hpp"
 #include "up_swap.hpp"
@@ -47,7 +47,7 @@ namespace up_utility
 
     // for internal use only
     [[noreturn]]
-    void raise_enum_set_runtime_error(up::source source, up::fabric fabric);
+    void raise_enum_set_runtime_error(up::source source, up::insight insight);
 
 
     /**
@@ -75,7 +75,7 @@ namespace up_utility
                     _bits |= underlying_type(1) << raw;
                 } else {
                     raise_enum_set_runtime_error("enum-value-out-of-range",
-                        up::invoke_to_fabric_with_fallback(raw));
+                        up::invoke_to_insight_with_fallback(raw));
                 }
             }
         }
@@ -126,7 +126,7 @@ namespace up_utility
     private: // --- scope ---
         static thread_local context_frame_base* top;
     public:
-        using visitor = std::function<void(const up::source&, const up::fabrics&)>;
+        using visitor = std::function<void(const up::source&, const up::insights&)>;
         static void walk(const visitor& visitor);
     private: // --- state ---
         context_frame_base* _parent;
@@ -180,8 +180,8 @@ namespace up_utility
             void _walk_aux(const visitor& visitor, std::index_sequence<Indexes...>) const
         {
             visitor(_source,
-                up::fabrics{
-                    up::invoke_to_fabric_with_fallback(up::pack_get<Indexes>(_args))...});
+                up::insights{
+                    up::invoke_to_insight_with_fallback(up::pack_get<Indexes>(_args))...});
         }
     };
 
