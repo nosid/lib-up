@@ -16,7 +16,6 @@
 
 #include "up_insight.hpp"
 #include "up_out.hpp"
-#include "up_pack.hpp"
 #include "up_source.hpp"
 
 namespace up_exception
@@ -43,7 +42,7 @@ namespace up_exception
     protected: // --- life ---
         virtual ~exception() noexcept = default;
     public: // --- operations ---
-        auto to_insight() const
+        auto to_insight() const -> up::insight
         {
             return _to_insight();
         }
@@ -80,17 +79,17 @@ namespace up_exception
             using self = throwable;
         private: // --- state ---
             up::source _source;
-            up::pack<Types...> _args;
+            up::packaged_insights<Types...> _insights;
         public: // --- life ---
             template <typename... Args>
             explicit throwable(up::source source, Args&&... args)
                 : _source(std::move(source))
-                , _args(std::forward<Args>(args)...)
+                , _insights(std::forward<Args>(args)...)
             { }
             throwable(const self& rhs) = delete;
             throwable(self&& rhs) noexcept
                 : _source(std::move(rhs._source))
-                , _args(std::move(rhs._args))
+                , _insights(std::move(rhs._insights))
             { }
             ~throwable() noexcept = default;
         public: // --- operations ---
@@ -103,13 +102,7 @@ namespace up_exception
             }
             auto _to_insight() const -> up::insight override
             {
-                return _to_insight_aux(std::index_sequence_for<Types...>{});
-            }
-            template <std::size_t... Indexes>
-            auto _to_insight_aux(std::index_sequence<Indexes...>) const
-            {
-                return up::insight(typeid(*this), _source.label(),
-                    up::invoke_to_insight_with_fallback(up::pack_get<Indexes>(_args))...);
+                return up::insight(typeid(*this), _source.label(), _insights.unpack());
             }
         };
     };
