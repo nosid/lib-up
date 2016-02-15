@@ -7,7 +7,6 @@
 
 #include "up_buffer.hpp"
 #include "up_insight.hpp"
-#include "up_pack.hpp"
 #include "up_source.hpp"
 #include "up_swap.hpp"
 
@@ -166,7 +165,7 @@ namespace up_utility
     {
     private: // --- state ---
         up::source _source;
-        up::pack<Types...> _args;
+        std::tuple<Types...> _args;
     public: // --- life ---
         explicit context_frame(up::source source, Types&&... args)
             : _source(std::move(source)), _args(std::forward<Types>(args)...)
@@ -181,7 +180,7 @@ namespace up_utility
         {
             visitor(_source,
                 up::insights{
-                    up::invoke_to_insight_with_fallback(up::pack_get<Indexes>(_args))...});
+                    up::invoke_to_insight_with_fallback(std::get<Indexes>(_args))...});
         }
     };
 

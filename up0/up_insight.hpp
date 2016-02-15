@@ -1,7 +1,6 @@
 #pragma once
 
 #include "up_istring.hpp"
-#include "up_pack.hpp"
 #include "up_to_string.hpp"
 
 
@@ -113,7 +112,7 @@ namespace up_insight
     class packaged_insights final
     {
     private: // --- state ---
-        up::pack<Types...> _pack;
+        std::tuple<Types...> _pack;
     public: // --- life ---
         template <typename... Args>
         explicit packaged_insights(Args&&... args)
@@ -132,7 +131,7 @@ namespace up_insight
         template <std::size_t... Indexes>
         auto _unpack_aux(std::index_sequence<Indexes...>) const -> insights
         {
-            return {invoke_to_insight_with_fallback(up::pack_get<Indexes>(_pack))...};
+            return {invoke_to_insight_with_fallback(std::get<Indexes>(_pack))...};
         }
     };
 

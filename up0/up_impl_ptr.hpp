@@ -1,6 +1,5 @@
 #pragma once
 
-#include "up_pack.hpp"
 
 namespace up_impl_ptr
 {
@@ -22,7 +21,7 @@ namespace up_impl_ptr
     class impl_maker final
     {
     private: // --- state ---
-        up::pack<Args&&...> _args;
+        std::tuple<Args&&...> _args;
     public: // --- life ---
         explicit impl_maker(Args&&... args)
             : _args(std::forward<Args>(args)...)
@@ -37,7 +36,7 @@ namespace up_impl_ptr
         template <std::size_t... Indexes>
         auto _create(std::index_sequence<Indexes...>)
         {
-            return new Type(std::forward<Args>(up::pack_get<Indexes>(_args))...);
+            return new Type(std::forward<Args>(std::get<Indexes>(_args))...);
         }
     };
 
@@ -45,7 +44,7 @@ namespace up_impl_ptr
     class impl_maker<void, Args...> final
     {
     private: // --- state ---
-        up::pack<Args&&...> _args;
+        std::tuple<Args&&...> _args;
     public: // --- life ---
         explicit impl_maker(Args&&... args)
             : _args(std::forward<Args>(args)...)
@@ -61,7 +60,7 @@ namespace up_impl_ptr
         template <typename Type, std::size_t... Indexes>
         auto _create(std::index_sequence<Indexes...>)
         {
-            return new Type(std::forward<Args>(up::pack_get<Indexes>(_args))...);
+            return new Type(std::forward<Args>(std::get<Indexes>(_args))...);
         }
     };
 
