@@ -32,7 +32,12 @@ namespace up_error
         error(const self& rhs) noexcept = default;
         error(self&& rhs) noexcept = default;
     protected:
-        ~error() noexcept = default;
+        /**
+         * The destructor is declared virtual to add a vtable to the class,
+         * that can be used in debugging tools. It is not strictly necessary
+         * for throwing or catching exceptions.
+         */
+        virtual ~error() noexcept = default;
     public: // --- operations ---
         auto operator=(const self& rhs) & noexcept -> self& = default;
         auto operator=(self&& rhs) & noexcept -> self& = default;
@@ -73,7 +78,7 @@ namespace up_error
                 : Error(std::string())
             { }
             using Error::Error;
-        public: // --- operations ---
+        private: // --- operations ---
             /**
              * The function must be overridden in a derived class, even if it
              * has already been defined in a base class.
