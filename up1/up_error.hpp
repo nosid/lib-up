@@ -154,7 +154,7 @@ namespace up_error
         std::enable_if_t<std::is_base_of<std::exception, Error>::value, Error>,
         enable_if_catchable_t<std::decay_t<Catchables>>...>;
 
-    template <typename Error = std::exception, typename... Catchables>
+    template <typename Error = std::exception, typename..., typename... Catchables>
     auto make_error(up::source source, Catchables&&... catchables)
         -> make_error_result_t<Error, Catchables...>
     {
@@ -162,7 +162,7 @@ namespace up_error
             std::move(source), std::forward<Catchables>(catchables)...);
     }
 
-    template <typename Error = std::exception, typename... Catchables>
+    template <typename Error = std::exception, typename..., typename... Catchables>
     [[noreturn]]
     void throw_error(up::source source, Catchables&&... catchables)
     {
