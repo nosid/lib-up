@@ -4,6 +4,7 @@ namespace up_widen
 {
 
     template <
+        typename...,
         typename Type,
         typename = std::enable_if_t<std::is_integral<Type>::value && std::is_signed<Type>::value>>
     constexpr auto widest(Type value) -> std::intmax_t
@@ -12,6 +13,7 @@ namespace up_widen
     }
 
     template <
+        typename...,
         typename Type,
         typename = std::enable_if_t<std::is_integral<Type>::value && std::is_unsigned<Type>::value>>
     constexpr auto widest(Type value) -> std::uintmax_t
@@ -65,7 +67,7 @@ namespace up_widen
     class widen_t final
     {
     public: // --- scope ---
-        template <typename Type>
+        template <typename..., typename Type>
         constexpr static auto widen(Type value) noexcept -> Result
         {
             static_assert(noexcept(Result{value}), "requires noexcept");
@@ -77,7 +79,7 @@ namespace up_widen
     class widen_t<void> final
     {
     public: // --- scope ---
-        template <typename Type>
+        template <typename..., typename Type>
         constexpr static auto widen(Type value) noexcept -> widener<Type>
         {
             static_assert(noexcept(widener<Type>(value)), "requires noexcept");
@@ -88,6 +90,7 @@ namespace up_widen
 
     template <
         typename Result = void,
+        typename...,
         typename Type,
         typename = std::enable_if_t<
             std::conditional_t<
