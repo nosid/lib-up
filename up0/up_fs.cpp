@@ -26,16 +26,21 @@
 namespace
 {
 
-    struct runtime;
+    template <typename..., typename... Args>
+    [[noreturn]]
+    void fail(up::source&& source, Args&&... args)
+    {
+        throw up::make_exception(std::move(source))
+            .with(std::forward<Args>(args)..., up::errno_info(errno));
+    }
 
-
-    template <typename Type, typename... Args>
-    auto check(Type rv, Args&&... args) -> Type
+    template <typename..., typename Type, typename... Args>
+    auto check(Type rv, up::source&& source, Args&&... args) -> Type
     {
         if (rv >= 0) {
             return rv;
         } else {
-            up::raise<runtime>(std::forward<Args>(args)..., up::errno_info(errno));
+            fail(std::move(source), std::forward<Args>(args)...);
         }
     }
 
@@ -49,10 +54,10 @@ namespace
             if (cwd) {
                 return std::string(cwd);
             } else if (errno != ERANGE) {
-                check(-1, "fs-getcwd-error");
+                fail("fs-getcwd-error");
             } // else: continue
         }
-        up::raise<runtime>("fs-getcwd-error", up::errno_info(errno));
+        throw up::make_exception("fs-getcwd-error").with(up::errno_info(errno));
     }
 
 
@@ -168,21 +173,21 @@ namespace
             if (*p != '\\') {
                 result.push_back(*p);
             } else if (last - p < 4) {
-                up::raise<runtime>("fs-unmangle-path", std::string(first, last));
+                throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
             } else {
                 ++p;
                 if (*p < '0' || *p > '3') {
-                    up::raise<runtime>("fs-unmangle-path", std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
                 }
                 unsigned value = *p - '0';
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    up::raise<runtime>("fs-unmangle-path", std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    up::raise<runtime>("fs-unmangle-path", std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 result.push_back(static_cast<unsigned char>(value));
@@ -219,16 +224,16 @@ namespace
             int pos;
             int rv = sscanf(first, "%*d %*d %u:%u%n", &major, &minor, &pos);
             if (rv != 2 && rv != 3) {
-                up::raise<runtime>("fs-mountinfo-error", std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
             }
             char* r = std::find(first + pos + 1, last, ' ');
             if (r == last) {
-                up::raise<runtime>("fs-mountinfo-error", std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
             }
             ++r;
             char* s = std::find(r, last, ' ');
             if (s == last) {
-                up::raise<runtime>("fs-mountinfo-error", std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
             }
             result.emplace_back(makedev(major, minor), unmangle_pathname_from_proc(r, s));
             first = p + 1;
@@ -250,7 +255,7 @@ namespace
         case DT_SOCK: return kind::socket;
         case DT_UNKNOWN: return kind::unknown;
         default:
-            up::raise<runtime>("fs-bad-type-error", type);
+            throw up::make_exception("fs-bad-type-error").with(type);
         }
     }
 
@@ -266,7 +271,7 @@ namespace
         int fd = handle.get();
         DIR* dirp = ::fdopendir(fd);
         if (dirp == nullptr) {
-            up::raise<runtime>("fs-opendir-error", fd, up::errno_info(errno));
+            throw up::make_exception("fs-opendir-error").with(fd, up::errno_info(errno));
         }
 
         UP_DEFER {
@@ -288,7 +293,7 @@ namespace
             dirent* de = nullptr;
             int rv = ::readdir_r(dirp, reinterpret_cast<dirent*>(buffer.get()), &de);
             if (rv != 0) {
-                up::raise<runtime>("fs-readdir-error", fd, up::errno_info(rv));
+                throw up::make_exception("fs-readdir-error").with(fd, up::errno_info(rv));
             } else if (de == nullptr) {
                 return false;
             } else if (std::strcmp(de->d_name, ".") == 0
@@ -351,7 +356,7 @@ namespace
 
 
     template <typename Function, typename Chunk>
-    auto do_io(Function&& function, int fd, Chunk&& chunk, off_t offset, const up::source& source)
+    auto do_io(Function&& function, int fd, Chunk&& chunk, off_t offset, up::source&& source)
         -> std::size_t
     {
         for (;;) {
@@ -361,13 +366,13 @@ namespace
             } else if (errno == EINTR) {
                 // continue
             } else {
-                check(rv, source, fd, chunk.size(), offset);
+                fail(std::move(source), fd, chunk.size(), offset);
             }
         }
     }
 
     template <typename Function, typename Chunks>
-    auto do_iov(Function&& function, int fd, Chunks&& chunks, off_t offset, const up::source& source)
+    auto do_iov(Function&& function, int fd, Chunks&& chunks, off_t offset, up::source&& source)
         -> std::size_t
     {
         for (;;) {
@@ -378,7 +383,7 @@ namespace
             } else if (errno == EINTR) {
                 // continue
             } else {
-                check(rv, source, fd, chunks.count(), chunks.total(), offset);
+                fail(std::move(source), fd, chunks.count(), chunks.total(), offset);
             }
         }
     }
@@ -398,7 +403,7 @@ auto up_fs::to_string(fs::kind value) -> std::string
     case fs::kind::socket: return "socket";
     case fs::kind::unknown: return "unknown";
     default:
-        up::raise<runtime>("fs-bad-kind-error", value);
+        throw up::make_exception("fs-bad-kind-error").with(value);
     }
 }
 
@@ -443,7 +448,7 @@ bool up_fs::fs::stats::is_kind(kind value) const
     case kind::unknown:
         break; // ... and continue
     default:
-        up::raise<runtime>("fs-bad-kind-error", value);
+        throw up::make_exception("fs-bad-kind-error").with(value);
     }
     auto&& known = {
         kind::block_device,
@@ -580,7 +585,7 @@ public: // --- operations ---
             if (rv >= 0) {
                 return rv;
             } else if (errno != EPERM) {
-                check(rv, "fs-open-error", dir_fd, pathname, flags | O_NOATIME);
+                fail("fs-open-error", dir_fd, pathname, flags | O_NOATIME);
             } // else: continue
         }
         return check(
@@ -733,7 +738,7 @@ public: // --- operations ---
                 });
             if (!found) {
                 // current directory not found in parent directory
-                up::raise<runtime>("fs-resolve-error", dir_fd);
+                throw up::make_exception("fs-resolve-error").with(dir_fd);
             }
             auto q = std::partition_point(roots.begin(), roots.end(), [&next](auto&& r) {
                     return r.first < next.second;
@@ -751,7 +756,7 @@ public: // --- operations ---
             up::swap_noexcept(current, parent);
             up::swap_noexcept(next, previous);
         }
-        up::raise<runtime>("fs-resolve-error", dir_fd);
+        throw up::make_exception("fs-resolve-error").with(dir_fd);
     }
 private:
     auto find_mounts() const -> std::vector<mount>
@@ -910,7 +915,7 @@ public: // --- operations ---
                 return std::string(buffer.get(), static_cast<std::size_t>(rv));
             }
         }
-        up::raise<runtime>("fs-readlink-error", up::errno_info(errno));
+        throw up::make_exception("fs-readlink-error").with(up::errno_info(errno));
     }
     void symlink(const up::string_view& value) const
     {
@@ -1306,8 +1311,8 @@ void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
         if (rv == EINTR) {
             // continue
         } else {
-            up::raise<runtime>("fs-posix-fallocate-error",
-                _impl->fd(), offset, length, up::errno_info(rv));
+            throw up::make_exception("fs-posix-fallocate-error")
+                .with(_impl->fd(), offset, length, up::errno_info(rv));
         }
     }
 }
@@ -1315,8 +1320,8 @@ void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
 void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) const
 {
     if (auto rv = ::posix_fadvise(_impl->fd(), offset, length, advice)) {
-        up::raise<runtime>("fs-posix-fadvise-error",
-            _impl->fd(), offset, length, advice, up::errno_info(rv));
+        throw up::make_exception("fs-posix-fadvise-error")
+            .with(_impl->fd(), offset, length, advice, up::errno_info(rv));
     }
 }
 
@@ -1368,7 +1373,8 @@ private:
             rv = ::flock(_file->fd(), operation);
         } while (rv == -1 && errno == EINTR);
         if (rv == -1 && errno == EWOULDBLOCK) {
-            up::raise<up_fs::fs::locked_file>("fs-file-already-locked", _file->fd(), operation);
+            throw up::make_exception("fs-file-already-locked", up_fs::fs::locked_file())
+                .with(_file->fd(), operation);
         } else {
             check(rv, "fs-file-lock", _file->fd(), operation);
         }

@@ -176,6 +176,9 @@ namespace up_inet
     };
 
 
+    class tcp::invalid_service { };
+
+
     class tcp::connection final : public up::stream
     {
     public: // --- scope ---
@@ -282,6 +285,9 @@ namespace up_inet
     };
 
     auto to_string(udp::port value) -> std::string;
+
+
+    class udp::invalid_service { };
 
 }
 

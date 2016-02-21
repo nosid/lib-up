@@ -13,9 +13,6 @@
 namespace
 {
 
-    struct runtime;
-
-
     /**
      * Performance: Creating and destroying a wrapper instance takes about 1us
      * on my Intel I7 Notebook. In comparison, transforming a short string
@@ -37,7 +34,7 @@ namespace
             : _iconv(::iconv_open(up::nts(to), up::nts(from)))
         {
             if (_iconv == iconv_t(-1)) {
-                up::raise<runtime>("iconv-bad-encoding", to, from, up::errno_info(errno));
+                throw up::make_exception("iconv-bad-encoding").with(to, from, up::errno_info(errno));
             }
         }
         wrapper(const self& rhs) = delete;
@@ -54,7 +51,7 @@ namespace
             constexpr auto error = std::size_t(-1);
             if (_dirty) {
                 if (::iconv(_iconv, nullptr, nullptr, nullptr, nullptr) == error) {
-                    up::raise<runtime>("iconv-bad-reset", to, from, up::errno_info(errno));
+                    throw up::make_exception("iconv-bad-reset").with(to, from, up::errno_info(errno));
                 }
             }
             _dirty = true;
@@ -78,12 +75,12 @@ namespace
                         buffer.produce(buffer.capacity() - into_size);
                         break; // done
                     } else if (from_size == 0) {
-                        up::raise<runtime>("iconv-bad-conversion", to, from);
+                        throw up::make_exception("iconv-bad-conversion").with(to, from);
                     } else if (errno != E2BIG) {
-                        up::raise<runtime>("iconv-bad-conversion", to, from, up::errno_info(errno));
+                        throw up::make_exception("iconv-bad-conversion").with(to, from, up::errno_info(errno));
                     } else if (buffer.capacity() == into_size) {
                         // strange, apparently there was no progress
-                        up::raise<runtime>("iconv-bad-conversion", to, from, into_size);
+                        throw up::make_exception("iconv-bad-conversion").with(to, from, into_size);
                     } else {
                         buffer.produce(buffer.capacity() - into_size);
                         // continue

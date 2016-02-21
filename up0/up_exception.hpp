@@ -143,18 +143,10 @@ namespace up_exception
 
 
     template <typename Exception = std::exception, typename..., typename... Args>
-    auto make_exception(up::source&& source, Args&&... args)
+    auto make_exception(up::source source, Args&&... args)
     {
         return typename hierarchy<Exception, std::decay_t<Args>...>::template bundle<>(
             std::move(source), {}, std::forward<Args>(args)...);
-    }
-
-
-    template <typename... Tags, typename... Args>
-    [[noreturn]]
-    void raise(up::source source, Args&&... args)
-    {
-        throw make_exception(std::move(source)).with(std::forward<Args>(args)...);
     }
 
 
@@ -212,7 +204,6 @@ namespace up
 
     using up_exception::exception;
     using up_exception::make_exception;
-    using up_exception::raise;
     using up_exception::errno_info;
     using up_exception::log_current_exception;
     using up_exception::suppress_current_exception;

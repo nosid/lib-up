@@ -48,7 +48,7 @@ namespace
             auto stream = listener.accept(deadline);
             up::tls::server_context::hostname_callback callback = [](std::string hostname) -> up::tls::server_context& {
                 std::cerr << "HOSTNAME:" << hostname << '\n';
-                up::raise<up::tls::server_context::accept_hostname>("accept");
+                throw up::make_exception("accept", up::tls::server_context::accept_hostname());
             };
             stream.upgrade([&](std::unique_ptr<up::stream::engine> engine) {
                     return tls.upgrade(std::move(engine), deadline, callback);

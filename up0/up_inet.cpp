@@ -78,8 +78,6 @@ namespace
         return ntohl(value);
     }
 
-    struct runtime;
-
     enum class address_family : int { v4 = AF_INET, v6 = AF_INET6, };
 
     auto to_string(address_family value)
@@ -107,9 +105,11 @@ namespace
         if (rv == 1) {
             // okay
         } else if (rv == 0) {
-            up::raise<up_inet::invalid_endpoint>("invalid-ip-address", af, text);
+            throw up::make_exception("invalid-ip-address", up_inet::invalid_endpoint())
+                .with(af, text);
         } else {
-            up::raise<runtime>("ip-address-parser-error", af, text, up::errno_info(errno));
+            throw up::make_exception("ip-address-parser-error")
+                .with(af, text, up::errno_info(errno));
         }
     }
 
@@ -121,8 +121,8 @@ namespace
         if (rv != nullptr) {
             return std::string(rv);
         } else {
-            up::raise<runtime>("ip-address-conversion-error",
-                af, length, up::errno_info(errno));
+            throw up::make_exception("ip-address-conversion-error")
+                .with(af, length, up::errno_info(errno));
         }
     }
 
@@ -159,10 +159,10 @@ namespace
         if (rv == 0) {
             return std::string(buffer.get());
         } else if (rv == EAI_NONAME) {
-            up::raise<typename Protocol::invalid_service>(
-                "unknown-service-name", port, ai_error_info(rv));
+            throw up::make_exception("unknown-service-name", typename Protocol::invalid_service())
+                .with(port, ai_error_info(rv));
         } else {
-            up::raise<runtime>("port-resolver-error", port, ai_error_info(rv));
+            throw up::make_exception("port-resolver-error").with(port, ai_error_info(rv));
         }
     }
 
@@ -179,14 +179,14 @@ namespace
     void check_address_family(address_family expected, address_family actual)
     {
         if (expected != actual) {
-            up::raise<runtime>("ip-address-family-mismatch", expected, actual);
+            throw up::make_exception("ip-address-family-mismatch").with(expected, actual);
         }
     }
 
     void check_address_length(address_length expected, address_length actual)
     {
         if (expected != actual) {
-            up::raise<runtime>("ip-address-size-mismatch", expected, actual);
+            throw up::make_exception("ip-address-size-mismatch").with(expected, actual);
         }
     }
 
@@ -228,8 +228,8 @@ namespace
             ai = nullptr;
             return std::forward<Callable>(callable)(ai);
         } else {
-            up::raise<runtime>("host-name-resolver-error",
-                host_name, flags, ai_error_info(rv));
+            throw up::make_exception("host-name-resolver-error")
+                .with(host_name, flags, ai_error_info(rv));
         }
     }
 
@@ -243,7 +243,7 @@ namespace
         if (rv == 0) {
             return std::string(buffer.get());
         } else {
-            up::raise<runtime>("ip-address-resolver-error", ai_error_info(rv));
+            throw up::make_exception("ip-address-resolver-error").with(ai_error_info(rv));
         }
     }
 
@@ -262,7 +262,7 @@ namespace
         if (i < I && j < J) {
             return table[i][j];
         } else {
-            up::raise<runtime>("dscp-index-out-of-range", i, j);
+            throw up::make_exception("dscp-index-out-of-range").with(i, j);
         }
     }
 
@@ -418,7 +418,7 @@ auto up_inet::ip::resolve_canonical(const up::string_view& name) -> std::string
             if (ai && ai->ai_canonname) {
                 return std::string(ai->ai_canonname);
             } else {
-                up::raise<runtime>("canonical-host-name-resolver-error", name);
+                throw up::make_exception("canonical-host-name-resolver-error").with(name);
             }
         });
 }
@@ -456,7 +456,8 @@ auto up_inet::ip::resolve_name(const endpoint& endpoint) -> std::string
         ipv6::endpoint::accessor::copy(static_cast<ipv6::endpoint>(endpoint), sa.sin6_addr);
         return getnameinfo_aux(sa);
     } else {
-        up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", endpoint.version());
+        throw up::make_exception("unexpected-tcp-endpoint-ip-address-version")
+            .with(endpoint.version());
     }
 }
 
@@ -470,7 +471,7 @@ auto up_inet::to_string(ip::version value) -> std::string
     case ip::version::v6:
         return up::invoke_to_string("ipv6"_sl);
     }
-    up::raise<runtime>("unexpected-ip-version", up::to_underlying_type(value));
+    throw up::make_exception("unexpected-ip-version").with(up::to_underlying_type(value));
 }
 
 
@@ -496,7 +497,7 @@ up_inet::ip::endpoint::endpoint(const endpoint& rhs)
         new (&_v6) ipv6::endpoint(rhs._v6);
         return;
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 up_inet::ip::endpoint::endpoint(const ipv4::endpoint& rhs)
@@ -518,7 +519,7 @@ up_inet::ip::endpoint::endpoint(endpoint&& rhs) noexcept
         new (&_v6) ipv6::endpoint(std::move(rhs._v6));
         return;
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 up_inet::ip::endpoint::~endpoint() noexcept
@@ -531,7 +532,7 @@ up_inet::ip::endpoint::~endpoint() noexcept
         _v6.~endpoint();
         return;
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 auto up_inet::ip::endpoint::operator=(const self& rhs) & -> self&
@@ -542,7 +543,7 @@ auto up_inet::ip::endpoint::operator=(const self& rhs) & -> self&
     case ip::version::v6:
         return operator=(rhs._v6);
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", rhs._version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(rhs._version);
 }
 
 auto up_inet::ip::endpoint::operator=(self&& rhs) & noexcept -> self&
@@ -554,7 +555,7 @@ auto up_inet::ip::endpoint::operator=(self&& rhs) & noexcept -> self&
     case ip::version::v6:
         return operator=(rhs._v6);
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", rhs._version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(rhs._version);
 }
 
 auto up_inet::ip::endpoint::operator=(const ipv4::endpoint& rhs) & -> self&
@@ -569,7 +570,7 @@ auto up_inet::ip::endpoint::operator=(const ipv4::endpoint& rhs) & -> self&
         new (&_v4) ipv4::endpoint(rhs);
         return *this;
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 auto up_inet::ip::endpoint::operator=(const ipv6::endpoint& rhs) & -> endpoint&
@@ -584,7 +585,7 @@ auto up_inet::ip::endpoint::operator=(const ipv6::endpoint& rhs) & -> endpoint&
         _v6 = rhs;
         return *this;
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 auto up_inet::ip::endpoint::to_string() const -> std::string
@@ -595,7 +596,7 @@ auto up_inet::ip::endpoint::to_string() const -> std::string
     case ip::version::v6:
         return _v6.to_string();
     }
-    up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", _version);
+    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
 auto up_inet::ip::endpoint::version() const noexcept -> ip::version
@@ -654,10 +655,10 @@ namespace
         addrinfo* ai;
         int rv = ::getaddrinfo(nullptr, up::nts(name), &hints, &ai);
         if (rv == EAI_NONAME) {
-            up::raise<typename Protocol::invalid_service>("unknown-network-service",
-                name, ai_error_info(rv));
+            throw up::make_exception("unknown-network-service", typename Protocol::invalid_service())
+                .with(name, ai_error_info(rv));
         } else if (rv != 0) {
-            up::raise<runtime>("port-resolver-error", name, ai_error_info(rv));
+            throw up::make_exception("port-resolver-error").with(name, ai_error_info(rv));
         } // else: okay and continue
         UP_DEFER { ::freeaddrinfo(ai); };
         using port_t = typename Protocol::port;
@@ -670,7 +671,8 @@ namespace
                 port = current;
                 ++count;
             } else {
-                up::raise<runtime>("protocol-service-port-mismatch", name, port, current);
+                throw up::make_exception("protocol-service-port-mismatch")
+                    .with(name, port, current);
             }
         };
         for (addrinfo* i = ai; i; i = i->ai_next) {
@@ -701,8 +703,8 @@ namespace
     {
         auto l = up::from_underlying_type<address_length>(length);
         if (length > sizeof(*addr)) {
-            up::raise<runtime>("invalid-endpoint-address-size",
-                l, up::from_underlying_type<address_length>(sizeof(*addr)));
+            throw up::make_exception("invalid-endpoint-address-size")
+                .with(l, up::from_underlying_type<address_length>(sizeof(*addr)));
         } else if (addr->ss_family == AF_INET) {
             auto* a = get_sockaddr<sockaddr_in>(addr, address_family::v4, l);
             auto p = up::from_underlying_type<up_inet::tcp::port>(a->sin_port);
@@ -714,8 +716,8 @@ namespace
             return up_inet::tcp::endpoint(
                 up_inet::ipv6::endpoint(up_inet::ipv6::endpoint::init{a->sin6_addr}), p);
         } else {
-            up::raise<runtime>("unexpected-ip-address-family",
-                up::from_underlying_type<address_family>(addr->ss_family));
+            throw up::make_exception("unexpected-ip-address-family")
+                .with(up::from_underlying_type<address_family>(addr->ss_family));
         }
     }
 
@@ -729,7 +731,7 @@ namespace
         if (rv == 0) {
             return make_tcp_endpoint(&addr, length);
         } else {
-            up::raise<runtime>("endpoint-identification-error", up::errno_info(errno));
+            throw up::make_exception("endpoint-identification-error").with(up::errno_info(errno));
         }
     }
 
@@ -756,13 +758,13 @@ namespace
             return std::forward<Callable>(callable)(
                 reinterpret_cast<const sockaddr*>(&sa), sizeof(sa));
         } else {
-            up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version",
-                endpoint.address().version());
+            throw up::make_exception("unexpected-tcp-endpoint-ip-address-version")
+                .with(endpoint.address().version());
         }
     }
 
     template <typename Unavailable, typename Operation, typename... Args>
-    auto do_transfer(Operation&& operation, Args&&... args) -> std::size_t
+    auto do_transfer(Operation&& operation, up::source&& source, Args&&... args) -> std::size_t
     {
         bool restarted = false;
         for (;;) {
@@ -775,9 +777,11 @@ namespace
                  * supported in case it happens nevertheless. */
                 restarted = true;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                up::raise<Unavailable>(std::forward<Args>(args)..., up::errno_info(errno));
+                throw up::make_exception(std::move(source), Unavailable())
+                    .with(std::forward<Args>(args)..., up::errno_info(errno));
             } else {
-                up::raise<runtime>(std::forward<Args>(args)..., up::errno_info(errno));
+                throw up::make_exception(std::move(source))
+                    .with(std::forward<Args>(args)..., up::errno_info(errno));
             }
         }
     }
@@ -831,11 +835,12 @@ public: // --- life ---
         } else if (version == ip::version::v6) {
             domain = AF_INET6;
         } else {
-            up::raise<runtime>("unexpected-tcp-endpoint-ip-address-version", version);
+            throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(version);
         }
         _fd = ::socket(domain, traits<tcp>::sock_type | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
         if (_fd == -1) {
-            up::raise<runtime>("tcp-socket-creation-error", version, up::errno_info(errno));
+            throw up::make_exception("tcp-socket-creation-error")
+                .with(version, up::errno_info(errno));
         }
     }
     explicit impl(const tcp::endpoint& endpoint, int fd)
@@ -857,11 +862,11 @@ public: // --- operations ---
         socklen_t length = sizeof(result);
         int rv = ::getsockopt(_fd, level, option, &result, &length);
         if (rv != 0) {
-            up::raise<runtime>("query-network-socket-option-error",
-                _fd, level, option, up::errno_info(errno));
+            throw up::make_exception("query-network-socket-option-error")
+                .with(_fd, level, option, up::errno_info(errno));
         } else if (length != sizeof(result)) {
-            up::raise<runtime>("query-network-socket-option-size-mismatch",
-                _fd, level, option, sizeof(result), length);
+            throw up::make_exception("query-network-socket-option-size-mismatch")
+                .with(_fd, level, option, sizeof(result), length);
         } else {
             return result;
         }
@@ -871,8 +876,8 @@ public: // --- operations ---
     {
         int rv = ::setsockopt(_fd, level, option, &value, sizeof(value));
         if (rv != 0) {
-            up::raise<runtime>("network-socket-option-error",
-                _fd, level, option, up::errno_info(errno));
+            throw up::make_exception("network-socket-option-error")
+                .with(_fd, level, option, up::errno_info(errno));
         }
     }
     auto to_insight() const -> up::insight
@@ -884,7 +889,7 @@ public: // --- operations ---
     void hard_close(bool reset = false)
     {
         if (_fd == -1) {
-            up::raise<runtime>("invalid-socket-state");
+            throw up::make_exception("invalid-socket-state");
         } else if (reset) {
             /* The socket is closed immediately. Most likely this causes a
              * connection reset on the other end. */
@@ -937,7 +942,8 @@ private:
          * seems to have no effect at all. */
         int rv = ::shutdown(_socket->_fd, SHUT_WR);
         if (rv != 0) {
-            up::raise<runtime>("tcp-connection-shutdown-error", _remote, up::errno_info(errno));
+            throw up::make_exception("tcp-connection-shutdown-error")
+                .with(_remote, up::errno_info(errno));
         } // else: ok
     }
     void hard_close() const override
@@ -992,7 +998,7 @@ private:
     }
     auto downgrade() -> std::unique_ptr<up::stream::engine> override
     {
-        up::raise<runtime>("tcp-bad-downgrade-error");
+        throw up::make_exception("tcp-bad-downgrade-error");
     }
     auto get_underlying_engine() const -> const engine* override
     {
@@ -1063,7 +1069,8 @@ public: // --- life ---
         // TODO: Linux 4.4 added support for SO_INCOMING_CPU on listeners
         int rv = ::listen(_socket->_fd, backlog);
         if (rv != 0) {
-            up::raise<runtime>("tcp-socket-listen-error", backlog, up::errno_info(errno));
+            throw up::make_exception("tcp-socket-listen-error")
+                .with(backlog, up::errno_info(errno));
         }
     }
     impl(const self& rhs) = delete;
@@ -1116,7 +1123,8 @@ auto up_inet::tcp::listener::accept(up::stream::patience& patience) -> connectio
         } else if (errno == EINTR) {
             // restart
         } else {
-            up::raise<runtime>("tcp-listener-accept-error", _impl->_socket->_endpoint, up::errno_info(errno));
+            throw up::make_exception("tcp-listener-accept-error")
+                .with(_impl->_socket->_endpoint, up::errno_info(errno));
         }
     }
 }
@@ -1150,7 +1158,8 @@ up_inet::tcp::socket::socket(const tcp::endpoint& endpoint, up::enum_set<option>
             return ::bind(fd, addr, addrlen);
         });
     if (rv != 0) {
-        up::raise<runtime>("tcp-socket-bind-error", endpoint, options, up::errno_info(errno));
+        throw up::make_exception("tcp-socket-bind-error")
+            .with(endpoint, options, up::errno_info(errno));
     }
 }
 
@@ -1178,12 +1187,14 @@ auto up_inet::tcp::socket::connect(const tcp::endpoint& remote, up::stream::pati
             } else if (errno == EINPROGRESS) {
                 patience(_impl->get_native_handle(), up::stream::patience::operation::write);
                 if (auto error = _impl->getsockopt<int>(SOL_SOCKET, SO_ERROR)) {
-                    up::raise<runtime>("tcp-socket-connect-error", remote, up::errno_info(error));
+                    throw up::make_exception("tcp-socket-connect-error")
+                        .with(remote, up::errno_info(error));
                 } else {
                     return;
                 }
             } else {
-                up::raise<runtime>("tcp-socket-connect-failed", remote, up::errno_info(errno));
+                throw up::make_exception("tcp-socket-connect-failed")
+                    .with(remote, up::errno_info(errno));
             }
         }
     });

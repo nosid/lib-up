@@ -3,14 +3,6 @@
 #include "up_exception.hpp"
 
 
-namespace
-{
-
-    struct runtime { };
-
-}
-
-
 auto up_chunk::chunk::into::drain(std::size_t n) -> std::size_t
 {
     if (n >= _size) {
@@ -55,7 +47,7 @@ auto up_chunk::chunk::into_bulk_t::head() const -> const into&
             return chunks[i];
         } // else: next
     }
-    up::raise<runtime>("bad-chunk", count(), total());
+    throw up::make_exception("bad-chunk").with(count(), total());
 }
 
 
@@ -103,5 +95,5 @@ auto up_chunk::chunk::from_bulk_t::head() const -> const from&
             return chunks[i];
         } // else: next
     }
-    up::raise<runtime>("bad-chunk", count(), total());
+    throw up::make_exception("bad-chunk").with(count(), total());
 }

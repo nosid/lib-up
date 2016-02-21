@@ -19,8 +19,6 @@
 namespace
 {
 
-    struct runtime;
-
     using shm = up_secure_hash::secure_hash_mechanism;
 
     template <shm Mechanism>
@@ -91,19 +89,19 @@ namespace
     void do_secure_hash(up::chunk::from* chunks, std::size_t count, up::chunk::into result)
     {
         if (secure_hash_digest_size(Mechanism) != result.size()) {
-            up::raise<runtime>("invalid-secure-hash-size", Mechanism, result.size());
+            throw up::make_exception("invalid-secure-hash-size").with(Mechanism, result.size());
         }
         raw_context<Mechanism> context;
         if (context.init() != 1) {
-            up::raise<runtime>("bad-secure-hash-init", Mechanism);
+            throw up::make_exception("bad-secure-hash-init").with(Mechanism);
         }
         for (std::size_t i = 0; i < count; ++i) {
             if (context.update(chunks[i].data(), chunks[i].size()) != 1) {
-                up::raise<runtime>("bad-secure-hash-update", Mechanism);
+                throw up::make_exception("bad-secure-hash-update").with(Mechanism);
             }
         }
         if (context.final(up::char_cast<unsigned char>(result.data())) != 1) {
-            up::raise<runtime>("bad-secure-hash-final", Mechanism);
+            throw up::make_exception("bad-secure-hash-final").with(Mechanism);
         }
     }
 
@@ -120,7 +118,7 @@ auto up_secure_hash::to_string(secure_hash_mechanism mechanism) -> std::string
     case secure_hash_mechanism::sha384: return "sha384";
     case secure_hash_mechanism::sha512: return "sha512";
     default:
-        up::raise<runtime>("invalid-secure-hash-mechanism", mechanism);
+        throw up::make_exception("invalid-secure-hash-mechanism").with(mechanism);
     }
 }
 
@@ -147,7 +145,7 @@ void up_secure_hash::secure_hash_aux(secure_hash_mechanism mechanism, up::chunk:
         do_secure_hash<secure_hash_mechanism::sha512>(chunks, count, result);
         break;
     default:
-        up::raise<runtime>("invalid-secure-hash-mechanism", mechanism);
+        throw up::make_exception("invalid-secure-hash-mechanism").with(mechanism);
     }
 }
 
@@ -190,23 +188,23 @@ public: // --- life ---
     explicit derived()
     {
         if (_context.init() != 1) {
-            up::raise<runtime>("bad-secure-hash-init", Mechanism);
+            throw up::make_exception("bad-secure-hash-init").with(Mechanism);
         }
     }
 private: // --- operations ---
     void update(up::chunk::from chunk) override
     {
         if (_context.update(chunk.data(), chunk.size()) != 1) {
-            up::raise<runtime>("bad-secure-hash-update", Mechanism);
+            throw up::make_exception("bad-secure-hash-update").with(Mechanism);
         }
     }
     void finish(up::chunk::into result) override
     {
         if (secure_hash_digest_size(Mechanism) != result.size()) {
-            up::raise<runtime>("invalid-secure-hash-size", Mechanism, result.size());
+            throw up::make_exception("invalid-secure-hash-size").with(Mechanism, result.size());
         }
         if (_context.final(up::char_cast<unsigned char>(result.data())) != 1) {
-            up::raise<runtime>("bad-secure-hash-final", Mechanism);
+            throw up::make_exception("bad-secure-hash-final").with(Mechanism);
         }
     }
 };
@@ -241,7 +239,7 @@ up_secure_hash::secure_hasher_aux::secure_hasher_aux(secure_hash_mechanism mecha
         _impl = up::impl_make<impl::derived<secure_hash_mechanism::sha512>>();
         break;
     default:
-        up::raise<runtime>("invalid-secure-hash-mechanism", mechanism);
+        throw up::make_exception("invalid-secure-hash-mechanism").with(mechanism);
     }
 }
 

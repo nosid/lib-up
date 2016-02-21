@@ -10,9 +10,6 @@
 namespace
 {
 
-    struct runtime;
-    struct out_of_range;
-
     using size_type = up_buffer::buffer::size_type;
     using sizes = up::ints::domain<size_type>;
 
@@ -54,7 +51,7 @@ namespace
         if (core) {
             return *reinterpret_cast<header*>(core);
         } else {
-            up::raise<runtime>("buffer-null-state");
+            throw up::make_exception("buffer-null-state");
         }
     }
 
@@ -77,7 +74,7 @@ namespace
             new (temp) header(h);
             return temp;
         } else {
-            up::raise<runtime>("buffer-out-of-memory", h);
+            throw up::make_exception("buffer-out-of-memory").with(h);
         }
     }
 
@@ -163,12 +160,14 @@ void up_buffer::buffer::consume(size_type n)
         auto&& h = get_mutable_header(_core);
         auto pos = sizes::or_range_error::add(h._warm_pos, n);
         if (pos > h._cold_pos) {
-            up::raise<out_of_range>("buffer-consume-overflow", h, n);
+            throw up::make_exception<std::range_error>("buffer-consume-overflow")
+                .with(h, n);
         } else {
             h._warm_pos = pos;
         }
     } else if (n) {
-        up::raise<out_of_range>("buffer-consume-overflow", null_header, n);
+        throw up::make_exception<std::range_error>("buffer-consume-overflow")
+            .with(null_header, n);
     } // else: nothing
 }
 
@@ -238,12 +237,12 @@ void up_buffer::buffer::produce(size_type n)
         auto&& h = get_mutable_header(_core);
         auto pos = sizes::or_range_error::add(h._cold_pos, n);
         if (pos > h._size) {
-            up::raise<out_of_range>("buffer-produce-overflow", h, n);
+            throw up::make_exception<std::range_error>("buffer-produce-overflow").with(h, n);
         } else {
             h._cold_pos = pos;
         }
     } else if (n) {
-        up::raise<out_of_range>("buffer-produce-overflow", null_header, n);
+        throw up::make_exception<std::range_error>("buffer-produce-overflow").with(null_header, n);
     } // else: nothing
 }
 

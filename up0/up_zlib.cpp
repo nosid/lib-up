@@ -11,9 +11,6 @@
 namespace
 {
 
-    struct runtime;
-
-
     class processor
     {
     public: // --- scope ---
@@ -51,15 +48,15 @@ namespace
                 _z_stream.next_out = reinterpret_cast<Bytef*>(_buffer.cold());
                 rv = operation(&_z_stream, flush);
                 if (rv != Z_OK && rv != Z_STREAM_END) {
-                    up::raise<runtime>(source, rv);
+                    throw up::make_exception(source).with(rv);
                 }
                 _buffer.produce(_buffer.capacity() - _z_stream.avail_out);
             } while (_z_stream.avail_out == 0);
             if (_z_stream.avail_in > 0) {
-                up::raise<runtime>(source, _z_stream.avail_in);
+                throw up::make_exception(source).with(_z_stream.avail_in);
             }
             if (flush == Z_FINISH && rv != Z_STREAM_END) {
-                up::raise<runtime>(source, rv);
+                throw up::make_exception(source).with(rv);
             }
         }
     };
@@ -85,7 +82,7 @@ public: // --- life ---
     {
         int rv = ::deflateInit(&_z_stream, level);
         if (rv != Z_OK) {
-            up::raise<runtime>("zlib-bad-deflate", rv);
+            throw up::make_exception("zlib-bad-deflate").with(rv);
         }
     }
     ~impl() noexcept
@@ -146,7 +143,7 @@ public: // --- life ---
     {
         int rv = ::inflateInit(&_z_stream);
         if (rv != Z_OK) {
-            up::raise<runtime>("zlib-bad-inflate", rv);
+            throw up::make_exception("zlib-bad-inflate").with(rv);
         }
     }
     ~impl() noexcept

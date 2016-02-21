@@ -8,8 +8,6 @@
 namespace
 {
 
-    struct runtime;
-
     /* TODO: Add a new module that supports commonly used codecs. */
     class bytes final
     {
@@ -23,7 +21,7 @@ namespace
         {
             std::size_t size = std::strlen(text);
             if (size % 2 != 0) {
-                up::raise<runtime>("bad-hex-size", size);
+                throw up::make_exception("bad-hex-size").with(size);
             }
             up::buffer buffer;
             buffer.reserve(size / 2);
@@ -43,7 +41,7 @@ namespace
             } else if (c >= 'a' && c <= 'f') {
                 return c - 'a' + 10;
             } else {
-                up::raise<runtime>("bad-hex-char", c);
+                throw up::make_exception("bad-hex-char").with(c);
             }
         }
     private: // --- fields ---

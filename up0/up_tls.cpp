@@ -22,8 +22,6 @@
 namespace
 {
 
-    struct runtime { };
-
     struct already_shutdown { };
 
 
@@ -81,7 +79,7 @@ namespace
              * (solely) by this framework. */
             _ssl_ex_data_index = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
             if (_ssl_ex_data_index < 0) {
-                up::raise<runtime>("tls-external-data-error");
+                throw up::make_exception("tls-external-data-error");
             }
             // required for multi-threaded programs
             ::CRYPTO_THREADID_set_callback(&_thread_id_callback);
@@ -111,13 +109,13 @@ namespace
         void ssl_put_ptr(SSL* ssl, Type* ptr)
         {
             if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, ptr) != 1) {
-                up::raise<runtime>("tls-external-data-error");
+                throw up::make_exception("tls-external-data-error");
             }
         }
         void ssl_reset_ptr(SSL* ssl)
         {
             if (::SSL_set_ex_data(ssl, _ssl_ex_data_index, nullptr) != 1) {
-                up::raise<runtime>("tls-external-data-error");
+                throw up::make_exception("tls-external-data-error");
             }
         }
         template <typename Type>
@@ -126,7 +124,7 @@ namespace
             if (auto* ptr = ::SSL_get_ex_data(ssl, _ssl_ex_data_index)) {
                 return static_cast<Type*>(ptr);
             } else {
-                up::raise<runtime>("tls-external-data-error");
+                throw up::make_exception("tls-external-data-error");
             }
         }
     };
@@ -172,9 +170,9 @@ namespace
             auto func = ::ERR_lib_error_string(code);
             auto reason = ::ERR_reason_error_string(code);
             ::ERR_clear_error();
-            up::raise<runtime>(std::move(source), code, lib, func, reason, std::forward<Args>(args)...);
+            throw up::make_exception(std::move(source)).with(code, lib, func, reason, std::forward<Args>(args)...);
         } else {
-            up::raise<runtime>(std::move(source), std::forward<Args>(args)...);
+            throw up::make_exception(std::move(source)).with(std::forward<Args>(args)...);
         }
     }
 
@@ -360,9 +358,9 @@ namespace
                 } else if (_owner->_state == expected) {
                     // nothing
                 } else if (_owner->_state == state::shutdown_completed) {
-                    up::raise<already_shutdown>("tls-stream-already-shutdown");
+                    throw up::make_exception("tls-stream-already-shutdown", already_shutdown());
                 } else {
-                    up::raise<runtime>("tls-bad-state",
+                    throw up::make_exception("tls-bad-state").with(
                         up::to_underlying_type(_owner->_state),
                         up::to_underlying_type(expected));
                 }
@@ -501,9 +499,9 @@ namespace
                 } else if (result < 0) {
                     auto error = ::SSL_get_error(_ssl.get(), result);
                     if (error == SSL_ERROR_WANT_READ) {
-                        up::raise<unreadable>("unreadable-tls-stream");
+                        throw up::make_exception("unreadable-tls-stream", unreadable());
                     } else if (error == SSL_ERROR_WANT_WRITE) {
-                        up::raise<unwritable>("unwritable-tls-stream");
+                        throw up::make_exception("unwritable-tls-stream", unwritable());
                     } else if (error == SSL_ERROR_SYSCALL && errno == 0) {
                         /* According to the OpenSSL documentation, an
                          * erroneous SSL_ERROR_SYSCALL may be flagged even
@@ -538,9 +536,9 @@ namespace
                 _state = state::shutdown_completed;
                 return 0;
             } else if (result < 0 && error == SSL_ERROR_WANT_READ) {
-                up::raise<unreadable>("unreadable-tls-stream");
+                throw up::make_exception("unreadable-tls-stream", unreadable());
             } else if (result < 0 && error == SSL_ERROR_WANT_WRITE) {
-                up::raise<unwritable>("unwritable-tls-stream");
+                throw up::make_exception("unwritable-tls-stream", unwritable());
             } else {
                 _state = state::bad;
                 raise_ssl_error("tls-io-error", result, error);
@@ -1008,7 +1006,7 @@ void up_tls::tls::server_context::destroy(impl* ptr)
 auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 {
     return [](std::string hostname) -> self& {
-        up::raise<accept_hostname>("tls-ignore-hostname", std::move(hostname));
+        throw up::make_exception("tls-ignore-hostname", accept_hostname()).with(std::move(hostname));
     };
 }
 
@@ -1140,10 +1138,10 @@ public: // --- life ---
         if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
             ::X509_free(x509);
         } else {
-            up::raise<runtime>("tls-missing-peer-certificate");
+            throw up::make_exception("tls-missing-peer-certificate");
         }
         if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
-            up::raise<runtime>("tls-invalid-peer-certificate");
+            throw up::make_exception("tls-invalid-peer-certificate");
         }
     }
 };
@@ -1267,10 +1265,10 @@ public: // --- life ---
         if (X509* x509 = ::SSL_get_peer_certificate(_ssl.get())) {
             ::X509_free(x509);
         } else {
-            up::raise<runtime>("tls-missing-peer-certificate");
+            throw up::make_exception("tls-missing-peer-certificate");
         }
         if (::SSL_get_verify_result(_ssl.get()) != X509_V_OK) {
-            up::raise<runtime>("tls-invalid-peer-certificate");
+            throw up::make_exception("tls-invalid-peer-certificate");
         }
     }
 };

@@ -15,7 +15,7 @@ namespace up_stream
     public: // --- scope ---
         using self = stream;
         enum class native_handle : int { invalid = -1, };
-        class timeout;
+        class timeout { };
         class patience;
         class steady_patience;
         class deadline_patience;

@@ -26,9 +26,6 @@
 namespace
 {
 
-    struct runtime;
-
-
     class libxml_process final
     {
     public: // --- scope ---
@@ -208,15 +205,17 @@ namespace
             }
             _errors.push_back(std::move(error));
         }
-        template <typename Type, typename... Args>
+        template <typename..., typename... Args>
         [[noreturn]]
-        void raise(Args&&... args)
+        void raise(up::source&& source, Args&&... args)
         {
             if (_errors.empty()) {
-                up::raise<Type>(std::forward<Args>(args)...);
+                throw up::make_exception(std::move(source))
+                    .with(std::forward<Args>(args)...);
             } else {
                 errors errors(std::move(_errors));
-                up::raise<Type>(std::forward<Args>(args)..., std::move(errors));
+                throw up::make_exception(std::move(source))
+                    .with(std::forward<Args>(args)..., std::move(errors));
             }
         }
     };
@@ -256,11 +255,11 @@ namespace
     }
 
 
-    template <typename Type, typename... Args>
+    template <typename..., typename... Args>
     [[noreturn]]
-    void raise(Args&&... args)
+    void raise(up::source&& source, Args&&... args)
     {
-        libxml_thread::instance().raise<Type>(std::forward<Args>(args)...);
+        libxml_thread::instance().raise(std::move(source), std::forward<Args>(args)...);
     }
 
 
@@ -344,7 +343,7 @@ namespace
                     if (node->type == XML_TEXT_NODE || node->type == XML_CDATA_SECTION_NODE) {
                         value.append(_chars(node->content));
                     } else {
-                        up::raise<runtime>("xml-bad-attr-node-type", node->type);
+                        throw up::make_exception("xml-bad-attr-node-type").with(node->type);
                     }
                 }
                 result.emplace_back(_qname(attr->name, attr->ns), up::istring(value));
@@ -379,7 +378,7 @@ namespace
                 case XML_COMMENT_NODE:
                     break; // skip
                 default:
-                    up::raise<runtime>("xml-bad-element-node-type", node->type);
+                    throw up::make_exception("xml-bad-element-node-type").with(node->type);
                 }
             }
             if (pending) {
@@ -429,7 +428,7 @@ namespace
         {
             auto node = ::xmlNewChild(parent, nullptr, _as_c_str(element.tag().local_name()), nullptr);
             if (node == nullptr) {
-                raise<runtime>("xml-new-node-error");
+                raise("xml-new-node-error");
             }
             prefixes overwrite;
             auto put_ns = [&defaults,&overwrite,node](auto&& qname) -> xmlNs* {
@@ -448,7 +447,7 @@ namespace
                                 ns = ::xmlSearchNs(node->doc, node, _chars("xml"));
                             }
                             if (ns == nullptr) {
-                                raise<runtime>("xml-new-ns-error");
+                                raise("xml-new-ns-error");
                             }
                             q = overwrite.emplace(prefix, std::make_pair(uri, ns)).first;
                         }
@@ -456,8 +455,8 @@ namespace
                     } else if (p->second.first == uri) {
                         return p->second.second;
                     } else {
-                        up::raise<runtime>("xml-inconsistent-namespace-error",
-                            prefix, uri, p->second.first);
+                        throw up::make_exception("xml-inconsistent-namespace-error")
+                            .with(prefix, uri, p->second.first);
                     }
                 } else {
                     /* Explicitly unset namespace. It is necessary, because in
@@ -470,7 +469,7 @@ namespace
             for (auto&& attr : element.attrs()) {
                 auto prop = ::xmlNewNsProp(node, put_ns(attr.name()), _as_c_str(attr.name().local_name()), nullptr);
                 if (prop == nullptr) {
-                    raise<runtime>("xml-new-attr-error");
+                    raise("xml-new-attr-error");
                 }
                 _add_text(reinterpret_cast<xmlNode*>(prop), attr.value());
             }
@@ -491,7 +490,7 @@ namespace
             auto text = ::xmlNewDocTextLen(
                 parent->doc, _chars(value.data()), up::ints::caster(value.size()));
             if (text == nullptr) {
-                raise<runtime>("xml-new-text-error");
+                raise("xml-new-text-error");
             }
             text->parent = parent;
             if (parent->children) {
@@ -611,7 +610,7 @@ public: // --- operations ---
                 return internalizer()(root);
             }
         }
-        up::raise<runtime>("xml-bad-root-error");
+        throw up::make_exception("xml-bad-root-error");
     }
 };
 
@@ -637,7 +636,7 @@ public: // --- life ---
         libxml_thread::context context(loader);
         auto parser = ::xmlNewParserCtxt();
         if (parser == nullptr) {
-            raise<runtime>("xml-new-parser-error");
+            raise("xml-new-parser-error");
         }
         UP_DEFER { ::xmlFreeParserCtxt(parser); };
         // parser settings recommended by libxslt1
@@ -669,10 +668,10 @@ public: // --- life ---
             /* In some cases, a valid _ptr is returned, even if there were
              * errors. For example if a NS URIs is not absolute. */
             UP_DEFER { ::xmlCtxtResetLastError(parser); };
-            raise<runtime>("xml-parser-error", URL, encoding, options,
+            raise("xml-parser-error", URL, encoding, options,
                 error->domain, error->code, error->level, std::string(error->message));
         } else if (_ptr == nullptr || parser->valid == 0) {
-            raise<runtime>("xml-parser-error", URL, encoding, options);
+            raise("xml-parser-error", URL, encoding, options);
         }
         if (flags & XML_PARSE_XINCLUDE) {
             /* Even if the option XML_PARSE_XINCLUDE is passed to the
@@ -682,10 +681,10 @@ public: // --- life ---
                 // OK
             } else if (auto error = ::xmlCtxtGetLastError(parser)) {
                 UP_DEFER { ::xmlCtxtResetLastError(parser); };
-                raise<runtime>("xml-parser-xinclude-error", URL, encoding, options,
+                raise("xml-parser-xinclude-error", URL, encoding, options,
                     error->domain, error->code, error->level, std::string(error->message));
             } else {
-                raise<runtime>("xml-parser-xinclude-error", URL, encoding, options);
+                raise("xml-parser-xinclude-error", URL, encoding, options);
             }
         }
         if (options.all(option::strip_blanks)) {
@@ -698,7 +697,7 @@ public: // --- life ---
     {
         _ptr = ::xmlNewDoc(nullptr);
         if (_ptr == nullptr) {
-            raise<runtime>("xml-new-document-error");
+            raise("xml-new-document-error");
         }
         externalizer(reinterpret_cast<xmlNode*>(_ptr), root);
     }
@@ -723,14 +722,14 @@ public: // --- operations ---
             },
             nullptr, &buffer, encoding, XML_SAVE_FORMAT);
         if (ctxt == nullptr) {
-            raise<runtime>("xml-serialize-error");
+            raise("xml-serialize-error");
         }
         if (::xmlSaveDoc(ctxt, _ptr) < 0) {
             ::xmlSaveFlush(ctxt);
-            raise<runtime>("xml-serialize-error");
+            raise("xml-serialize-error");
         }
         if (::xmlSaveFlush(ctxt) < 0) {
-            raise<runtime>("xml-serialize-error");
+            raise("xml-serialize-error");
         }
         return buffer;
     }
@@ -804,7 +803,7 @@ public: // --- life ---
         libxml_thread::context context(loader);
         _ptr = ::xsltParseStylesheetDoc(_document->native_handle());
         if (_ptr == nullptr) {
-            raise<runtime>("xslt-parser-error");
+            raise("xslt-parser-error");
         }
     }
     impl(const impl& rhs) = delete;
@@ -845,7 +844,8 @@ private: // --- scope ---
             for (std::size_t i = 0; i != size; ++i) {
                 char c = data[i];
                 if (!std::isalnum(c) && c != '-' && c != '.' && c != '/' && c != ':' && c != '_') {
-                    up::raise<runtime>("xslt-bad-string-parameter-character", c, std::string(data, size));
+                    throw up::make_exception("xslt-bad-string-parameter-character")
+                        .with(c, std::string(data, size));
                 }
                 result.push_back(c);
             }
@@ -896,7 +896,7 @@ public: // --- life ---
         _ptr = ::xsltApplyStylesheet(
             _stylesheet->_ptr, source.native_handle(), params(parameters)());
         if (_ptr == nullptr) {
-            raise<runtime>("xslt-transformation-error");
+            raise("xslt-transformation-error");
         }
     }
 public: // --- operations ---
@@ -906,7 +906,7 @@ public: // --- operations ---
         up::buffer result;
         auto rv = ::xsltSaveResultToFile(up::buffer_adapter::producer(result), _ptr, _stylesheet->_ptr);
         if (rv < 0) {
-            raise<runtime>("xslt-serialization-error");
+            raise("xslt-serialization-error");
         }
         return result;
     }

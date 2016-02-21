@@ -189,7 +189,7 @@ namespace up_throwable
 
 
     template <typename Exception = std::exception, typename..., typename... Args>
-    auto make_throwable(up::source&& source, Args&&... args)
+    auto make_throwable(up::source source, Args&&... args)
     {
         return typename hierarchy<Exception, std::decay_t<Args>...>::template bundle<>(
             std::move(source), {}, std::forward<Args>(args)...);

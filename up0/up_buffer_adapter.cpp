@@ -8,9 +8,6 @@
 namespace
 {
 
-    struct runtime;
-
-
     template <typename Derived>
     class adapter
     {
@@ -32,7 +29,7 @@ namespace
             _file = ::fopencookie(static_cast<Derived*>(this), mode,
                 cookie_io_functions_t{read, write, nullptr, nullptr});
             if (_file == nullptr) {
-                up::raise<runtime>("buffer-adapter-error");
+                throw up::make_exception("buffer-adapter-error");
             }
         }
         adapter(const self& rhs) = delete;

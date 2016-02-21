@@ -285,6 +285,9 @@ namespace up_fs
     };
 
 
+    class fs::locked_file { };
+
+
     class fs::file final
     {
     public: // --- scope ---

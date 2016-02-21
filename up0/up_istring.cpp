@@ -36,8 +36,6 @@ namespace
      * seven (or six) characters are cached inline. There is also a need for a
      * dirty flag, because the cache might get outdated. */
 
-    struct runtime;
-
     constexpr auto uchar_max()
     {
         return std::numeric_limits<unsigned char>::max();
@@ -93,7 +91,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
         std::memcpy(_core + 1, data, core_size / 2 - 1);
         char* temp = up::char_cast<char>(::operator new(size));
         if (temp == nullptr) {
-            up::raise<runtime>("istring-out-of-memory", size);
+            throw up::make_exception("istring-out-of-memory").with(size);
         } else {
             static_assert(std::is_trivial<char*>::value, "requires trivial type");
             new (_core + core_size / 2) char*{temp};
@@ -106,7 +104,7 @@ up_istring::istring::istring(const char* data, std::size_t size)
         std::memcpy(_core + 1, data, core_size / 2 - 1);
         char* temp = up::char_cast<char>(::operator new(total));
         if (temp == nullptr) {
-            up::raise<runtime>("istring-out-of-memory", size);
+            throw up::make_exception("istring-out-of-memory").with(size);
         } else {
             static_assert(std::is_trivial<char*>::value, "requires trivial type");
             static_assert(std::is_trivial<std::size_t>::value, "requires trivial type");
