@@ -49,6 +49,19 @@ namespace
 }
 
 
+template class up_exception::hierarchy<std::exception>::bundle<>;
+template class up_exception::hierarchy<std::bad_exception>::bundle<>;
+template class up_exception::hierarchy<std::logic_error>::bundle<>;
+template class up_exception::hierarchy<std::domain_error>::bundle<>;
+template class up_exception::hierarchy<std::invalid_argument>::bundle<>;
+template class up_exception::hierarchy<std::length_error>::bundle<>;
+template class up_exception::hierarchy<std::out_of_range>::bundle<>;
+template class up_exception::hierarchy<std::runtime_error>::bundle<>;
+template class up_exception::hierarchy<std::range_error>::bundle<>;
+template class up_exception::hierarchy<std::overflow_error>::bundle<>;
+template class up_exception::hierarchy<std::underflow_error>::bundle<>;
+
+
 auto up_exception::errno_info::to_insight() const -> up::insight
 {
     return up::insight(typeid(*this), strerror_aux(::strerror_r, _value),
@@ -60,9 +73,15 @@ void up_exception::log_current_exception_aux(std::ostream& os)
 {
     try {
         throw;
-    } catch (const up::exception<>& e) {
-        up::out(os, e.what(), '\n');
+    } catch (const up::exception& e) {
+        auto&& s = e.source();
+        up::out(os, s.file(), ':', s.line(), ": ", s.label(), '\n');
         log_insight(os, e.to_insight(), 1);
+    } catch (const up::throwable& e) {
+        auto&& s = e.source();
+        up::out(os, s.file(), ':', s.line(), ": ", s.label(), '\n');
+    } catch (const std::exception& e) {
+        up::out(os, e.what(), '\n');
     } catch (...) {
         up::out(os, "...\n");
     }

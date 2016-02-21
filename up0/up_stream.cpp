@@ -34,9 +34,9 @@ namespace
             for (;;) {
                 try {
                     return (engine.*fn)(args...);
-                } catch (const up::exception<engine::unreadable>&) {
+                } catch (const engine::unreadable&) {
                     patience(engine.get_native_handle(), patience::operation::read);
-                } catch (const up::exception<engine::unwritable>&) {
+                } catch (const engine::unwritable&) {
                     patience(engine.get_native_handle(), patience::operation::write);
                 }
             }
@@ -48,9 +48,9 @@ namespace
             for (;;) {
                 try {
                     return (engine.*fn)(args...);
-                } catch (const up::exception<engine::unreadable>&) {
+                } catch (const engine::unreadable&) {
                     patience(engine.get_native_handle(), patience::operation::read);
-                } catch (const up::exception<engine::unwritable>&) {
+                } catch (const engine::unwritable&) {
                     patience(engine.get_native_handle(), patience::operation::write);
                 }
             }
@@ -145,9 +145,9 @@ void up_stream::stream::graceful_close(patience& patience) const
             } else {
                 break;
             }
-        } catch (const up::exception<engine::unreadable>&) {
+        } catch (const engine::unreadable&) {
             patience(_engine->get_native_handle(), patience::operation::read);
-        } catch (const up::exception<engine::unwritable>&) {
+        } catch (const engine::unwritable&) {
             patience(_engine->get_native_handle(), patience::operation::write);
         }
     }

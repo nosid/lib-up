@@ -9,7 +9,7 @@
 namespace up_inet
 {
 
-    class invalid_endpoint;
+    class invalid_endpoint { };
 
 
     class ipv4 final

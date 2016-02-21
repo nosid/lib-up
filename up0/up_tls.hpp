@@ -132,8 +132,8 @@ namespace up_tls
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
         using options = up::enum_set<option>;
         using hostname_callback = std::function<self&(std::string)>;
-        class accept_hostname;
-        class reject_hostname;
+        class accept_hostname { };
+        class reject_hostname { };
         static void destroy(impl* ptr);
         static auto ignore_hostname() -> hostname_callback;
     private: // --- state ---

@@ -108,34 +108,6 @@ namespace up_insight
         return insight(typeid(value), up::invoke_to_string(std::forward<Type>(value)));
     }
 
-    template <typename... Types>
-    class packaged_insights final
-    {
-    private: // --- state ---
-        std::tuple<Types...> _pack;
-    public: // --- life ---
-        template <typename... Args>
-        explicit packaged_insights(Args&&... args)
-            : _pack(std::forward<Args>(args)...)
-        { }
-    public: // --- operations ---
-        auto to_insight() const -> insight
-        {
-            return insight(typeid(*this), "insights", unpack());
-        }
-        auto unpack() const -> insights
-        {
-            return _unpack_aux(std::index_sequence_for<Types...>{});
-        }
-    private:
-        template <std::size_t... Indexes>
-        auto _unpack_aux(std::index_sequence<Indexes...>) const -> insights
-        {
-            return {invoke_to_insight_with_fallback(std::get<Indexes>(_pack))...};
-        }
-    };
-
-
 }
 
 namespace up
@@ -145,6 +117,5 @@ namespace up
     using up_insight::insights;
     using up_insight::invoke_to_insight;
     using up_insight::invoke_to_insight_with_fallback;
-    using up_insight::packaged_insights;
 
 }

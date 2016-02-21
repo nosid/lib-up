@@ -225,10 +225,10 @@ namespace
             try {
                 ::BIO_clear_retry_flags(bio);
                 return up::ints::caster(stream->write_some({data, up::ints::caster(size)}));
-            } catch (const up::exception<engine::unreadable>&) {
+            } catch (const engine::unreadable&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
-            } catch (const up::exception<engine::unwritable>&) {
+            } catch (const engine::unwritable&) {
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
@@ -243,10 +243,10 @@ namespace
             try {
                 ::BIO_clear_retry_flags(bio);
                 return up::ints::caster(stream->read_some({data, up::ints::caster(size)}));
-            } catch (const up::exception<engine::unreadable>&) {
+            } catch (const engine::unreadable&) {
                 ::BIO_set_retry_read(bio);
                 return -1;
-            } catch (const up::exception<engine::unwritable>&) {
+            } catch (const engine::unwritable&) {
                 ::BIO_set_retry_write(bio);
                 return -1;
             } catch (...) {
@@ -430,7 +430,7 @@ namespace
             try {
                 sentry sentry(this, state::shutdown_in_progress);
                 _graceful_shutdown();
-            } catch (const up::exception<already_shutdown>&) {
+            } catch (const already_shutdown&) {
                 /* Nothing, i.e. simulate the behavior of a regular socket
                  * that has been uni-directionally shutdown. */
             }
@@ -448,7 +448,7 @@ namespace
                 openssl_thread::instance();
                 return _handle_io_result(
                     ::SSL_read(_ssl.get(), chunk.data(), up::ints::caster(chunk.size())), true);
-            } catch (const up::exception<already_shutdown>&) {
+            } catch (const already_shutdown&) {
                 /* Simulate behavior of a regular socket that has been
                  * uni-directionally shutdown. */
                 return 0;
@@ -935,9 +935,9 @@ private:
                 auto&& other = callback(std::string(servername));
                 ::SSL_set_SSL_CTX(ssl, other._impl->_ssl_ctx.get());
                 return SSL_TLSEXT_ERR_OK;
-            } catch (const up::exception<accept_hostname>&) {
+            } catch (const accept_hostname&) {
                 return SSL_TLSEXT_ERR_OK;
-            } catch (const up::exception<reject_hostname>&) {
+            } catch (const reject_hostname&) {
                 return SSL_TLSEXT_ERR_NOACK;
             } catch (...) {
                 up::suppress_current_exception("tls-hostname-callback");

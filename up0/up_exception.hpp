@@ -16,32 +16,31 @@
 
 #include "up_insight.hpp"
 #include "up_out.hpp"
-#include "up_source.hpp"
+#include "up_throwable.hpp"
 
 namespace up_exception
 {
 
-    // declaration only, will be partially specialized
-    template <typename...>
-    class exception;
-
-
     /**
-     * The class template 'exception' realizes a hierarchy of exception
-     * classes, with the specialization exception<> at the top. All exceptions
-     * thrown from this library should be (directly or indirectly) derived
-     * from this base class, so that they can be easily caught.
-     *
-     * In addition to std::exception, the class contains a member function to
-     * return information about the cause of the exception in a structured
-     * way. This information should only be used for logging and monitoring.
+     * In contrast to up::error, the class makes the attached fields
+     * accessible at runtime as insights. This information should only be used
+     * for logging and monitoring.
      */
-    template <>
-    class exception<> : public virtual std::exception
+    class exception : public up::throwable
     {
-    protected: // --- life ---
+    private: // --- scope ---
+        using self = exception;
+    public: // --- life ---
+        explicit exception(up::source&& source) noexcept
+            : throwable(std::move(source))
+        { }
+        exception(const self& rhs) noexcept = default;
+        exception(self&& rhs) noexcept = default;
+    protected:
         virtual ~exception() noexcept = default;
     public: // --- operations ---
+        auto operator=(const self& rhs) & noexcept -> self& = default;
+        auto operator=(self&& rhs) & noexcept -> self& = default;
         auto to_insight() const -> up::insight
         {
             return _to_insight();
@@ -51,75 +50,111 @@ namespace up_exception
     };
 
 
-    /**
-     * The template arguments are used to build a hierarchy. The template
-     * types can be arbitrary. Even declaration-only types are fine.
-     *
-     * The class template supports arbitrary deep hierarchies. However,
-     * currently one level is used, and it is still unclear, whether there is
-     * any use in additional levels.
-     */
-    template <typename Head, typename... Tail>
-    class exception<Head, Tail...> : public exception<Tail...> { };
-
-
-    /**
-     * Implementation of the exception classes with arbitrary tags and
-     * arbitrary members (for providing structured information). The members
-     * will be converted lazy into the structure required by the base class.
-     */
-    template <typename... Tags>
-    class tagged final
+    template <typename Exception, typename... Parents>
+    class hierarchy final
     {
     public: // --- scope ---
-        template <typename... Types>
-        class throwable final : public exception<Tags...>
+        /**
+         * Use multiple inheritance for exception classes, so that they are
+         * derived from up::throwable, directly or indirectly from
+         * std::exception, and from an arbitrary number of further classes
+         * catch specific error conditions (with minimal boiler-plate for
+         * defining those classes).
+         */
+        template <typename... Fields>
+        class bundle final
+            : public up::exception_adapter_t<Exception>
+            , public exception
+            , private std::tuple<Fields...> // empty base class optimization
+            , public Parents...
         {
-        public: // --- scope ---
-            using self = throwable;
-        private: // --- state ---
-            up::source _source;
-            up::packaged_insights<Types...> _insights;
+        private: // --- scope ---
+            using adapter = up::exception_adapter_t<Exception>;
+            using fields = std::tuple<Fields...>;
         public: // --- life ---
             template <typename... Args>
-            explicit throwable(up::source source, Args&&... args)
-                : _source(std::move(source))
-                , _insights(std::forward<Args>(args)...)
+            explicit bundle(up::source&& s, fields&& f, Args&&... args)
+                : adapter()
+                , exception(std::move(s))
+                , fields(std::move(f))
+                , Parents(std::forward<Args>(args))...
             { }
-            throwable(const self& rhs) = delete;
-            throwable(self&& rhs) noexcept
-                : _source(std::move(rhs._source))
-                , _insights(std::move(rhs._insights))
+            template <typename... Args>
+            explicit bundle(adapter&& a, exception&& e, fields&& i, Args&&... args)
+                : adapter(std::move(a))
+                , exception(std::move(e))
+                , fields(std::move(i))
+                , Parents(std::forward<Args>(args))...
             { }
-            ~throwable() noexcept = default;
         public: // --- operations ---
-            auto operator=(const self& rhs) & -> self& = delete;
-            auto operator=(self&& rhs) & noexcept -> self& = delete;
-        private:
-            auto what() const noexcept -> const char* override
+            template <typename..., typename... Args>
+            auto with(Args&&... args) &&
             {
-                return _source.label_c_str();
+                return bundle<Fields..., std::decay_t<Args>...>(
+                    std::move(static_cast<adapter&>(*this)),
+                    std::move(static_cast<exception&>(*this)),
+                    std::tuple_cat(
+                        std::move(static_cast<fields&>(*this)),
+                        std::make_tuple(std::forward<Args>(args)...)),
+                    std::move(static_cast<Parents&>(*this))...);
+            }
+            template <typename..., typename... Args>
+            auto extends(Args&&... args) &&
+            {
+                return typename hierarchy<Parents..., std::decay_t<Args>...>::template bundle<Fields...>(
+                    std::move(static_cast<adapter&>(*this)),
+                    std::move(static_cast<exception&>(*this)),
+                    std::move(static_cast<fields&>(*this)),
+                    std::move(static_cast<Parents&>(*this))...,
+                    std::forward<Args>(args)...);
+            }
+        private:
+            auto what() const noexcept -> const char* override final
+            {
+                return throwable::source().label_c_str();
             }
             auto _to_insight() const -> up::insight override
             {
-                return up::insight(typeid(*this), _source.label(), _insights.unpack());
+                return _to_insight_aux(std::index_sequence_for<Fields...>());
+            }
+            template <std::size_t... Indexes>
+            auto _to_insight_aux(std::index_sequence<Indexes...>) const -> up::insight
+            {
+                return up::insight(
+                    typeid(*this),
+                    throwable::source().label(),
+                    up::invoke_to_insight_with_fallback(
+                        std::get<Indexes>(static_cast<const fields&>(*this)))...);
             }
         };
     };
 
+    extern template class hierarchy<std::exception>::bundle<>;
+    extern template class hierarchy<std::bad_exception>::bundle<>;
+    extern template class hierarchy<std::logic_error>::bundle<>;
+    extern template class hierarchy<std::domain_error>::bundle<>;
+    extern template class hierarchy<std::invalid_argument>::bundle<>;
+    extern template class hierarchy<std::length_error>::bundle<>;
+    extern template class hierarchy<std::out_of_range>::bundle<>;
+    extern template class hierarchy<std::runtime_error>::bundle<>;
+    extern template class hierarchy<std::range_error>::bundle<>;
+    extern template class hierarchy<std::overflow_error>::bundle<>;
+    extern template class hierarchy<std::underflow_error>::bundle<>;
 
-    /**
-     * Helper function to simplify below macro and type deduction.
-     */
+
+    template <typename Exception = std::exception, typename..., typename... Args>
+    auto make_exception(up::source&& source, Args&&... args)
+    {
+        return typename hierarchy<Exception, std::decay_t<Args>...>::template bundle<>(
+            std::move(source), {}, std::forward<Args>(args)...);
+    }
+
+
     template <typename... Tags, typename... Args>
     [[noreturn]]
     void raise(up::source source, Args&&... args)
     {
-        /* The arguments will always be copied into the thrown exception
-         * object, because it is unknown where the exception will be thrown,
-         * and the arguments might refer to local variables. */
-        throw typename tagged<Tags...>::template throwable<std::decay_t<Args>...>{
-            std::move(source), std::forward<Args>(args)...};
+        throw make_exception(std::move(source)).with(std::forward<Args>(args)...);
     }
 
 
@@ -176,6 +211,7 @@ namespace up
 {
 
     using up_exception::exception;
+    using up_exception::make_exception;
     using up_exception::raise;
     using up_exception::errno_info;
     using up_exception::log_current_exception;

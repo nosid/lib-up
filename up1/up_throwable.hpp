@@ -5,51 +5,9 @@
 namespace up_throwable
 {
 
-    /**
-     * Core exception class that can be used to catch exceptions thrown from
-     * the up code base. The whole design rationale is a bit more complicated:
-     *
-     * (a) The core exception class should provide useful and generic
-     * information (i.e. up::source), while still being fully noexcept
-     * (i.e. no dynamically allocated memory).
-     *
-     * (b) All exceptions should also be derived from std::exception, and in
-     * some cases from more specific exception classes of the standard
-     * library. For this reason, this class is intentionally not derived from
-     * those classes. Instead the code for creating an exception will
-     * automatically mix-in std::exception.
-     */
-    class throwable
-    {
-    private: // --- scope ---
-        using self = throwable;
-    private: // --- state ---
-        up::source _source;
-    public: // --- life ---
-        explicit throwable(up::source source) noexcept
-            : _source(std::move(source))
-        { }
-        throwable(const self& rhs) noexcept = default;
-        throwable(self&& rhs) noexcept = default;
-    protected:
-        /**
-         * The destructor is declared virtual to add a vtable to the class,
-         * that can be used in debugging tools. It is not strictly necessary
-         * for throwing or catching exceptions.
-         */
-        virtual ~throwable() noexcept = default;
-    public: // --- operations ---
-        auto operator=(const self& rhs) & noexcept -> self& = default;
-        auto operator=(self&& rhs) & noexcept -> self& = default;
-        auto source() const noexcept -> const up::source&
-        {
-            return _source;
-        }
-    };
-
-
     template <typename Exception>
     using exception_t = std::enable_if_t<std::is_base_of<std::exception, Exception>::value, Exception>;
+
 
     /**
      * Some exception classes from the standard library are not default
@@ -109,20 +67,64 @@ namespace up_throwable
 
 
     /**
-     * Use multiple inheritance for exception classes, so that they are
-     * derived from up::throwable, directly or indirectly from std::exception,
-     * and from an arbitrary number of further classes catch specific error
-     * conditions (with minimal boiler-plate for defining those classes).
+     * Core exception class that can be used to catch exceptions thrown from
+     * the up code base. The whole design rationale is a bit more complicated:
+     *
+     * (a) The core exception class should provide useful and generic
+     * information (i.e. up::source), while still being fully noexcept
+     * (i.e. no dynamically allocated memory).
+     *
+     * (b) All exceptions should also be derived from std::exception, and in
+     * some cases from more specific exception classes of the standard
+     * library. For this reason, this class is intentionally not derived from
+     * those classes. Instead the code for creating an exception will
+     * automatically mix-in std::exception.
      */
+    class throwable
+    {
+    private: // --- scope ---
+        using self = throwable;
+    private: // --- state ---
+        up::source _source;
+    public: // --- life ---
+        explicit throwable(up::source&& source) noexcept
+            : _source(std::move(source))
+        { }
+        throwable(const self& rhs) noexcept = default;
+        throwable(self&& rhs) noexcept = default;
+    protected:
+        /**
+         * The destructor is declared virtual to add a vtable to the class,
+         * that can be used in debugging tools. It is not strictly necessary
+         * for throwing or catching exceptions.
+         */
+        virtual ~throwable() noexcept = default;
+    public: // --- operations ---
+        auto operator=(const self& rhs) & noexcept -> self& = default;
+        auto operator=(self&& rhs) & noexcept -> self& = default;
+        auto source() const noexcept -> const up::source&
+        {
+            return _source;
+        }
+    };
+
+
     template <typename Exception, typename... Parents>
     class hierarchy final
     {
     public: // --- scope ---
+        /**
+         * Use multiple inheritance for exception classes, so that they are
+         * derived from up::throwable, directly or indirectly from
+         * std::exception, and from an arbitrary number of further classes
+         * catch specific error conditions (with minimal boiler-plate for
+         * defining those classes).
+         */
         template <typename... Fields>
         class bundle final
             : public exception_adapter_t<Exception>
             , public throwable
-            , private std::tuple<Fields...>
+            , private std::tuple<Fields...> // empty base class optimization
             , public Parents...
         {
         private: // --- scope ---
@@ -136,7 +138,6 @@ namespace up_throwable
                 , fields(std::move(f))
                 , Parents(std::forward<Args>(args))...
             { }
-        private:
             template <typename... Args>
             explicit bundle(adapter&& a, throwable&& t, fields&& f, Args&&... args)
                 : adapter(std::move(a))
@@ -199,6 +200,7 @@ namespace up_throwable
 namespace up
 {
 
+    using up_throwable::exception_adapter_t;
     using up_throwable::throwable;
     using up_throwable::make_throwable;
 

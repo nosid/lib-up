@@ -479,7 +479,7 @@ up_inet::ip::endpoint::endpoint(const up::string_view& value)
 {
     try {
         new (&_v4) ipv4::endpoint(value);
-    } catch (const up::exception<invalid_endpoint>&) {
+    } catch (const invalid_endpoint&) {
         _version = ip::version::v6;
         new (&_v6) ipv6::endpoint(value);
     }
