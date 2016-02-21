@@ -608,7 +608,7 @@ up_inet::ip::endpoint::operator const ipv4::endpoint&() const
     if (_version == ip::version::v4) {
         return _v4;
     } else {
-        up::throw_error<std::bad_cast>("up-inet-ip-endpoint-v4");
+        throw up::make_throwable<std::bad_cast>("up-inet-ip-endpoint-v4");
     }
 }
 
@@ -617,7 +617,7 @@ up_inet::ip::endpoint::operator const ipv6::endpoint&() const
     if (_version == ip::version::v6) {
         return _v6;
     } else {
-        up::throw_error<std::bad_cast>("up-inet-ip-endpoint-v6");
+        throw up::make_throwable<std::bad_cast>("up-inet-ip-endpoint-v6");
     }
 }
 
@@ -626,7 +626,7 @@ up_inet::ip::endpoint::operator ipv4::endpoint&()
     if (_version == ip::version::v4) {
         return _v4;
     } else {
-        up::throw_error<std::bad_cast>("up-inet-ip-endpoint-v4");
+        throw up::make_throwable<std::bad_cast>("up-inet-ip-endpoint-v4");
     }
 }
 
@@ -635,7 +635,7 @@ up_inet::ip::endpoint::operator ipv6::endpoint&()
     if (_version == ip::version::v6) {
         return _v6;
     } else {
-        up::throw_error<std::bad_cast>("up-inet-ip-endpoint-v6");
+        throw up::make_throwable<std::bad_cast>("up-inet-ip-endpoint-v6");
     }
 }
 

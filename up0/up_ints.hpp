@@ -1,6 +1,6 @@
 #pragma once
 
-#include "up_error.hpp"
+#include "up_throwable.hpp"
 
 /**
  * This file provides an easy way to convert from one integral type to another
@@ -28,7 +28,7 @@ namespace up_ints
              * future compiler versions. */
             Result result;
             if (__builtin_add_overflow(value, Type(), &result)) {
-                up::throw_error<std::range_error>("up-ints-bad-cast");
+                throw up::make_throwable<std::range_error>("up-ints-bad-cast");
             } else {
                 return result;
             }
@@ -75,11 +75,11 @@ namespace up_ints
         class map;
         using is_valid = ops<typename map::is_valid>;
         using unsafe = ops<typename map::unsafe>;
-        template <typename Error>
-        using or_error = ops<typename map::template or_error<Error>>;
-        using or_length_error = or_error<std::length_error>;
-        using or_overflow_error = or_error<std::overflow_error>;
-        using or_range_error = or_error<std::range_error>;
+        template <typename Exception>
+        using or_throw = ops<typename map::template or_throw<Exception>>;
+        using or_length_error = or_throw<std::length_error>;
+        using or_overflow_error = or_throw<std::overflow_error>;
+        using or_range_error = or_throw<std::range_error>;
     };
 
 
@@ -141,8 +141,8 @@ namespace up_ints
     public: // --- scope ---
         class is_valid;
         class unsafe;
-        template <typename Error = std::range_error>
-        class or_error;
+        template <typename Exception = std::range_error>
+        class or_throw;
     };
 
 
@@ -177,8 +177,8 @@ namespace up_ints
 
 
     template <typename Type>
-    template <typename Error>
-    class ints::domain<Type>::map::or_error final
+    template <typename Exception>
+    class ints::domain<Type>::map::or_throw final
     {
     public: // --- scope ---
         static auto map(Type value, bool valid) -> Type
@@ -186,7 +186,7 @@ namespace up_ints
             if (valid) {
                 return value;
             } else {
-                up::throw_error<Error>("up-ints-domain-map-error");
+                throw up::make_throwable<Exception>("up-ints-domain-map-error");
             }
         }
     };

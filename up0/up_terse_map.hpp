@@ -466,7 +466,7 @@ namespace up_terse_map
         {
             auto p = find(key);
             if (p == end()) {
-                up::throw_error<std::out_of_range>("up-terse-map-at-key-not-found");
+                throw up::make_throwable<std::out_of_range>("up-terse-map-at-key-not-found");
             } else {
                 return p->second;
             }
@@ -475,7 +475,7 @@ namespace up_terse_map
         {
             auto p = find(key);
             if (p == end()) {
-                up::throw_error<std::out_of_range>("up-terse-map-at-key-not-found");
+                throw up::make_throwable<std::out_of_range>("up-terse-map-at-key-not-found");
             } else {
                 return p->second;
             }

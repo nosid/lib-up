@@ -68,7 +68,7 @@ namespace
     auto tail_n(std::size_t size, std::size_t pos) -> std::size_t
     {
         if (pos > size) {
-            up::throw_error<std::out_of_range>("up-istring-compare");
+            throw up::make_throwable<std::out_of_range>("up-istring-compare");
         } else {
             return size - pos;
         }

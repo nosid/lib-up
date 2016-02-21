@@ -75,7 +75,7 @@ namespace
         if (impl) {
             return dynamic_cast<const Type&>(*impl);
         } else {
-            up::throw_error<std::bad_cast>("up-json-cast");
+            throw up::make_throwable<std::bad_cast>("up-json-cast");
         }
     }
 

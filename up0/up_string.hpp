@@ -231,7 +231,7 @@ namespace up_string
         static void _range_check(bool condition, up::source&& source)
         {
             if (!condition) {
-                up::throw_error<std::out_of_range>(std::move(source));
+                throw up::make_throwable<std::out_of_range>(std::move(source));
             }
         }
         static auto _const_iterator(const_pointer ptr, size_type pos) -> const_iterator

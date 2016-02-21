@@ -713,7 +713,7 @@ namespace up_linked_map
             if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
-                up::throw_error<std::out_of_range>("up-linked-map-at-key-not-found");
+                throw up::make_throwable<std::out_of_range>("up-linked-map-at-key-not-found");
             }
         }
         auto at(const key_type& key) const -> const mapped_type&
@@ -721,7 +721,7 @@ namespace up_linked_map
             if (auto node = _find_node(_hasher(key), key)) {
                 return node->_value.second;
             } else {
-                up::throw_error<std::out_of_range>("up-linked-map-at-key-not-found");
+                throw up::make_throwable<std::out_of_range>("up-linked-map-at-key-not-found");
             }
         }
 
