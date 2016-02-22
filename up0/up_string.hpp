@@ -15,18 +15,11 @@ namespace up_string
     };
 
 
-    class basic_string_types
+    class basic_string_types final
     {
     private: // --- scope ---
         template <typename Primary, typename Secondary>
-        class match_aux final
-        {
-        public: // --- scope ---
-            static_assert(std::is_same<Primary, Secondary>(), "type mismatch");
-            using type = Primary;
-        };
-        template <typename Primary, typename Secondary>
-        using match = typename match_aux<Primary, Secondary>::type;
+        using match_t = std::enable_if_t<std::is_same<Primary, Secondary>::value, Primary>;
 
     public:
         template <typename Traits>
@@ -35,15 +28,15 @@ namespace up_string
         template <typename Traits>
         using value_type = typename Traits::char_type;
         template <typename Traits>
-        using size_type = match<std::size_t, typename string_view<Traits>::size_type>;
+        using size_type = match_t<std::size_t, typename string_view<Traits>::size_type>;
         template <typename Traits>
-        using difference_type = match<std::ptrdiff_t, typename string_view<Traits>::difference_type>;
+        using difference_type = match_t<std::ptrdiff_t, typename string_view<Traits>::difference_type>;
         template <typename Traits>
-        using const_reference = match<const value_type<Traits>&, typename string_view<Traits>::const_reference>;
+        using const_reference = match_t<const value_type<Traits>&, typename string_view<Traits>::const_reference>;
         template <typename Traits>
         using reference = value_type<Traits>&;
         template <typename Traits>
-        using const_pointer = match<const value_type<Traits>*, typename string_view<Traits>::const_pointer>;
+        using const_pointer = match_t<const value_type<Traits>*, typename string_view<Traits>::const_pointer>;
         template <typename Traits>
         using pointer = value_type<Traits>*;
         template <typename Traits>
@@ -63,29 +56,11 @@ namespace up_string
 
 
     template <typename Iterator>
-    constexpr bool is_forward_iterator()
-    {
-        return std::is_convertible<typename std::iterator_traits<Iterator>::iterator_category, std::forward_iterator_tag>();
-    }
+    using is_forward = std::is_convertible<
+        typename std::iterator_traits<Iterator>::iterator_category, std::forward_iterator_tag>;
 
-    template <typename Traits, typename Iterator, bool IsForward>
-    class iterator_fill_base;
-
-    template <typename Traits, typename Iterator>
-    class iterator_fill_base<Traits, Iterator, false>
-    {
-    private: // --- scope ---
-        using value_type = basic_string_types::value_type<Traits>;
-        using size_type = basic_string_types::size_type<Traits>;
-    public: // --- life ---
-        explicit iterator_fill_base(Iterator first, Iterator last); // XXX:IMPL
-    public: // --- operations ---
-        auto size() const -> size_type; // XXX:IMPL
-        void apply(value_type* s) const; // XXX:IMPL
-    };
-
-    template <typename Traits, typename Iterator>
-    class iterator_fill_base<Traits, Iterator, true>
+    template <typename Traits, typename Iterator, bool IsForward = is_forward<Iterator>::value>
+    class iterator_fill_base
     {
     private: // --- scope ---
         using value_type = basic_string_types::value_type<Traits>;
@@ -111,6 +86,18 @@ namespace up_string
         }
     };
 
+    template <typename Traits, typename Iterator>
+    class iterator_fill_base<Traits, Iterator, false>
+    {
+    private: // --- scope ---
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
+    public: // --- life ---
+        explicit iterator_fill_base(Iterator first, Iterator last); // XXX:IMPL
+    public: // --- operations ---
+        auto size() const -> size_type; // XXX:IMPL
+        void apply(value_type* s) const; // XXX:IMPL
+    };
 
     template <typename Core, bool Mutable>
     class basic_string final : private Core
@@ -204,10 +191,10 @@ namespace up_string
         };
 
         template <typename Iterator>
-        class iterator_fill final : public iterator_fill_base<traits_type, Iterator, is_forward_iterator<Iterator>()>
+        class iterator_fill final : public iterator_fill_base<traits_type, Iterator>
         {
         private: // --- scope ---
-            using base = iterator_fill_base<traits_type, Iterator, is_forward_iterator<Iterator>()>;
+            using base = iterator_fill_base<traits_type, Iterator>;
         public: // --- life ---
             explicit iterator_fill(Iterator first, Iterator last)
                 : base(first, last)
@@ -220,7 +207,7 @@ namespace up_string
         }
 
         static void _apply_fills(value_type* ptr __attribute__((unused))) { }
-        template <typename Head, typename... Tail>
+        template <typename..., typename Head, typename... Tail>
         static void _apply_fills(value_type* ptr, Head&& head, Tail&&... tail)
         {
             size_type size = head.size();
@@ -244,7 +231,7 @@ namespace up_string
         }
 
     public:
-        template <typename... Args>
+        template <typename..., typename... Args>
         static auto concat(Args&&... args) -> self
         {
             return self(tags::fill(), {}, {}, _make_fill(std::forward<Args>(args))...);
@@ -279,7 +266,7 @@ namespace up_string
             : basic_string(chars.begin(), chars.end())
         { }
     private:
-        template <typename... Fills>
+        template <typename..., typename... Fills>
         explicit basic_string(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
             : basic_string(tags::capacity(), baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...))
         {
@@ -934,7 +921,7 @@ namespace up_string
         {
             Core::set_size(n);
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _append_fill(Fill&& fill) -> self&
         {
             auto span = _span();
@@ -948,7 +935,7 @@ namespace up_string
             }
             return *this;
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _assign_fill(Fill&& fill) -> self&
         {
             auto span = _span();
@@ -963,7 +950,7 @@ namespace up_string
             }
             return *this;
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _insert_fill(size_type pos, Fill&& fill) -> self&
         {
             auto span = _span();
@@ -980,14 +967,14 @@ namespace up_string
             }
             return *this;
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _insert_fill(const_iterator p, Fill&& fill) -> iterator
         {
             size_type pos = std::distance(_const_iterator(_span().first, {}), p);
             _insert_fill(pos, std::forward<Fill>(fill));
             return _iterator(_span().first, pos);
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _replace_fill(size_type pos, size_type n, Fill&& fill) -> self&
         {
             auto span = _span();
@@ -1007,7 +994,7 @@ namespace up_string
             }
             return *this;
         }
-        template <typename Fill>
+        template <typename..., typename Fill>
         auto _replace_fill(const_iterator p, const_iterator q, Fill&& fill) -> self&
         {
             size_type pos = std::distance(_const_iterator(_span().first, {}), p);
@@ -1026,7 +1013,7 @@ namespace up_string
     };
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs)
@@ -1035,7 +1022,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs)
@@ -1044,7 +1031,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs)
@@ -1053,7 +1040,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const basic_string<Core, Mutable>& lhs,
         typename basic_string<Core, Mutable>::value_type rhs)
@@ -1062,7 +1049,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs)
@@ -1071,7 +1058,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs)
@@ -1080,7 +1067,7 @@ namespace up_string
         return basic_string<Core, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator+(
         typename basic_string<Core, Mutable>::value_type lhs,
         const basic_string<Core, Mutable>& rhs)
@@ -1090,7 +1077,7 @@ namespace up_string
     }
 
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         basic_string<Core, true>&& lhs,
         const basic_string<Core, true>& rhs)
@@ -1099,7 +1086,7 @@ namespace up_string
         return std::move(lhs.append(rhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         const basic_string<Core, true>& lhs,
         basic_string<Core, true>&& rhs)
@@ -1108,7 +1095,7 @@ namespace up_string
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         basic_string<Core, true>&& lhs,
         basic_string<Core, true>&& rhs)
@@ -1117,7 +1104,7 @@ namespace up_string
         return std::move(lhs.append(rhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         basic_string<Core, true>&& lhs,
         const typename basic_string<Core, true>::string_view& rhs)
@@ -1126,7 +1113,7 @@ namespace up_string
         return std::move(lhs.append(rhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         basic_string<Core, true>&& lhs,
         const typename basic_string<Core, true>::value_type* rhs)
@@ -1135,7 +1122,7 @@ namespace up_string
         return std::move(lhs.append(rhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         basic_string<Core, true>&& lhs,
         typename basic_string<Core, true>::value_type rhs)
@@ -1144,7 +1131,7 @@ namespace up_string
         return std::move(lhs.append(&rhs, 1));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         const typename basic_string<Core, true>::string_view& lhs,
         basic_string<Core, true>&& rhs)
@@ -1153,7 +1140,7 @@ namespace up_string
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         const typename basic_string<Core, true>::value_type* lhs,
         basic_string<Core, true>&& rhs)
@@ -1162,7 +1149,7 @@ namespace up_string
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename Core>
+    template <typename..., typename Core>
     auto operator+(
         typename basic_string<Core, true>::value_type lhs,
         basic_string<Core, true>&& rhs)
@@ -1172,7 +1159,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator==(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1181,7 +1168,7 @@ namespace up_string
         return lhs.operator string_view() == rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator==(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1190,7 +1177,7 @@ namespace up_string
         return lhs.operator string_view() == rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator==(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1199,7 +1186,7 @@ namespace up_string
         return lhs.operator string_view() == rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator==(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1208,7 +1195,7 @@ namespace up_string
         return lhs == rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator==(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1218,7 +1205,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator!=(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1227,7 +1214,7 @@ namespace up_string
         return lhs.operator string_view() != rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator!=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1236,7 +1223,7 @@ namespace up_string
         return lhs.operator string_view() != rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator!=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1245,7 +1232,7 @@ namespace up_string
         return lhs.operator string_view() != rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator!=(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1254,7 +1241,7 @@ namespace up_string
         return lhs != rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator!=(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1264,7 +1251,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1273,7 +1260,7 @@ namespace up_string
         return lhs.operator string_view() < rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1282,7 +1269,7 @@ namespace up_string
         return lhs.operator string_view() < rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1291,7 +1278,7 @@ namespace up_string
         return lhs.operator string_view() < rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1300,7 +1287,7 @@ namespace up_string
         return lhs < rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1310,7 +1297,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1319,7 +1306,7 @@ namespace up_string
         return lhs.operator string_view() > rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1328,7 +1315,7 @@ namespace up_string
         return lhs.operator string_view() > rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1337,7 +1324,7 @@ namespace up_string
         return lhs.operator string_view() > rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1346,7 +1333,7 @@ namespace up_string
         return lhs > rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1356,7 +1343,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<=(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1365,7 +1352,7 @@ namespace up_string
         return lhs.operator string_view() <= rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1374,7 +1361,7 @@ namespace up_string
         return lhs.operator string_view() <= rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1383,7 +1370,7 @@ namespace up_string
         return lhs.operator string_view() <= rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<=(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1392,7 +1379,7 @@ namespace up_string
         return lhs <= rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator<=(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1402,7 +1389,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>=(
         const basic_string<Core, Mutable>& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1411,7 +1398,7 @@ namespace up_string
         return lhs.operator string_view() >= rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
@@ -1420,7 +1407,7 @@ namespace up_string
         return lhs.operator string_view() >= rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>=(
         const basic_string<Core, Mutable>& lhs,
         const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
@@ -1429,7 +1416,7 @@ namespace up_string
         return lhs.operator string_view() >= rhs;
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>=(
         const typename basic_string<Core, Mutable>::string_view& lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1438,7 +1425,7 @@ namespace up_string
         return lhs >= rhs.operator string_view();
     }
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     bool operator>=(
         const typename basic_string<Core, Mutable>::value_type* lhs,
         const basic_string<Core, Mutable>& rhs) noexcept
@@ -1448,7 +1435,7 @@ namespace up_string
     }
 
 
-    template <typename Core, bool Mutable>
+    template <typename..., typename Core, bool Mutable>
     auto operator<<(
         std::basic_ostream<typename Core::traits_type::char_type, typename Core::traits_type>& os,
         const basic_string<Core, Mutable>& s)
@@ -1549,10 +1536,12 @@ namespace std
 {
 
     template <typename Core, bool Mutable>
-    struct hash<up_string::basic_string<Core, Mutable>> final
+    class hash<up_string::basic_string<Core, Mutable>> final
     {
+    public: // --- scope ---
         using argument_type = up_string::basic_string<Core, Mutable>;
         using result_type = std::size_t;
+    public: // --- operations ---
         auto operator()(const up_string::basic_string<Core, Mutable>& value) const noexcept
         {
             using string_view = typename up_string::basic_string<Core, Mutable>::string_view;
