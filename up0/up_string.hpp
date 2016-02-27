@@ -173,8 +173,6 @@ namespace up_string
 
         using sizes = typename up::ints::domain<size_type>;
 
-        class runtime;
-
         class copy_fill final
         {
         private: // --- state ---
