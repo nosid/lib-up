@@ -143,11 +143,13 @@ namespace up_string
         }
     };
 
-    template <typename Core, bool Mutable>
-    class basic_string final : private Core
+
+    template <typename Core>
+    class basic_string_base : protected Core
     {
     private: // --- scope ---
-        using self = basic_string;
+        using self = basic_string_base;
+        using base = Core;
 
     public:
         using traits_type = typename Core::traits_type;
@@ -155,21 +157,16 @@ namespace up_string
         using size_type = basic_string_types::size_type<traits_type>;
         using difference_type = basic_string_types::difference_type<traits_type>;
         using const_reference = basic_string_types::const_reference<traits_type>;
-        using reference = basic_string_types::reference<traits_type>;
         using const_pointer = basic_string_types::const_pointer<traits_type>;
-        using pointer = basic_string_types::pointer<traits_type>;
         using const_iterator = basic_string_types::const_iterator<traits_type>;
-        using iterator = basic_string_types::iterator<traits_type>;
         using const_reverse_iterator = basic_string_types::const_reverse_iterator<traits_type>;
-        using reverse_iterator = basic_string_types::reverse_iterator<traits_type>;
 
         using string_view = basic_string_types::string_view<traits_type>;
 
         static const constexpr size_type npos = string_view::npos;
 
-    private:
+    protected:
         using const_span_type = basic_string_types::const_span_type<traits_type>;
-        using span_type = basic_string_types::span_type<traits_type>;
 
         using sizes = typename up::ints::domain<size_type>;
 
@@ -267,120 +264,66 @@ namespace up_string
         {
             return const_iterator(ptr + pos);
         }
-        static auto _iterator(pointer ptr, size_type pos) -> iterator
-        {
-            return iterator(ptr + pos);
-        }
-
-    public:
-        template <typename..., typename... Args>
-        static auto concat(Args&&... args) -> self
-        {
-            return self(tags::fill(), {}, {}, _make_fill(std::forward<Args>(args))...);
-        }
 
     public: // --- life ---
-        basic_string() noexcept = default;
-        basic_string(const self& rhs) = default;
-        basic_string(self&& rhs) noexcept = default;
-        ~basic_string() noexcept = default;
+        basic_string_base() noexcept = default;
+        basic_string_base(const self& rhs) = default;
+        basic_string_base(self&& rhs) noexcept = default;
+        ~basic_string_base() noexcept = default;
 
-        basic_string(const string_view& s)
-            : basic_string(s.data(), s.size())
+        basic_string_base(const string_view& s)
+            : basic_string_base(s.data(), s.size())
         { }
-        basic_string(const string_view& s, size_type pos, size_type n = npos)
-            : basic_string(s.substr(pos, n))
+        basic_string_base(const string_view& s, size_type pos, size_type n = npos)
+            : basic_string_base(s.substr(pos, n))
         { }
-        basic_string(const value_type* s)
-            : basic_string(s, traits_type::length(s))
+        basic_string_base(const value_type* s)
+            : basic_string_base(s, traits_type::length(s))
         { }
-        basic_string(const value_type* s, size_type n)
-            : basic_string(tags::fill(), {}, {}, copy_fill(s, n))
+        basic_string_base(const value_type* s, size_type n)
+            : basic_string_base(tags::fill(), {}, {}, copy_fill(s, n))
         { }
-        basic_string(size_type n, value_type c)
-            : basic_string(tags::fill(), {}, {}, assign_fill(n, c))
+        basic_string_base(size_type n, value_type c)
+            : basic_string_base(tags::fill(), {}, {}, assign_fill(n, c))
         { }
         template <typename InputIterator>
-        basic_string(InputIterator first, InputIterator last)
-            : basic_string(tags::fill(), {}, {}, iterator_fill<InputIterator>(first, last))
+        basic_string_base(InputIterator first, InputIterator last)
+            : basic_string_base(tags::fill(), {}, {}, iterator_fill<InputIterator>(first, last))
         { }
-        basic_string(std::initializer_list<value_type> chars)
-            : basic_string(chars.begin(), chars.end())
+        basic_string_base(std::initializer_list<value_type> chars)
+            : basic_string_base(chars.begin(), chars.end())
         { }
-    private:
+    protected:
         template <typename..., typename... Fills>
-        explicit basic_string(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
-            : basic_string(tags::capacity(), baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...))
+        explicit basic_string_base(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
+            : basic_string_base(tags::capacity(), baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...))
         {
-            _apply_fills(_span().first, std::forward<Fills>(fills)...);
+            _apply_fills(Core::preinitialized_data(), std::forward<Fills>(fills)...);
         }
-        explicit basic_string(tags::capacity, size_type baseline, size_type headroom, size_type request)
-            : Core(tags::capacity(), std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)), request - headroom)
+        explicit basic_string_base(tags::capacity, size_type baseline, size_type headroom, size_type request)
+            : base(tags::capacity(), std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)), request - headroom)
         { }
 
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = default;
         auto operator=(self&& rhs) & noexcept -> self& = default;
 
-        // MUTATION
-        auto operator=(const string_view& s) -> self&
-        {
-            return assign(s);
-        }
-        // MUTATION
-        auto operator=(const value_type* s) -> self&
-        {
-            return assign(s);
-        }
-        // MUTATION
-        auto operator=(value_type c) -> self&
-        {
-            return assign(size_type(1), c);
-        }
-        // MUTATION
-        auto operator=(std::initializer_list<value_type> chars) -> self&
-        {
-            return assign(chars.begin(), chars.end());
-        }
-
         auto begin() const noexcept -> const_iterator
         {
             return cbegin();
         }
-        // MUTATION
-        auto begin() noexcept -> iterator
-        {
-            auto span = _span();
-            return _iterator(span.first, {});
-        }
         auto end() const noexcept -> const_iterator
         {
             return cend();
-        }
-        // MUTATION
-        auto end() noexcept -> iterator
-        {
-            auto span = _span();
-            return _iterator(span.first, span.second);
         }
 
         auto rbegin() const noexcept -> const_reverse_iterator
         {
             return crbegin();
         }
-        // MUTATION
-        auto rbegin() noexcept -> reverse_iterator
-        {
-            return reverse_iterator(end());
-        }
         auto rend() const noexcept -> const_reverse_iterator
         {
             return crend();
-        }
-        // MUTATION
-        auto rend() noexcept -> reverse_iterator
-        {
-            return reverse_iterator(begin());
         }
 
         auto cbegin() const noexcept -> const_iterator
@@ -414,56 +357,10 @@ namespace up_string
         {
             return Core::max_size();
         }
-        // MUTATION
-        void resize(size_type n, value_type c)
-        {
-            auto size = _size();
-            if (n > size) {
-                append(n - size, c);
-            } else {
-                _trim_size(n);
-            }
-        }
-        // MUTATION
-        void resize(size_type n)
-        {
-            resize(n, {});
-        }
+
         auto capacity() const noexcept -> size_type
         {
             return _capacity();
-        }
-        // MUTATION
-        void reserve(size_type request = {})
-        {
-            auto capacity = _capacity();
-            if (request > capacity) {
-                auto span = _span();
-                self(tags::fill(), {}, request - span.second,
-                    copy_fill(span.first, span.second)).swap(*this);
-            } else if (capacity - request < sizeof(self)) {
-                // nothing
-            } else if (capacity - _size() < sizeof(self)) {
-                // nothing
-            } else {
-                auto span = _span();
-                self(tags::fill(), {}, request - span.second,
-                    copy_fill(span.first, span.second)).swap(*this);
-            }
-        }
-        // MUTATION
-        void shrink_to_fit()
-        {
-            if (_capacity() - _size() < sizeof(self)) {
-                // nothing
-            } else {
-                self(*this).swap(*this);
-            }
-        }
-        // MUTATION
-        void clear() noexcept
-        {
-            _trim_size({});
         }
         bool empty() const noexcept
         {
@@ -475,22 +372,9 @@ namespace up_string
             auto span = _const_span();
             return span.first[pos];
         }
-        // MUTATION
-        auto operator[](size_type pos) -> reference
-        {
-            auto span = _span();
-            return span.first[pos];
-        }
         auto at(size_type n) const -> const_reference
         {
             auto span = _const_span();
-            _range_check(n < span.second, "up-string-bad-position");
-            return span.first[n];
-        }
-        // MUTATION
-        auto at(size_type n) -> reference
-        {
-            auto span = _span();
             _range_check(n < span.second, "up-string-bad-position");
             return span.first[n];
         }
@@ -500,264 +384,10 @@ namespace up_string
             auto span = _const_span();
             return span.first[0];
         }
-        // MUTATION
-        auto front() -> reference
-        {
-            auto span = _span();
-            return span.first[0];
-        }
         auto back() const -> const_reference
         {
             auto span = _const_span();
             return span.first[span.second - size_type(1)];
-        }
-        // MUTATION
-        auto back() -> reference
-        {
-            auto span = _span();
-            return span.first[span.second - size_type(1)];
-        }
-
-        // MUTATION
-        auto operator+=(const string_view& s) -> self&
-        {
-            return append(s);
-        }
-        // MUTATION
-        auto operator+=(const value_type* s) -> self&
-        {
-            return append(s);
-        }
-        // MUTATION
-        auto operator+=(value_type c) -> self&
-        {
-            return append(size_type(1), c);
-        }
-        // MUTATION
-        auto operator+=(std::initializer_list<value_type> chars) -> self&
-        {
-            return append(chars);
-        }
-
-        // MUTATION
-        auto append(const string_view& s) -> self&
-        {
-            return append(s.data(), s.size());
-        }
-        // MUTATION
-        auto append(const string_view& s, size_type pos, size_type n) -> self&
-        {
-            return append(s.substr(pos, n));
-        }
-        // MUTATION
-        auto append(const value_type* s, size_type n) -> self&
-        {
-            return _append_fill(copy_fill(s, n));
-        }
-        // MUTATION
-        auto append(const value_type* s) -> self&
-        {
-            return append(s, traits_type::length(s));
-        }
-        // MUTATION
-        auto append(size_type n, value_type c) -> self&
-        {
-            return _append_fill(assign_fill(n, c));
-        }
-        // MUTATION
-        template <typename InputIterator>
-        auto append(InputIterator first, InputIterator last) -> self&
-        {
-            return _append_fill(iterator_fill<InputIterator>(first, last));
-        }
-        // MUTATION
-        auto append(std::initializer_list<value_type> chars) -> self&
-        {
-            return append(chars.begin(), chars.end());
-        }
-
-        // MUTATION
-        void push_back(value_type c)
-        {
-            _append_fill(value_fill(c));
-        }
-
-        auto assign(const self& rhs) -> self&
-        {
-            return operator=(rhs);
-        }
-        auto assign(self&& rhs) noexcept -> self&
-        {
-            return operator=(std::forward<self>(rhs));
-        }
-
-        // MUTATION
-        auto assign(const string_view& s) -> self&
-        {
-            return assign(s.data(), s.size());
-        }
-        // MUTATION
-        auto assign(const string_view& s, size_type pos, size_type n) -> self&
-        {
-            return assign(s.substr(pos, n));
-        }
-        // MUTATION
-        auto assign(const value_type* s, size_type n) -> self&
-        {
-            return _assign_fill(copy_fill(s, n));
-        }
-        // MUTATION
-        auto assign(const value_type* s) -> self&
-        {
-            return assign(s, traits_type::length(s));
-        }
-        // MUTATION
-        auto assign(size_type n, value_type c) -> self&
-        {
-            return _assign_fill(assign_fill(n, c));
-        }
-        // MUTATION
-        template <typename InputIterator>
-        auto assign(InputIterator first, InputIterator last) -> self&
-        {
-            return _assign_fill(iterator_fill<InputIterator>(first, last));
-        }
-        // MUTATION
-        auto assign(std::initializer_list<value_type> chars) -> self&
-        {
-            return assign(chars.begin(), chars.end());
-        }
-
-        // MUTATION
-        auto insert(size_type pos1, const string_view& s) -> self&
-        {
-            return insert(pos1, s.data(), s.size());
-        }
-        // MUTATION
-        auto insert(size_type pos1, const string_view& s, size_type pos2, size_type n) -> self&
-        {
-            return insert(pos1, s.substr(pos2, n));
-        }
-        // MUTATION
-        auto insert(size_type pos, const value_type* s, size_type n) -> self&
-        {
-            return _insert_fill(pos, copy_fill(s, n));
-        }
-        // MUTATION
-        auto insert(size_type pos, const value_type* s) -> self&
-        {
-            return insert(pos, s, traits_type::length(s));
-        }
-        // MUTATION
-        auto insert(size_type pos, size_type n, value_type c) -> self&
-        {
-            return _insert_fill(pos, assign_fill(n, c));
-        }
-        // MUTATION
-        auto insert(const_iterator p, value_type c) -> iterator
-        {
-            return _insert_fill(p, value_fill(c));
-        }
-        // MUTATION
-        auto insert(const_iterator p, size_type n, value_type c) -> iterator
-        {
-            return _insert_fill(p, assign_fill(n, c));
-        }
-        // MUTATION
-        template <typename InputIterator>
-        auto insert(const_iterator p, InputIterator first, InputIterator last) -> iterator
-        {
-            return _insert_fill(p, iterator_fill<InputIterator>(first, last));
-        }
-        // MUTATION
-        auto insert(const_iterator p, std::initializer_list<value_type> chars) -> iterator
-        {
-            return insert(p, chars.begin(), chars.end());
-        }
-
-        // MUTATION
-        auto erase(size_type pos = {}, size_type n = npos) -> self&
-        {
-            auto size = _size();
-            _range_check(pos <= size, "up-string-bad-position");
-            return _erase(pos, std::min(n, size - pos));
-        }
-        // MUTATION
-        auto erase(const_iterator position) -> iterator
-        {
-            return erase(position, std::next(position));
-        }
-        // MUTATION
-        auto erase(const_iterator first, const_iterator last) -> iterator
-        {
-            auto span = _span();
-            size_type pos = std::distance(_const_iterator(span.first, {}), first);
-            size_type n = std::distance(first, last);
-            _erase(pos, n);
-            return _iterator(span.first, pos);
-        }
-
-        // MUTATION
-        void pop_back()
-        {
-            _trim_size(_size() - size_type(1));
-        }
-
-        // MUTATION
-        auto replace(size_type pos1, size_type n1, const string_view& s) -> self&
-        {
-            return replace(pos1, n1, s.data(), s.size());
-        }
-        // MUTATION
-        auto replace(size_type pos1, size_type n1, const string_view& s, size_type pos2, size_type n2) -> self&
-        {
-            return replace(pos1, n1, s.substr(pos2, n2));
-        }
-        // MUTATION
-        auto replace(size_type pos, size_type n1, const value_type* s, size_type n2) -> self&
-        {
-            return _replace_fill(pos, n1, copy_fill(s, n2));
-        }
-        // MUTATION
-        auto replace(size_type pos, size_type n1, const value_type* s) -> self&
-        {
-            return replace(pos, n1, s, traits_type::length(s));
-        }
-        // MUTATION
-        auto replace(size_type pos, size_type n1, size_type n2, value_type c) -> self&
-        {
-            return _replace_fill(pos, n1, assign_fill(n2, c));
-        }
-        // MUTATION
-        auto replace(const_iterator p, const_iterator q, const string_view& s) -> self&
-        {
-            return replace(p, q, s.data(), s.size());
-        }
-        // MUTATION
-        auto replace(const_iterator p, const_iterator q, const value_type* s, size_type n) -> self&
-        {
-            return _replace_fill(p, q, copy_fill(s, n));
-        }
-        // MUTATION
-        auto replace(const_iterator p, const_iterator q, const value_type* s) -> self&
-        {
-            return replace(p, q, s, traits_type::length(s));
-        }
-        // MUTATION
-        auto replace(const_iterator p, const_iterator q, size_type n, value_type c) -> self&
-        {
-            return _replace_fill(p, q, assign_fill(n, c));
-        }
-        // MUTATION
-        template <typename InputIterator>
-        auto replace(const_iterator p, const_iterator q, InputIterator first, InputIterator last) -> self&
-        {
-            return _replace_fill(p, q, iterator_fill<InputIterator>(first, last));
-        }
-        // MUTATION
-        auto replace(const_iterator p, const_iterator q, std::initializer_list<value_type> chars) -> self&
-        {
-            return replace(p, q, chars.begin(), chars.end());
         }
 
         auto copy(value_type* s, size_type n, size_type pos = {}) const -> size_type
@@ -881,14 +511,6 @@ namespace up_string
             return operator string_view().find_last_not_of(c, pos);
         }
 
-        auto substr(size_type pos = {}, size_type n = npos) const -> self
-        {
-            auto span = _const_span();
-            _range_check(pos <= span.second, "up-string-bad-position");
-            return self(tags::fill(), {}, {},
-                copy_fill(span.first + pos, std::min(n, span.second - pos)));
-        }
-
         auto compare(const string_view& s) const noexcept -> int
         {
             return operator string_view().compare(s);
@@ -932,14 +554,10 @@ namespace up_string
             os.write(span.first, span.second);
         }
 
-    private:
+    protected:
         auto _const_span() const noexcept -> const_span_type
         {
             return Core::const_span();
-        }
-        auto _span() noexcept -> span_type
-        {
-            return Core::span();
         }
         auto _size() const noexcept -> size_type
         {
@@ -949,9 +567,517 @@ namespace up_string
         {
             return Core::capacity();
         }
+    };
+
+
+    template <typename Core, bool Mutable = false>
+    class basic_string final : protected basic_string_base<Core>
+    {
+    private: // --- scope ---
+        using self = basic_string;
+        using base = basic_string_base<Core>;
+
+    public:
+        using traits_type = typename base::traits_type;
+        using value_type = typename base::value_type;
+        using size_type = typename base::size_type;
+        using difference_type = typename base::difference_type;
+        using const_reference = typename base::const_reference;
+        using reference = typename base::const_reference;
+        using const_pointer = typename base::const_pointer;
+        using pointer = typename base::const_pointer;
+        using const_iterator = typename base::const_iterator;
+        using iterator = typename base::const_iterator;
+        using const_reverse_iterator = typename base::const_reverse_iterator;
+        using reverse_iterator = typename base::const_reverse_iterator;
+
+        using string_view = typename base::string_view;
+
+        static const constexpr size_type npos = base::npos;
+
+    private:
+        using copy_fill = typename base::copy_fill;
+        using base::_range_check;
+
+    public:
+        template <typename..., typename... Args>
+        static auto concat(Args&&... args) -> self
+        {
+            return self(tags::fill(), {}, {}, base::_make_fill(std::forward<Args>(args))...);
+        }
+
+    public: // --- life ---
+        using base::base;
+
+    public: // --- operations ---
+        using base::begin;
+        using base::end;
+        using base::rbegin;
+        using base::rend;
+        using base::cbegin;
+        using base::cend;
+        using base::crbegin;
+        using base::crend;
+
+        using base::size;
+        using base::length;
+        using base::max_size;
+
+        using base::capacity;
+        using base::empty;
+
+        using base::operator[];
+        using base::at;
+
+        using base::front;
+        using base::back;
+
+        using base::copy;
+        using base::swap;
+        friend void swap(self& lhs, self& rhs) noexcept
+        {
+            lhs.swap(rhs);
+        }
+
+        using base::data;
+        using base::c_str;
+
+        using base::find;
+        using base::rfind;
+        using base::find_first_of;
+        using base::find_last_of;
+        using base::find_first_not_of;
+        using base::find_last_not_of;
+
+        auto substr(size_type pos = {}, size_type n = npos) const -> self
+        {
+            auto span = _const_span();
+            _range_check(pos <= span.second, "up-string-bad-position");
+            return self(tags::fill(), {}, {},
+                copy_fill(span.first + pos, std::min(n, span.second - pos)));
+        }
+
+        using base::compare;
+        using base::operator string_view;
+        using base::to_string;
+        using base::out;
+
+    private:
+        using base::_const_span;
+    };
+
+
+    template <typename Core>
+    class basic_string<Core, true> final : protected basic_string_base<Core>
+    {
+    private: // --- scope ---
+        using self = basic_string;
+        using base = basic_string_base<Core>;
+
+    public:
+        using traits_type = typename base::traits_type;
+        using value_type = typename base::value_type;
+        using size_type = typename base::size_type;
+        using difference_type = typename base::difference_type;
+        using const_reference = typename base::const_reference;
+        using reference = basic_string_types::reference<traits_type>;
+        using const_pointer = typename base::const_pointer;
+        using pointer = basic_string_types::pointer<traits_type>;
+        using const_iterator = typename base::const_iterator;
+        using iterator = basic_string_types::iterator<traits_type>;
+        using const_reverse_iterator = typename base::const_reverse_iterator;
+        using reverse_iterator = basic_string_types::reverse_iterator<traits_type>;
+
+        using string_view = typename base::string_view;
+
+        static const constexpr size_type npos = base::npos;
+
+    private:
+        using span_type = basic_string_types::span_type<traits_type>;
+
+        using copy_fill = typename base::copy_fill;
+        using assign_fill = typename base::assign_fill;
+        using value_fill = typename base::value_fill;
+        template <typename Iterator>
+        using iterator_fill = typename base::template iterator_fill<Iterator>;
+
+        using base::_range_check;
+        using base::_const_iterator;
+        static auto _iterator(pointer ptr, size_type pos) -> iterator
+        {
+            return iterator(ptr + pos);
+        }
+
+    public:
+        template <typename..., typename... Args>
+        static auto concat(Args&&... args) -> self
+        {
+            return self(tags::fill(), {}, {}, base::_make_fill(std::forward<Args>(args))...);
+        }
+
+    public: // --- life ---
+        using base::base;
+
+    public: // --- operations ---
+        auto operator=(const string_view& s) -> self&
+        {
+            return assign(s);
+        }
+        auto operator=(const value_type* s) -> self&
+        {
+            return assign(s);
+        }
+        auto operator=(value_type c) -> self&
+        {
+            return assign(size_type(1), c);
+        }
+        auto operator=(std::initializer_list<value_type> chars) -> self&
+        {
+            return assign(chars.begin(), chars.end());
+        }
+
+        using base::begin;
+        auto begin() noexcept -> iterator
+        {
+            auto span = _span();
+            return _iterator(span.first, {});
+        }
+        using base::end;
+        auto end() noexcept -> iterator
+        {
+            auto span = _span();
+            return _iterator(span.first, span.second);
+        }
+        using base::rbegin;
+        auto rbegin() noexcept -> reverse_iterator
+        {
+            return reverse_iterator(end());
+        }
+        using base::rend;
+        auto rend() noexcept -> reverse_iterator
+        {
+            return reverse_iterator(begin());
+        }
+        using base::cbegin;
+        using base::cend;
+        using base::crbegin;
+        using base::crend;
+
+        using base::size;
+        using base::length;
+        using base::max_size;
+
+        void resize(size_type n, value_type c)
+        {
+            auto size = _size();
+            if (n > size) {
+                append(n - size, c);
+            } else {
+                _trim_size(n);
+            }
+        }
+        void resize(size_type n)
+        {
+            resize(n, {});
+        }
+        using base::capacity;
+        void reserve(size_type request = {})
+        {
+            auto capacity = _capacity();
+            if (request > capacity) {
+                auto span = _span();
+                self(tags::fill(), {}, request - span.second,
+                    copy_fill(span.first, span.second)).swap(*this);
+            } else if (capacity - request < sizeof(self)) {
+                // nothing
+            } else if (capacity - _size() < sizeof(self)) {
+                // nothing
+            } else {
+                auto span = _span();
+                self(tags::fill(), {}, request - span.second,
+                    copy_fill(span.first, span.second)).swap(*this);
+            }
+        }
+        void shrink_to_fit()
+        {
+            if (_capacity() - _size() < sizeof(self)) {
+                // nothing
+            } else {
+                self(*this).swap(*this);
+            }
+        }
+        void clear() noexcept
+        {
+            _trim_size({});
+        }
+        using base::empty;
+
+        using base::operator[];
+        auto operator[](size_type pos) -> reference
+        {
+            auto span = _span();
+            return span.first[pos];
+        }
+        using base::at;
+        auto at(size_type n) -> reference
+        {
+            auto span = _span();
+            _range_check(n < span.second, "up-string-bad-position");
+            return span.first[n];
+        }
+
+        using base::front;
+        auto front() -> reference
+        {
+            auto span = _span();
+            return span.first[0];
+        }
+        using base::back;
+        auto back() -> reference
+        {
+            auto span = _span();
+            return span.first[span.second - size_type(1)];
+        }
+
+        auto operator+=(const string_view& s) -> self&
+        {
+            return append(s);
+        }
+        auto operator+=(const value_type* s) -> self&
+        {
+            return append(s);
+        }
+        auto operator+=(value_type c) -> self&
+        {
+            return append(size_type(1), c);
+        }
+        auto operator+=(std::initializer_list<value_type> chars) -> self&
+        {
+            return append(chars);
+        }
+
+        auto append(const string_view& s) -> self&
+        {
+            return append(s.data(), s.size());
+        }
+        auto append(const string_view& s, size_type pos, size_type n) -> self&
+        {
+            return append(s.substr(pos, n));
+        }
+        auto append(const value_type* s, size_type n) -> self&
+        {
+            return _append_fill(copy_fill(s, n));
+        }
+        auto append(const value_type* s) -> self&
+        {
+            return append(s, traits_type::length(s));
+        }
+        auto append(size_type n, value_type c) -> self&
+        {
+            return _append_fill(assign_fill(n, c));
+        }
+        template <typename InputIterator>
+        auto append(InputIterator first, InputIterator last) -> self&
+        {
+            return _append_fill(iterator_fill<InputIterator>(first, last));
+        }
+        auto append(std::initializer_list<value_type> chars) -> self&
+        {
+            return append(chars.begin(), chars.end());
+        }
+
+        void push_back(value_type c)
+        {
+            _append_fill(value_fill(c));
+        }
+
+        auto assign(const self& rhs) -> self&
+        {
+            return operator=(rhs);
+        }
+        auto assign(self&& rhs) noexcept -> self&
+        {
+            return operator=(std::forward<self>(rhs));
+        }
+        auto assign(const string_view& s) -> self&
+        {
+            return assign(s.data(), s.size());
+        }
+        auto assign(const string_view& s, size_type pos, size_type n) -> self&
+        {
+            return assign(s.substr(pos, n));
+        }
+        auto assign(const value_type* s, size_type n) -> self&
+        {
+            return _assign_fill(copy_fill(s, n));
+        }
+        auto assign(const value_type* s) -> self&
+        {
+            return assign(s, traits_type::length(s));
+        }
+        auto assign(size_type n, value_type c) -> self&
+        {
+            return _assign_fill(assign_fill(n, c));
+        }
+        template <typename InputIterator>
+        auto assign(InputIterator first, InputIterator last) -> self&
+        {
+            return _assign_fill(iterator_fill<InputIterator>(first, last));
+        }
+        auto assign(std::initializer_list<value_type> chars) -> self&
+        {
+            return assign(chars.begin(), chars.end());
+        }
+
+        auto insert(size_type pos1, const string_view& s) -> self&
+        {
+            return insert(pos1, s.data(), s.size());
+        }
+        auto insert(size_type pos1, const string_view& s, size_type pos2, size_type n) -> self&
+        {
+            return insert(pos1, s.substr(pos2, n));
+        }
+        auto insert(size_type pos, const value_type* s, size_type n) -> self&
+        {
+            return _insert_fill(pos, copy_fill(s, n));
+        }
+        auto insert(size_type pos, const value_type* s) -> self&
+        {
+            return insert(pos, s, traits_type::length(s));
+        }
+        auto insert(size_type pos, size_type n, value_type c) -> self&
+        {
+            return _insert_fill(pos, assign_fill(n, c));
+        }
+        auto insert(const_iterator p, value_type c) -> iterator
+        {
+            return _insert_fill(p, value_fill(c));
+        }
+        auto insert(const_iterator p, size_type n, value_type c) -> iterator
+        {
+            return _insert_fill(p, assign_fill(n, c));
+        }
+        template <typename InputIterator>
+        auto insert(const_iterator p, InputIterator first, InputIterator last) -> iterator
+        {
+            return _insert_fill(p, iterator_fill<InputIterator>(first, last));
+        }
+        auto insert(const_iterator p, std::initializer_list<value_type> chars) -> iterator
+        {
+            return insert(p, chars.begin(), chars.end());
+        }
+
+        auto erase(size_type pos = {}, size_type n = npos) -> self&
+        {
+            auto size = _size();
+            _range_check(pos <= size, "up-string-bad-position");
+            return _erase(pos, std::min(n, size - pos));
+        }
+        auto erase(const_iterator position) -> iterator
+        {
+            return erase(position, std::next(position));
+        }
+        auto erase(const_iterator first, const_iterator last) -> iterator
+        {
+            auto span = _span();
+            size_type pos = std::distance(_const_iterator(span.first, {}), first);
+            size_type n = std::distance(first, last);
+            _erase(pos, n);
+            return _iterator(span.first, pos);
+        }
+
+        void pop_back()
+        {
+            _trim_size(_size() - size_type(1));
+        }
+
+        auto replace(size_type pos1, size_type n1, const string_view& s) -> self&
+        {
+            return replace(pos1, n1, s.data(), s.size());
+        }
+        auto replace(size_type pos1, size_type n1, const string_view& s, size_type pos2, size_type n2) -> self&
+        {
+            return replace(pos1, n1, s.substr(pos2, n2));
+        }
+        auto replace(size_type pos, size_type n1, const value_type* s, size_type n2) -> self&
+        {
+            return _replace_fill(pos, n1, copy_fill(s, n2));
+        }
+        auto replace(size_type pos, size_type n1, const value_type* s) -> self&
+        {
+            return replace(pos, n1, s, traits_type::length(s));
+        }
+        auto replace(size_type pos, size_type n1, size_type n2, value_type c) -> self&
+        {
+            return _replace_fill(pos, n1, assign_fill(n2, c));
+        }
+        auto replace(const_iterator p, const_iterator q, const string_view& s) -> self&
+        {
+            return replace(p, q, s.data(), s.size());
+        }
+        auto replace(const_iterator p, const_iterator q, const value_type* s, size_type n) -> self&
+        {
+            return _replace_fill(p, q, copy_fill(s, n));
+        }
+        auto replace(const_iterator p, const_iterator q, const value_type* s) -> self&
+        {
+            return replace(p, q, s, traits_type::length(s));
+        }
+        auto replace(const_iterator p, const_iterator q, size_type n, value_type c) -> self&
+        {
+            return _replace_fill(p, q, assign_fill(n, c));
+        }
+        template <typename InputIterator>
+        auto replace(const_iterator p, const_iterator q, InputIterator first, InputIterator last) -> self&
+        {
+            return _replace_fill(p, q, iterator_fill<InputIterator>(first, last));
+        }
+        auto replace(const_iterator p, const_iterator q, std::initializer_list<value_type> chars) -> self&
+        {
+            return replace(p, q, chars.begin(), chars.end());
+        }
+
+        using base::copy;
+        using base::swap;
+        friend void swap(self& lhs, self& rhs) noexcept
+        {
+            lhs.swap(rhs);
+        }
+
+        using base::data;
+        using base::c_str;
+
+        using base::find;
+        using base::rfind;
+        using base::find_first_of;
+        using base::find_last_of;
+        using base::find_first_not_of;
+        using base::find_last_not_of;
+
+        auto substr(size_type pos = {}, size_type n = npos) const -> self
+        {
+            auto span = _const_span();
+            _range_check(pos <= span.second, "up-string-bad-position");
+            return self(tags::fill(), {}, {},
+                copy_fill(span.first + pos, std::min(n, span.second - pos)));
+        }
+
+        using base::compare;
+        using base::operator string_view;
+        using base::to_string;
+        using base::out;
+
+    private:
+        using base::_const_span;
+        auto _span() noexcept -> span_type
+        {
+            return Core::span();
+        }
+        using base::_size;
+        using base::_capacity;
         bool _increase_size(size_type n)
         {
-            size_type size = sizes::or_length_error::add(_size(), n);
+            size_type size = base::sizes::or_length_error::add(_size(), n);
             if (size <= _capacity()) {
                 Core::set_size(size);
                 return true;
@@ -1546,6 +1672,10 @@ namespace up_string
             up::swap_noexcept(_size, rhs._size);
             up::swap_noexcept(_data, rhs._data);
         }
+        auto preinitialized_data() noexcept -> char*
+        {
+            return _data.get();
+        }
         auto const_span() const noexcept -> basic_string_types::const_span_type<traits_type>
         {
             return {_data.get(), _size};
@@ -1568,8 +1698,10 @@ namespace up_string
         }
     };
 
-    using string = basic_string<core, true>;
+    using shared_string = basic_string<core, false>;
+    using unique_string = basic_string<core, true>;
 
+    extern template class basic_string<core, false>;
     extern template class basic_string<core, true>;
 
 }
@@ -1597,9 +1729,7 @@ namespace up
 {
 
     using up_string::basic_string;
-    using up_string::string;
-
-    using shared_string = up::string; // XXX
-    using unique_string = up::string; // XXX
+    using up_string::shared_string;
+    using up_string::unique_string;
 
 }
