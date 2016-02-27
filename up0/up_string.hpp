@@ -92,11 +92,55 @@ namespace up_string
     private: // --- scope ---
         using value_type = basic_string_types::value_type<Traits>;
         using size_type = basic_string_types::size_type<Traits>;
+        static const constexpr size_type prefix_size = sizeof(size_type) + sizeof(size_type);
+        static auto _copy(Iterator& first, Iterator& last, value_type* s, size_type n) -> size_type
+        {
+            size_type i = 0;
+            for (; i < n && first != last; ++i, ++first) {
+                Traits::assign(s[i], *first);
+            }
+            return i;
+        }
+    private: // --- state ---
+        size_type _size = 0;
+        std::unique_ptr<value_type[]> _suffix;
+        value_type _prefix[prefix_size];
     public: // --- life ---
-        explicit iterator_fill_base(Iterator first, Iterator last); // XXX:IMPL
+        explicit iterator_fill_base(Iterator first, Iterator last)
+        {
+            _size = _copy(first, last, _prefix, prefix_size);
+            if (first != last) {
+                auto initial_size = prefix_size + prefix_size + prefix_size;
+                _suffix = std::make_unique<value_type[]>(initial_size);
+                _size += _copy(first, last, _suffix.get(), initial_size);
+                while (first != last) {
+                    size_type n = _size - prefix_size;
+                    _resize_suffix(n, up::ints::domain<size_type>::or_length_error::add(_size + n));
+                    _size += _copy(first, last, _suffix.get() + n, _size);
+                }
+            } // else: done
+        }
     public: // --- operations ---
-        auto size() const -> size_type; // XXX:IMPL
-        void apply(value_type* s) const; // XXX:IMPL
+        auto size() const -> size_type
+        {
+            return _size;
+        }
+        void apply(value_type* s) const
+        {
+            if (_size > prefix_size) {
+                Traits::copy(s, _prefix, prefix_size);
+                Traits::copy(s, _suffix.get(), _size - prefix_size);
+            } else {
+                Traits::copy(s, _prefix, _size);
+            }
+        }
+    private:
+        void _resize_suffix(size_type old_capacity, size_type new_capacity)
+        {
+            auto temp = std::make_unique<value_type[]>(new_capacity);
+            Traits::copy(temp.get(), _suffix.get(), old_capacity);
+            swap(temp, _suffix);
+        }
     };
 
     template <typename Core, bool Mutable>
