@@ -55,12 +55,92 @@ namespace up_string
     };
 
 
+    template <typename Traits>
+    class traits_copy_fill final
+    {
+    private: // --- scope ---
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
+    private: // --- state ---
+        const value_type* _data;
+        size_type _size;
+    public: // --- life ---
+        explicit traits_copy_fill(const value_type* data, size_type size)
+            : _data(data), _size(size)
+        { }
+    public: // --- operations ---
+        auto size() const -> size_type
+        {
+            return _size;
+        }
+        void apply(value_type* s) const
+        {
+            Traits::copy(s, _data, _size);
+        }
+    };
+
+    extern template class traits_copy_fill<std::char_traits<char>>;
+
+
+    template <typename Traits>
+    class traits_assign_fill final
+    {
+    private: // --- scope ---
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
+    private: // --- state ---
+        size_type _size;
+        value_type _value;
+    public: // --- life ---
+        explicit traits_assign_fill(size_type size, value_type value)
+            : _size(size), _value(value)
+        { }
+    public: // --- operations ---
+        auto size() const -> size_type
+        {
+            return _size;
+        }
+        void apply(value_type* s) const
+        {
+            Traits::assign(s, _size, _value);
+        }
+    };
+
+    extern template class traits_assign_fill<std::char_traits<char>>;
+
+
+    template <typename Traits>
+    class traits_value_fill final
+    {
+    private: // --- scope ---
+        using value_type = basic_string_types::value_type<Traits>;
+        using size_type = basic_string_types::size_type<Traits>;
+    private: // --- state ---
+        value_type _value;
+    public: // --- life ---
+        explicit traits_value_fill(value_type value)
+            : _value(value)
+        { }
+    public: // --- operations ---
+        auto size() const -> size_type
+        {
+            return 1;
+        }
+        void apply(value_type* s) const
+        {
+            Traits::assign(*s, _value);
+        }
+    };
+
+    extern template class traits_value_fill<std::char_traits<char>>;
+
+
     template <typename Iterator>
     using is_forward = std::is_convertible<
         typename std::iterator_traits<Iterator>::iterator_category, std::forward_iterator_tag>;
 
     template <typename Traits, typename Iterator, bool IsForward = is_forward<Iterator>::value>
-    class iterator_fill_base
+    class traits_iterator_fill
     {
     private: // --- scope ---
         using value_type = basic_string_types::value_type<Traits>;
@@ -70,7 +150,7 @@ namespace up_string
         Iterator _last;
         size_type _size;
     public: // --- life ---
-        explicit iterator_fill_base(Iterator first, Iterator last)
+        explicit traits_iterator_fill(Iterator first, Iterator last)
             : _first(first), _last(last), _size(std::distance(first, last))
         { }
     public: // --- operations ---
@@ -86,13 +166,14 @@ namespace up_string
         }
     };
 
-    template <typename Traits, typename Iterator>
-    class iterator_fill_base<Traits, Iterator, false>
+    template <typename Traits>
+    class traits_iterator_fill_base final
     {
     private: // --- scope ---
         using value_type = basic_string_types::value_type<Traits>;
         using size_type = basic_string_types::size_type<Traits>;
-        static const constexpr size_type prefix_size = sizeof(size_type) + sizeof(size_type);
+        static const constexpr size_type _prefix_size = sizeof(size_type) + sizeof(size_type);
+        template <typename Iterator>
         static auto _copy(Iterator& first, Iterator& last, value_type* s, size_type n) -> size_type
         {
             size_type i = 0;
@@ -104,17 +185,18 @@ namespace up_string
     private: // --- state ---
         size_type _size = 0;
         std::unique_ptr<value_type[]> _suffix;
-        value_type _prefix[prefix_size];
-    public: // --- life ---
-        explicit iterator_fill_base(Iterator first, Iterator last)
+        value_type _prefix[_prefix_size];
+    protected: // --- life ---
+        template <typename Iterator>
+        explicit traits_iterator_fill_base(Iterator first, Iterator last)
         {
-            _size = _copy(first, last, _prefix, prefix_size);
+            _size = _copy(first, last, _prefix, _prefix_size);
             if (first != last) {
-                auto initial_size = prefix_size + prefix_size + prefix_size;
+                auto initial_size = _prefix_size + _prefix_size + _prefix_size;
                 _suffix = std::make_unique<value_type[]>(initial_size);
                 _size += _copy(first, last, _suffix.get(), initial_size);
                 while (first != last) {
-                    size_type n = _size - prefix_size;
+                    size_type n = _size - _prefix_size;
                     _resize_suffix(n, up::ints::domain<size_type>::or_length_error::add(_size + n));
                     _size += _copy(first, last, _suffix.get() + n, _size);
                 }
@@ -127,9 +209,9 @@ namespace up_string
         }
         void apply(value_type* s) const
         {
-            if (_size > prefix_size) {
-                Traits::copy(s, _prefix, prefix_size);
-                Traits::copy(s, _suffix.get(), _size - prefix_size);
+            if (_size > _prefix_size) {
+                Traits::copy(s, _prefix, _prefix_size);
+                Traits::copy(s, _suffix.get(), _size - _prefix_size);
             } else {
                 Traits::copy(s, _prefix, _size);
             }
@@ -141,6 +223,17 @@ namespace up_string
             Traits::copy(temp.get(), _suffix.get(), old_capacity);
             swap(temp, _suffix);
         }
+    };
+
+    extern template class traits_iterator_fill_base<std::char_traits<char>>;
+
+    template <typename Traits, typename Iterator>
+    class traits_iterator_fill<Traits, Iterator, false> final : public traits_iterator_fill_base<Traits>
+    {
+    private: // --- scope ---
+        using base = traits_iterator_fill_base<Traits>;
+    public: // --- life ---
+        using base::base;
     };
 
 
@@ -170,75 +263,10 @@ namespace up_string
 
         using sizes = typename up::ints::domain<size_type>;
 
-        class copy_fill final
-        {
-        private: // --- state ---
-            const value_type* _data;
-            size_type _size;
-        public: // --- life ---
-            explicit copy_fill(const value_type* data, size_type size)
-                : _data(data), _size(size)
-            { }
-        public: // --- operations ---
-            auto size() const -> size_type
-            {
-                return _size;
-            }
-            void apply(value_type* s) const
-            {
-                traits_type::copy(s, _data, _size);
-            }
-        };
-
-        class assign_fill final
-        {
-        private: // --- state ---
-            size_type _size;
-            value_type _value;
-        public: // --- life ---
-            explicit assign_fill(size_type size, value_type value)
-                : _size(size), _value(value)
-            { }
-        public: // --- operations ---
-            auto size() const -> size_type
-            {
-                return _size;
-            }
-            void apply(value_type* s) const
-            {
-                traits_type::assign(s, _size, _value);
-            }
-        };
-
-        class value_fill final
-        {
-        private: // --- state ---
-            value_type _value;
-        public: // --- life ---
-            explicit value_fill(value_type value)
-                : _value(value)
-            { }
-        public: // --- operations ---
-            auto size() const -> size_type
-            {
-                return 1;
-            }
-            void apply(value_type* s) const
-            {
-                traits_type::assign(*s, _value);
-            }
-        };
-
+        using copy_fill = traits_copy_fill<traits_type>;
+        using assign_fill = traits_assign_fill<traits_type>;
         template <typename Iterator>
-        class iterator_fill final : public iterator_fill_base<traits_type, Iterator>
-        {
-        private: // --- scope ---
-            using base = iterator_fill_base<traits_type, Iterator>;
-        public: // --- life ---
-            explicit iterator_fill(Iterator first, Iterator last)
-                : base(first, last)
-            { }
-        };
+        using iterator_fill = traits_iterator_fill<traits_type, Iterator>;
 
         static auto _make_fill(const up::string_view& s) -> copy_fill
         {
@@ -695,11 +723,11 @@ namespace up_string
     private:
         using span_type = basic_string_types::span_type<traits_type>;
 
-        using copy_fill = typename base::copy_fill;
-        using assign_fill = typename base::assign_fill;
-        using value_fill = typename base::value_fill;
+        using copy_fill = traits_copy_fill<traits_type>;
+        using assign_fill = traits_assign_fill<traits_type>;
+        using value_fill = traits_value_fill<traits_type>;
         template <typename Iterator>
-        using iterator_fill = typename base::template iterator_fill<Iterator>;
+        using iterator_fill = traits_iterator_fill<traits_type, Iterator>;
 
         using base::_range_check;
         using base::_const_iterator;
