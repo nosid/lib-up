@@ -7,14 +7,6 @@
 namespace up_string
 {
 
-    class tags final
-    {
-    public: // --- scope ---
-        class fill final { };
-        class capacity final { };
-    };
-
-
     class basic_string_types final
     {
     private: // --- scope ---
@@ -237,6 +229,34 @@ namespace up_string
     };
 
 
+    template <typename SizeType>
+    class extent final
+    {
+    public: // --- scope ---
+        using self = extent;
+        using size_type = SizeType;
+    private: // --- state ---
+        size_type _capacity;
+        size_type _size;
+    public: // --- life ---
+        explicit extent(size_type capacity, size_type size)
+            : _capacity(capacity), _size(size)
+        { }
+    public: // --- operations ---
+        void swap(self& rhs) noexcept
+        {
+            up::swap_noexcept(_capacity, rhs._capacity);
+            up::swap_noexcept(_size, rhs._size);
+        }
+        friend void swap(self& lhs, self& rhs) noexcept
+        {
+            lhs.swap(rhs);
+        }
+        auto capacity() const { return _capacity; }
+        auto size() const { return _size; }
+    };
+
+
     template <typename Core>
     class basic_string_base : protected Core
     {
@@ -263,10 +283,20 @@ namespace up_string
 
         using sizes = typename up::ints::domain<size_type>;
 
+        enum class fill_construct_t { };
+        static const constexpr fill_construct_t fill_construct = {};
+
         using copy_fill = traits_copy_fill<traits_type>;
         using assign_fill = traits_assign_fill<traits_type>;
         template <typename Iterator>
         using iterator_fill = traits_iterator_fill<traits_type, Iterator>;
+
+        static auto _make_extent(size_type baseline, size_type headroom, size_type request)
+        {
+            return extent<size_type>(
+                std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)),
+                request - headroom);
+        }
 
         static auto _make_fill(const up::string_view& s) -> copy_fill
         {
@@ -309,28 +339,25 @@ namespace up_string
             : basic_string_base(s, traits_type::length(s))
         { }
         basic_string_base(const value_type* s, size_type n)
-            : basic_string_base(tags::fill(), {}, {}, copy_fill(s, n))
+            : basic_string_base(fill_construct, {}, {}, copy_fill(s, n))
         { }
         basic_string_base(size_type n, value_type c)
-            : basic_string_base(tags::fill(), {}, {}, assign_fill(n, c))
+            : basic_string_base(fill_construct, {}, {}, assign_fill(n, c))
         { }
         template <typename InputIterator>
         basic_string_base(InputIterator first, InputIterator last)
-            : basic_string_base(tags::fill(), {}, {}, iterator_fill<InputIterator>(first, last))
+            : basic_string_base(fill_construct, {}, {}, iterator_fill<InputIterator>(first, last))
         { }
         basic_string_base(std::initializer_list<value_type> chars)
             : basic_string_base(chars.begin(), chars.end())
         { }
     protected:
         template <typename..., typename... Fills>
-        explicit basic_string_base(tags::fill, size_type baseline, size_type headroom, Fills&&... fills)
-            : basic_string_base(tags::capacity(), baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...))
+        explicit basic_string_base(fill_construct_t, size_type baseline, size_type headroom, Fills&&... fills)
+            : base(_make_extent(baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...)))
         {
             _apply_fills(Core::preinitialized_data(), std::forward<Fills>(fills)...);
         }
-        explicit basic_string_base(tags::capacity, size_type baseline, size_type headroom, size_type request)
-            : base(tags::capacity(), std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)), request - headroom)
-        { }
 
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = default;
@@ -621,7 +648,8 @@ namespace up_string
 
         using string_view = typename base::string_view;
 
-        static const constexpr size_type npos = base::npos;
+        static const constexpr auto npos = base::npos;
+        static const constexpr auto fill_construct = base::fill_construct;
 
     private:
         using copy_fill = typename base::copy_fill;
@@ -631,7 +659,7 @@ namespace up_string
         template <typename..., typename... Args>
         static auto concat(Args&&... args) -> self
         {
-            return self(tags::fill(), {}, {}, base::_make_fill(std::forward<Args>(args))...);
+            return self(fill_construct, {}, {}, base::_make_fill(std::forward<Args>(args))...);
         }
 
     public: // --- life ---
@@ -681,7 +709,7 @@ namespace up_string
         {
             auto span = _const_span();
             _range_check(pos <= span.second, "up-string-bad-position");
-            return self(tags::fill(), {}, {},
+            return self(fill_construct, {}, {},
                 copy_fill(span.first + pos, std::min(n, span.second - pos)));
         }
 
@@ -718,7 +746,8 @@ namespace up_string
 
         using string_view = typename base::string_view;
 
-        static const constexpr size_type npos = base::npos;
+        static const constexpr auto npos = base::npos;
+        static const constexpr auto fill_construct = base::fill_construct;
 
     private:
         using span_type = basic_string_types::span_type<traits_type>;
@@ -740,7 +769,7 @@ namespace up_string
         template <typename..., typename... Args>
         static auto concat(Args&&... args) -> self
         {
-            return self(tags::fill(), {}, {}, base::_make_fill(std::forward<Args>(args))...);
+            return self(fill_construct, {}, {}, base::_make_fill(std::forward<Args>(args))...);
         }
 
     public: // --- life ---
@@ -814,7 +843,7 @@ namespace up_string
             auto capacity = _capacity();
             if (request > capacity) {
                 auto span = _span();
-                self(tags::fill(), {}, request - span.second,
+                self(fill_construct, {}, request - span.second,
                     copy_fill(span.first, span.second)).swap(*this);
             } else if (capacity - request < sizeof(self)) {
                 // nothing
@@ -822,7 +851,7 @@ namespace up_string
                 // nothing
             } else {
                 auto span = _span();
-                self(tags::fill(), {}, request - span.second,
+                self(fill_construct, {}, request - span.second,
                     copy_fill(span.first, span.second)).swap(*this);
             }
         }
@@ -1086,7 +1115,7 @@ namespace up_string
         {
             auto span = _const_span();
             _range_check(pos <= span.second, "up-string-bad-position");
-            return self(tags::fill(), {}, {},
+            return self(fill_construct, {}, {},
                 copy_fill(span.first + pos, std::min(n, span.second - pos)));
         }
 
@@ -1125,7 +1154,7 @@ namespace up_string
             if (_increase_size(n)) {
                 fill.apply(span.first + span.second);
             } else {
-                self(tags::fill(), _capacity(), {},
+                self(fill_construct, _capacity(), {},
                     copy_fill(span.first, span.second),
                     std::forward<Fill>(fill)).swap(*this);
             }
@@ -1142,7 +1171,7 @@ namespace up_string
             } else if (_increase_size(n - span.second)) {
                 fill.apply(span.first);
             } else {
-                self(tags::fill(), {}, {}, std::forward<Fill>(fill)).swap(*this);
+                self(fill_construct, {}, {}, std::forward<Fill>(fill)).swap(*this);
             }
             return *this;
         }
@@ -1156,7 +1185,7 @@ namespace up_string
                 traits_type::move(span.first + pos + n, span.first + pos, span.second - pos);
                 fill.apply(span.first + pos);
             } else {
-                self(tags::fill(), _capacity(), {},
+                self(fill_construct, _capacity(), {},
                     copy_fill(span.first, pos),
                     std::forward<Fill>(fill),
                     copy_fill(span.first + pos, span.second - pos)).swap(*this);
@@ -1183,7 +1212,7 @@ namespace up_string
                 traits_type::move(span.first + pos + k, span.first + pos + n, span.second - pos - n);
                 fill.apply(span.first + pos);
             } else {
-                self(tags::fill(), _capacity(), {},
+                self(fill_construct, _capacity(), {},
                     copy_fill(span.first, pos),
                     std::forward<Fill>(fill),
                     copy_fill(span.first + pos + n, span.second - pos - n)).swap(*this);
@@ -1673,8 +1702,8 @@ namespace up_string
             swap(rhs);
         }
         ~core() noexcept = default;
-        explicit core(tags::capacity, size_type capacity, size_type size)
-            : _capacity(capacity), _size(size), _data(std::make_unique<char[]>(capacity))
+        explicit core(const extent<size_type>& extent)
+            : _capacity(extent.capacity()), _size(extent.size()), _data(std::make_unique<char[]>(_capacity))
         { }
     protected: // --- operations ---
         auto operator=(const self& rhs) & -> self&
