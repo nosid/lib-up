@@ -52,13 +52,11 @@ namespace up_fs
     public: // --- scope ---
         using self = stats;
         class impl;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        stats(std::nullptr_t) = delete;
-        explicit stats(std::shared_ptr<const impl> impl)
-            : _impl(std::move(impl))
-        { }
+        explicit stats(init&& arg);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -85,13 +83,11 @@ namespace up_fs
     public: // --- scope ---
         using self = statfs;
         class impl;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        statfs(std::nullptr_t) = delete;
-        explicit statfs(std::shared_ptr<const impl> impl)
-            : _impl(std::move(impl))
-        { }
+        explicit statfs(init&& arg);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -175,11 +171,13 @@ namespace up_fs
     public: // --- scope ---
         using self = origin;
         class impl;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        origin(std::nullptr_t) = delete;
-        explicit origin(std::shared_ptr<const impl> impl)
+        explicit origin(init&& arg);
+    private:
+        explicit origin(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))
         { }
     public: // --- operations ---
@@ -204,11 +202,14 @@ namespace up_fs
     public: // --- scope ---
         using self = path;
         class impl;
+        class accessor;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        path(std::nullptr_t) = delete;
-        explicit path(std::shared_ptr<const impl> impl)
+        explicit path(init&& arg);
+    private:
+        explicit path(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))
         { }
     public: // --- operations ---
@@ -221,10 +222,6 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
-        auto get_impl() const -> const std::shared_ptr<const impl>&
-        {
-            return _impl;
-        }
         auto follow(bool value) const -> self;
         auto joined(const up::string_view& pathname) const -> self;
         auto resolved() const -> origin;
@@ -254,13 +251,11 @@ namespace up_fs
     public: // --- scope ---
         using self = object;
         class impl;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        object(std::nullptr_t) = delete;
-        explicit object(std::shared_ptr<const impl> impl)
-            : _impl(std::move(impl))
-        { }
+        explicit object(init&& arg);
         explicit object(const path& path);
         object(const self& rhs) = delete;
         object(self&& rhs) noexcept = default;
@@ -347,12 +342,11 @@ namespace up_fs
     public: // --- scope ---
         using self = lock;
         class impl;
+        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit lock(std::shared_ptr<const impl> impl)
-            : _impl(std::move(impl))
-        { }
+        explicit lock(init&& arg);
         lock(const self& rhs) = delete;
         lock(self&& rhs) noexcept = default;
         ~lock() noexcept = default;
@@ -375,13 +369,12 @@ namespace up_fs
     public: // --- scope ---
         using self = channel;
         class impl;
+        class init;
         static void destroy(impl* ptr);
     private: // --- state ---
         up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
-        explicit channel(up::impl_ptr<impl, destroy> impl)
-            : _impl(std::move(impl))
-        { }
+        explicit channel(init&& arg);
         channel(const self& rhs) = delete;
         channel(self&& rhs) noexcept = default;
         ~channel() noexcept = default;

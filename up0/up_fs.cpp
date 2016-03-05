@@ -391,6 +391,55 @@ namespace
 }
 
 
+class up_fs::fs::stats::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::statfs::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::origin::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::path::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::object::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::file::lock::init final
+{
+public: // --- state ---
+    std::shared_ptr<const impl> _impl;
+};
+
+
+class up_fs::fs::file::channel::init final
+{
+public: // --- state ---
+    up::impl_ptr<impl, destroy> _impl;
+};
+
+
 auto up_fs::to_string(fs::kind value) -> std::string
 {
     switch (value) {
@@ -429,6 +478,10 @@ public: // --- state ---
     struct stat _stat;
 };
 
+
+up_fs::fs::stats::stats(init&& arg)
+    : _impl(std::move(arg._impl))
+{ }
 
 auto up_fs::fs::stats::size() const -> off_t
 {
@@ -517,6 +570,10 @@ public: // --- operations ---
     }
 };
 
+
+up_fs::fs::statfs::statfs(init&& arg)
+    : _impl(std::move(arg._impl))
+{ }
 
 auto up_fs::fs::statfs::id() -> uint64_t
 {
@@ -618,12 +675,12 @@ auto up_fs::fs::context::to_insight() const -> up::insight
 
 auto up_fs::fs::context::working() const -> origin
 {
-    return origin(std::make_shared<const origin::impl>(_impl));
+    return origin(origin::init{std::make_shared<const origin::impl>(_impl)});
 }
 
 auto up_fs::fs::context::resolved(const up::string_view& pathname, bool follow) const -> origin
 {
-    return origin(std::make_shared<const origin::impl>(_impl, pathname, follow, AT_FDCWD));
+    return origin(origin::init{std::make_shared<const origin::impl>(_impl, pathname, follow, AT_FDCWD)});
 }
 
 auto up_fs::fs::context::operator()() const -> origin
@@ -761,12 +818,16 @@ public: // --- operations ---
 private:
     auto find_mounts() const -> std::vector<mount>
     {
-        auto path = origin(std::make_shared<impl>(_context))("/proc/self/mountinfo");
+        auto path = origin(origin::init{std::make_shared<impl>(_context)})("/proc/self/mountinfo");
         auto file = up_fs::fs::file(path, {up_fs::fs::file::option::read});
         return parse_file_content(file, 1 << 12, parse_mountinfo);
     }
 };
 
+
+up_fs::fs::origin::origin(init&& arg)
+    : origin(std::move(arg._impl))
+{ }
 
 auto up_fs::fs::origin::to_insight() const -> up::insight
 {
@@ -790,7 +851,7 @@ auto up_fs::fs::origin::location() const -> std::string
 
 auto up_fs::fs::origin::operator()(std::string pathname, bool follow) const -> path
 {
-    return path(std::make_shared<const path::impl>(_impl, std::move(pathname), follow));
+    return path(path::init{std::make_shared<const path::impl>(_impl, std::move(pathname), follow)});
 }
 
 
@@ -953,6 +1014,20 @@ private:
 };
 
 
+class up_fs::fs::path::accessor final
+{
+public:
+    static auto get_impl(const path& path) -> auto&
+    {
+        return path._impl;
+    }
+};
+
+
+up_fs::fs::path::path(init&& arg)
+    : path(std::move(arg._impl))
+{ }
+
 auto up_fs::fs::path::to_insight() const -> up::insight
 {
     return up::insight(typeid(*this), "fs-path", _impl->to_insight());
@@ -970,12 +1045,12 @@ auto up_fs::fs::path::joined(const up::string_view& pathname) const -> self
 
 auto up_fs::fs::path::resolved() const -> origin
 {
-    return origin(_impl->resolved());
+    return origin(origin::init{_impl->resolved()});
 }
 
 auto up_fs::fs::path::stat() const -> stats
 {
-    return stats(_impl->stat());
+    return stats(stats::init{_impl->stat()});
 }
 
 void up_fs::fs::path::chmod(mode_t mode) const
@@ -1047,7 +1122,7 @@ auto up_fs::fs::path::statvfs() const -> statfs
         rv = ::statvfs(pathname.c_str(), &result->_statvfs);
     } while (rv == -1 && errno == EINTR);
     check(rv, "fs-statvfs-error", *this);
-    return statfs(result);
+    return statfs(statfs::init{result});
 }
 
 void up_fs::fs::path::truncate(off_t length) const
@@ -1112,8 +1187,12 @@ public: // --- operations ---
 };
 
 
+up_fs::fs::object::object(init&& arg)
+    : _impl(std::move(arg._impl))
+{ }
+
 up_fs::fs::object::object(const path& path)
-    : _impl(std::make_shared<const impl>(path.get_impl()->make_handle(O_RDONLY)))
+    : _impl(std::make_shared<const impl>(path::accessor::get_impl(path)->make_handle(O_RDONLY)))
 { }
 
 void up_fs::fs::object::chmod(mode_t mode) const
@@ -1128,12 +1207,12 @@ void up_fs::fs::object::chown(uid_t owner, gid_t group) const
 
 auto up_fs::fs::object::stat() const -> stats
 {
-    return stats(_impl->stat());
+    return stats(stats::init{_impl->stat()});
 }
 
 auto up_fs::fs::object::statvfs() const -> statfs
 {
-    return statfs(_impl->statvfs());
+    return statfs(statfs::init{_impl->statvfs()});
 }
 
 void up_fs::fs::object::fdatasync() const
@@ -1212,14 +1291,14 @@ up_fs::fs::file::file(const path& path, options options)
     if (options.all(option::others, option::executable)) {
         mode |= S_IXOTH;
     }
-    auto&& p = path.get_impl();
+    auto&& p = path::accessor::get_impl(path);
     _impl = std::make_shared<const impl>(p->make_handle(flags, mode), p->get_context());
 }
 
 
 up_fs::fs::file::operator object() const
 {
-    return object(_impl);
+    return object(object::init{_impl});
 }
 
 void up_fs::fs::file::chmod(mode_t mode) const
@@ -1234,12 +1313,12 @@ void up_fs::fs::file::chown(uid_t owner, gid_t group) const
 
 auto up_fs::fs::file::stat() const -> stats
 {
-    return stats(_impl->stat());
+    return stats(stats::init{_impl->stat()});
 }
 
 auto up_fs::fs::file::statvfs() const -> statfs
 {
-    return statfs(_impl->statvfs());
+    return statfs(statfs::init{_impl->statvfs()});
 }
 
 void up_fs::fs::file::fdatasync() const
@@ -1333,12 +1412,12 @@ void up_fs::fs::file::linkto(const path& target) const
 
 auto up_fs::fs::file::acquire_lock(bool exclusive, bool blocking) const -> lock
 {
-    return lock(std::make_shared<const lock::impl>(_impl, exclusive, blocking));
+    return lock(lock::init{std::make_shared<const lock::impl>(_impl, exclusive, blocking)});
 }
 
 auto up_fs::fs::file::make_channel() const -> channel
 {
-    return channel(up::impl_make(_impl));
+    return channel(channel::init{up::impl_make(_impl)});
 }
 
 
@@ -1380,6 +1459,11 @@ private:
         }
     }
 };
+
+
+up_fs::fs::file::lock::lock(init&& arg)
+    : _impl(std::move(arg._impl))
+{ }
 
 
 class up_fs::fs::file::channel::impl final
@@ -1424,6 +1508,10 @@ void up_fs::fs::file::channel::destroy(impl* ptr)
     std::default_delete<impl>()(ptr);
 }
 
+up_fs::fs::file::channel::channel(init&& arg)
+    : _impl(std::move(arg._impl))
+{ }
+
 auto up_fs::fs::file::channel::fill(const file& source, std::size_t size, off_t offset)
     -> std::size_t
 {
@@ -1463,14 +1551,14 @@ public: // --- operations ---
 up_fs::fs::directory::directory(const path& path)
     : _impl(nullptr)
 {
-    auto&& p = path.get_impl();
+    auto&& p = path::accessor::get_impl(path);
     int flags = O_RDONLY | O_DIRECTORY;
     _impl = std::make_shared<impl>(p->make_handle(flags), p->get_context());
  }
 
 up_fs::fs::directory::operator object() const
 {
-    return object(_impl);
+    return object(object::init{_impl});
 }
 
 void up_fs::fs::directory::chmod(mode_t mode) const
@@ -1485,12 +1573,12 @@ void up_fs::fs::directory::chown(uid_t owner, gid_t group) const
 
 auto up_fs::fs::directory::stat() const -> stats
 {
-    return stats(_impl->stat());
+    return stats(stats::init{_impl->stat()});
 }
 
 auto up_fs::fs::directory::statvfs() const -> statfs
 {
-    return statfs(_impl->statvfs());
+    return statfs(statfs::init{_impl->statvfs()});
 }
 
 void up_fs::fs::directory::fdatasync() const
