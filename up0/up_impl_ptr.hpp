@@ -64,7 +64,7 @@ namespace up_impl_ptr
         }
     };
 
-    template <typename Type = void, typename... Args>
+    template <typename Type = void, typename..., typename... Args>
     auto impl_make(Args&&... args) -> impl_maker<Type, Args...>
     {
         return impl_maker<Type, Args...>(std::forward<Args>(args)...);
