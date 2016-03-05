@@ -330,9 +330,9 @@ up_inet::ipv4::endpoint::endpoint(const up::string_view& value)
     ip_address_parse(address_family::v4, value, &_data);
 }
 
-up_inet::ipv4::endpoint::endpoint(init&& argument)
+up_inet::ipv4::endpoint::endpoint(init&& arg)
 {
-    std::memcpy(&_data, &argument._data, sizeof(_data));
+    std::memcpy(&_data, &arg._data, sizeof(_data));
 }
 
 auto up_inet::ipv4::endpoint::to_string() const -> std::string
@@ -401,9 +401,9 @@ up_inet::ipv6::endpoint::endpoint(const up::string_view& value)
     ip_address_parse(address_family::v6, value, &_data);
 }
 
-up_inet::ipv6::endpoint::endpoint(init&& argument)
+up_inet::ipv6::endpoint::endpoint(init&& arg)
 {
-    std::memcpy(&_data, &argument._data, sizeof(_data));
+    std::memcpy(&_data, &arg._data, sizeof(_data));
 }
 
 auto up_inet::ipv6::endpoint::to_string() const -> std::string

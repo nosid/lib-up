@@ -33,7 +33,7 @@ namespace up_inet
         uint8_t _data[4];
     public: // --- life ---
         endpoint() = delete;
-        explicit endpoint(init&& argument);
+        explicit endpoint(init&& arg);
         /// throws invalid_ip_endpoint
         explicit endpoint(const up::string_view& value);
     public: // --- operations ---
@@ -72,7 +72,7 @@ namespace up_inet
         uint8_t _data[16];
     public: // --- life ---
         endpoint() = delete;
-        explicit endpoint(init&& argument);
+        explicit endpoint(init&& arg);
         /// throws invalid_ip_endpoint
         explicit endpoint(const up::string_view& value);
     public: // --- operations ---
