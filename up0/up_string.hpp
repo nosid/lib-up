@@ -39,11 +39,6 @@ namespace up_string
         using const_reverse_iterator = std::reverse_iterator<const_iterator<Traits>>;
         template <typename Traits>
         using reverse_iterator = std::reverse_iterator<iterator<Traits>>;
-
-        template <typename Traits>
-        using const_span_type = std::pair<const_pointer<Traits>, size_type<Traits>>;
-        template <typename Traits>
-        using span_type = std::pair<pointer<Traits>, size_type<Traits>>;
     };
 
 
@@ -279,8 +274,6 @@ namespace up_string
         static const constexpr size_type npos = string_view::npos;
 
     protected:
-        using const_span_type = basic_string_types::const_span_type<traits_type>;
-
         using sizes = typename up::ints::domain<size_type>;
 
         enum class fill_construct_t { };
@@ -356,7 +349,7 @@ namespace up_string
         explicit basic_string_base(fill_construct_t, size_type baseline, size_type headroom, Fills&&... fills)
             : base(_make_extent(baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...)))
         {
-            _apply_fills(Core::preinitialized_data(), std::forward<Fills>(fills)...);
+            _apply_fills(Core::data(), std::forward<Fills>(fills)...);
         }
 
     public: // --- operations ---
@@ -383,13 +376,11 @@ namespace up_string
 
         auto cbegin() const noexcept -> const_iterator
         {
-            auto span = _const_span();
-            return _const_iterator(span.first, {});
+            return _const_iterator(_data(), {});
         }
         auto cend() const noexcept -> const_iterator
         {
-            auto span = _const_span();
-            return _const_iterator(span.first, span.second);
+            return _const_iterator(_data(), _size());
         }
         auto crbegin() const noexcept -> const_reverse_iterator
         {
@@ -424,25 +415,21 @@ namespace up_string
 
         auto operator[](size_type pos) const -> const_reference
         {
-            auto span = _const_span();
-            return span.first[pos];
+            return _data()[pos];
         }
-        auto at(size_type n) const -> const_reference
+        auto at(size_type pos) const -> const_reference
         {
-            auto span = _const_span();
-            _range_check(n < span.second, "up-string-bad-position");
-            return span.first[n];
+            _range_check(pos < _size(), "up-string-bad-position");
+            return _data()[pos];
         }
 
         auto front() const -> const_reference
         {
-            auto span = _const_span();
-            return span.first[0];
+            return _data()[0];
         }
         auto back() const -> const_reference
         {
-            auto span = _const_span();
-            return span.first[span.second - size_type(1)];
+            return _data()[_size() - size_type(1)];
         }
 
         auto copy(value_type* s, size_type n, size_type pos = {}) const -> size_type
@@ -460,7 +447,7 @@ namespace up_string
 
         auto data() const noexcept -> const value_type*
         {
-            return _const_span().first;
+            return _data();
         }
         auto c_str() const noexcept -> const value_type* = delete; // intentionally not supported
 
@@ -593,27 +580,20 @@ namespace up_string
 
         operator string_view() const noexcept
         {
-            auto span = _const_span();
-            return {span.first, span.second};
+            return {_data(), _size()};
         }
         // XXX: temporary workaround for up::to_string
         auto to_string() const -> std::string
         {
-            auto span = _const_span();
-            return {span.first, span.second};
+            return {_data(), _size()};
         }
         // XXX: temporary workaround for up::out
         void out(std::ostream& os) const
         {
-            auto span = _const_span();
-            os.write(span.first, span.second);
+            os.write(_data(), _size());
         }
 
     protected:
-        auto _const_span() const noexcept -> const_span_type
-        {
-            return Core::const_span();
-        }
         auto _size() const noexcept -> size_type
         {
             return Core::size();
@@ -621,6 +601,10 @@ namespace up_string
         auto _capacity() const -> size_type
         {
             return Core::capacity();
+        }
+        auto _data() const noexcept -> const_pointer
+        {
+            return Core::data();
         }
     };
 
@@ -707,10 +691,10 @@ namespace up_string
 
         auto substr(size_type pos = {}, size_type n = npos) const -> self
         {
-            auto span = _const_span();
-            _range_check(pos <= span.second, "up-string-bad-position");
+            auto size = _size();
+            _range_check(pos <= size, "up-string-bad-position");
             return self(fill_construct, {}, {},
-                copy_fill(span.first + pos, std::min(n, span.second - pos)));
+                copy_fill(_data() + pos, std::min(n, size - pos)));
         }
 
         using base::compare;
@@ -719,7 +703,8 @@ namespace up_string
         using base::out;
 
     private:
-        using base::_const_span;
+        using base::_size;
+        using base::_data;
     };
 
 
@@ -750,8 +735,6 @@ namespace up_string
         static const constexpr auto fill_construct = base::fill_construct;
 
     private:
-        using span_type = basic_string_types::span_type<traits_type>;
-
         using copy_fill = traits_copy_fill<traits_type>;
         using assign_fill = traits_assign_fill<traits_type>;
         using value_fill = traits_value_fill<traits_type>;
@@ -796,14 +779,12 @@ namespace up_string
         using base::begin;
         auto begin() noexcept -> iterator
         {
-            auto span = _span();
-            return _iterator(span.first, {});
+            return _iterator(_data(), {});
         }
         using base::end;
         auto end() noexcept -> iterator
         {
-            auto span = _span();
-            return _iterator(span.first, span.second);
+            return _iterator(_data(), _size());
         }
         using base::rbegin;
         auto rbegin() noexcept -> reverse_iterator
@@ -842,17 +823,15 @@ namespace up_string
         {
             auto capacity = _capacity();
             if (request > capacity) {
-                auto span = _span();
-                self(fill_construct, {}, request - span.second,
-                    copy_fill(span.first, span.second)).swap(*this);
+                auto size = _size();
+                self(fill_construct, {}, request - size, copy_fill(_data(), size)).swap(*this);
             } else if (capacity - request < sizeof(self)) {
                 // nothing
             } else if (capacity - _size() < sizeof(self)) {
                 // nothing
             } else {
-                auto span = _span();
-                self(fill_construct, {}, request - span.second,
-                    copy_fill(span.first, span.second)).swap(*this);
+                auto size = _size();
+                self(fill_construct, {}, request - size, copy_fill(_data(), size)).swap(*this);
             }
         }
         void shrink_to_fit()
@@ -872,28 +851,24 @@ namespace up_string
         using base::operator[];
         auto operator[](size_type pos) -> reference
         {
-            auto span = _span();
-            return span.first[pos];
+            return _data()[pos];
         }
         using base::at;
-        auto at(size_type n) -> reference
+        auto at(size_type pos) -> reference
         {
-            auto span = _span();
-            _range_check(n < span.second, "up-string-bad-position");
-            return span.first[n];
+            _range_check(pos < _size(), "up-string-bad-position");
+            return _data()[pos];
         }
 
         using base::front;
         auto front() -> reference
         {
-            auto span = _span();
-            return span.first[0];
+            return _data()[0];
         }
         using base::back;
         auto back() -> reference
         {
-            auto span = _span();
-            return span.first[span.second - size_type(1)];
+            return _data()[_size() - size_type(1)];
         }
 
         auto operator+=(const string_view& s) -> self&
@@ -1036,11 +1011,11 @@ namespace up_string
         }
         auto erase(const_iterator first, const_iterator last) -> iterator
         {
-            auto span = _span();
-            size_type pos = std::distance(_const_iterator(span.first, {}), first);
+            auto data = _data();
+            size_type pos = std::distance(_const_iterator(data, {}), first);
             size_type n = std::distance(first, last);
             _erase(pos, n);
-            return _iterator(span.first, pos);
+            return _iterator(data, pos);
         }
 
         void pop_back()
@@ -1113,10 +1088,9 @@ namespace up_string
 
         auto substr(size_type pos = {}, size_type n = npos) const -> self
         {
-            auto span = _const_span();
-            _range_check(pos <= span.second, "up-string-bad-position");
-            return self(fill_construct, {}, {},
-                copy_fill(span.first + pos, std::min(n, span.second - pos)));
+            auto size = _size();
+            _range_check(pos <= size, "up-string-bad-position");
+            return self(fill_construct, {}, {}, copy_fill(_data() + pos, std::min(n, size - pos)));
         }
 
         using base::compare;
@@ -1125,13 +1099,13 @@ namespace up_string
         using base::out;
 
     private:
-        using base::_const_span;
-        auto _span() noexcept -> span_type
-        {
-            return Core::span();
-        }
         using base::_size;
         using base::_capacity;
+        using base::_data;
+        auto _data() noexcept -> pointer
+        {
+            return Core::data();
+        }
         bool _increase_size(size_type n)
         {
             size_type size = base::sizes::or_length_error::add(_size(), n);
@@ -1149,13 +1123,12 @@ namespace up_string
         template <typename..., typename Fill>
         auto _append_fill(Fill&& fill) -> self&
         {
-            auto span = _span();
             size_type n = fill.size();
             if (_increase_size(n)) {
-                fill.apply(span.first + span.second);
+                fill.apply(_data() + _size() - n);
             } else {
                 self(fill_construct, _capacity(), {},
-                    copy_fill(span.first, span.second),
+                    copy_fill(_data(), _size()),
                     std::forward<Fill>(fill)).swap(*this);
             }
             return *this;
@@ -1163,13 +1136,12 @@ namespace up_string
         template <typename..., typename Fill>
         auto _assign_fill(Fill&& fill) -> self&
         {
-            auto span = _span();
             size_type n = fill.size();
-            if (n <= span.second) {
-                fill.apply(span.first);
+            if (n <= _size()) {
+                fill.apply(_data());
                 _trim_size(n);
-            } else if (_increase_size(n - span.second)) {
-                fill.apply(span.first);
+            } else if (_increase_size(n - _size())) {
+                fill.apply(_data());
             } else {
                 self(fill_construct, {}, {}, std::forward<Fill>(fill)).swap(*this);
             }
@@ -1178,60 +1150,63 @@ namespace up_string
         template <typename..., typename Fill>
         auto _insert_fill(size_type pos, Fill&& fill) -> self&
         {
-            auto span = _span();
-            _range_check(pos <= span.second, "up-string-bad-position");
+            auto size = _size();
+            auto data = _data();
+            _range_check(pos <= size, "up-string-bad-position");
             size_type n = fill.size();
             if (_increase_size(n)) {
-                traits_type::move(span.first + pos + n, span.first + pos, span.second - pos);
-                fill.apply(span.first + pos);
+                traits_type::move(data + pos + n, data + pos, size - pos);
+                fill.apply(data + pos);
             } else {
                 self(fill_construct, _capacity(), {},
-                    copy_fill(span.first, pos),
+                    copy_fill(data, pos),
                     std::forward<Fill>(fill),
-                    copy_fill(span.first + pos, span.second - pos)).swap(*this);
+                    copy_fill(data + pos, size - pos)).swap(*this);
             }
             return *this;
         }
         template <typename..., typename Fill>
         auto _insert_fill(const_iterator p, Fill&& fill) -> iterator
         {
-            size_type pos = std::distance(_const_iterator(_span().first, {}), p);
+            size_type pos = std::distance(_const_iterator(_data(), {}), p);
             _insert_fill(pos, std::forward<Fill>(fill));
-            return _iterator(_span().first, pos);
+            return _iterator(_data(), pos);
         }
         template <typename..., typename Fill>
         auto _replace_fill(size_type pos, size_type n, Fill&& fill) -> self&
         {
-            auto span = _span();
+            auto size = _size();
+            auto data = _data();
             size_type k = fill.size();
             if (k <= n) {
-                traits_type::move(span.first + pos + k, span.first + pos + n, span.second - pos - n);
-                fill.apply(span.first + pos);
-                _trim_size(span.second + (n - k));
+                traits_type::move(data + pos + k, data + pos + n, size - pos - n);
+                fill.apply(data + pos);
+                _trim_size(size + (n - k));
             } else if (_increase_size(k - n)) {
-                traits_type::move(span.first + pos + k, span.first + pos + n, span.second - pos - n);
-                fill.apply(span.first + pos);
+                traits_type::move(data + pos + k, data + pos + n, size - pos - n);
+                fill.apply(data + pos);
             } else {
                 self(fill_construct, _capacity(), {},
-                    copy_fill(span.first, pos),
+                    copy_fill(data, pos),
                     std::forward<Fill>(fill),
-                    copy_fill(span.first + pos + n, span.second - pos - n)).swap(*this);
+                    copy_fill(data + pos + n, size - pos - n)).swap(*this);
             }
             return *this;
         }
         template <typename..., typename Fill>
         auto _replace_fill(const_iterator p, const_iterator q, Fill&& fill) -> self&
         {
-            size_type pos = std::distance(_const_iterator(_span().first, {}), p);
+            size_type pos = std::distance(_const_iterator(_data(), {}), p);
             size_type n = std::distance(p, q);
             return _replace_fill(pos, n, std::forward<Fill>(fill));
         }
         auto _erase(size_type pos, size_type n) -> self&
         {
             if (n) {
-                auto span = _span();
-                traits_type::move(span.first + pos, span.first + pos + n, span.second - pos - n);
-                _trim_size(span.second - n);
+                auto size = _size();
+                auto data = _data();
+                traits_type::move(data + pos, data + pos + n, size - pos - n);
+                _trim_size(size - n);
             } // else: nothing
             return *this;
         }
@@ -1729,18 +1704,6 @@ namespace up_string
             up::swap_noexcept(_size, rhs._size);
             up::swap_noexcept(_data, rhs._data);
         }
-        auto preinitialized_data() noexcept -> char*
-        {
-            return _data.get();
-        }
-        auto const_span() const noexcept -> basic_string_types::const_span_type<traits_type>
-        {
-            return {_data.get(), _size};
-        }
-        auto span() noexcept -> basic_string_types::span_type<traits_type>
-        {
-            return {_data.get(), _size};
-        }
         auto capacity() const noexcept -> size_type
         {
             return _capacity;
@@ -1752,6 +1715,14 @@ namespace up_string
         void set_size(size_type n) noexcept
         {
             _size = n;
+        }
+        auto data() const noexcept -> const char*
+        {
+            return _data.get();
+        }
+        auto data() noexcept -> char*
+        {
+            return _data.get();
         }
     };
 
