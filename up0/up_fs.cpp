@@ -642,7 +642,7 @@ public: // --- operations ---
             if (rv >= 0) {
                 return rv;
             } else if (errno != EPERM) {
-                fail("fs-open-error", dir_fd, pathname, flags | O_NOATIME);
+                fail("fs-open-error", dir_fd, std::string(pathname), flags | O_NOATIME);
             } // else: continue
         }
         return check(
