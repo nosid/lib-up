@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include <linux/fs.h>
+#include <linux/memfd.h>
 
 #include "up_buffer.hpp"
 #include "up_defer.hpp"
@@ -69,6 +70,12 @@ namespace
         unsigned int flags)
     {
         return ::syscall(SYS_renameat2, olddirfd, oldpath, newdirfd, newpath, flags);
+    }
+
+
+    auto syscall_memfd_create(const char* name, unsigned int flags)
+    {
+        return ::syscall(SYS_memfd_create, name, flags);
     }
 
 
@@ -641,6 +648,13 @@ public: // --- operations ---
         return check(
             ::openat(dir_fd, pathname, flags, mode),
             "fs-open-error", dir_fd, pathname, flags, mode);
+    }
+    auto memfd_create(const char* name, unsigned int flags) const
+    {
+        flags |= (_additional_open_flags & O_CLOEXEC) ? MFD_CLOEXEC : 0;
+        return check(
+            syscall_memfd_create(name, flags),
+            "fs-memfd-error", std::string(name), flags);
     }
     auto dup(int fd) const -> int
     {
@@ -1286,6 +1300,12 @@ up_fs::fs::file::file(const path& path, options options)
     _impl = std::make_shared<const impl>(p->make_handle(flags, mode), p->get_context());
 }
 
+up_fs::fs::file::file(memory_t, context context, const up::string_view& name)
+    : _impl(nullptr)
+{
+    auto&& c = context::accessor::get_impl(std::move(context));
+    _impl = std::make_shared<const impl>(handle(c->memfd_create(up::nts(name), 0)), std::move(c));
+}
 
 up_fs::fs::file::operator object() const
 {

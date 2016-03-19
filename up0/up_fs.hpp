@@ -295,12 +295,15 @@ namespace up_fs
             executable, group, others,
         };
         using options = up::enum_set<option>;
+        enum class memory_t { };
+        static constexpr const memory_t memory = memory_t();
         class lock;
         class channel;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit file(const path& path, options options);
+        explicit file(memory_t, context context, const up::string_view& name);
         file(const self& rhs) = delete;
         file(self&& rhs) noexcept = default;
         ~file() noexcept = default;
