@@ -143,6 +143,7 @@ namespace up_fs
     public: // --- scope ---
         using self = context;
         class impl;
+        class accessor;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
@@ -157,12 +158,6 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
-        auto working() const -> origin;
-        auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
-        // operator for convenience - same as working()
-        auto operator()() const -> origin;
-        // operator for convenience - same as resolved(...)
-        auto operator()(const up::string_view& pathname, bool follow = false) const -> origin;
     };
 
 
@@ -172,10 +167,13 @@ namespace up_fs
         using self = origin;
         class impl;
         class init;
+        class accessor;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit origin(init&& arg);
+        explicit origin(context context); // working directory
+        explicit origin(context context, const up::string_view& pathname, bool follow = false);
     private:
         explicit origin(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))
@@ -190,10 +188,13 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
-        auto working() const -> origin;
-        auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         auto location() const -> std::string;
-        auto operator()(std::string pathname, bool follow = false) const -> path;
+        auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
+        // convenience operator
+        auto operator()(const up::string_view& pathname, bool follow = false) const -> origin
+        {
+            return resolved(pathname, follow);
+        }
     };
 
 
@@ -203,11 +204,10 @@ namespace up_fs
         using self = path;
         class impl;
         class accessor;
-        class init;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit path(init&& arg);
+        explicit path(origin origin, std::string pathname, bool follow = false);
     private:
         explicit path(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))

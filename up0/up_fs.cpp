@@ -412,13 +412,6 @@ public: // --- state ---
 };
 
 
-class up_fs::fs::path::init final
-{
-public: // --- state ---
-    std::shared_ptr<const impl> _impl;
-};
-
-
 class up_fs::fs::object::init final
 {
 public: // --- state ---
@@ -664,6 +657,16 @@ public: // --- operations ---
 };
 
 
+class up_fs::fs::context::accessor final
+{
+public:
+    static auto get_impl(context&& context) -> auto&&
+    {
+        return std::move(context._impl);
+    }
+};
+
+
 up_fs::fs::context::context(std::string name)
     : _impl(std::make_shared<const impl>(std::move(name), O_CLOEXEC | O_NOCTTY | O_NONBLOCK, false))
 { }
@@ -671,26 +674,6 @@ up_fs::fs::context::context(std::string name)
 auto up_fs::fs::context::to_insight() const -> up::insight
 {
     return up::insight(typeid(*this), "fs-context", _impl->to_insight());
-}
-
-auto up_fs::fs::context::working() const -> origin
-{
-    return origin(origin::init{std::make_shared<const origin::impl>(_impl)});
-}
-
-auto up_fs::fs::context::resolved(const up::string_view& pathname, bool follow) const -> origin
-{
-    return origin(origin::init{std::make_shared<const origin::impl>(_impl, pathname, follow, AT_FDCWD)});
-}
-
-auto up_fs::fs::context::operator()() const -> origin
-{
-    return working();
-}
-
-auto up_fs::fs::context::operator()(const up::string_view& pathname, bool follow) const -> origin
-{
-    return resolved(pathname, follow);
 }
 
 class up_fs::fs::origin::impl final
@@ -818,9 +801,19 @@ public: // --- operations ---
 private:
     auto find_mounts() const -> std::vector<mount>
     {
-        auto path = origin(origin::init{std::make_shared<impl>(_context)})("/proc/self/mountinfo");
+        auto path = up_fs::fs::path(origin(origin::init{std::make_shared<impl>(_context)}), "/proc/self/mountinfo");
         auto file = up_fs::fs::file(path, {up_fs::fs::file::option::read});
         return parse_file_content(file, 1 << 12, parse_mountinfo);
+    }
+};
+
+
+class up_fs::fs::origin::accessor final
+{
+public:
+    static auto get_impl(origin&& origin) -> auto&&
+    {
+        return std::move(origin._impl);
     }
 };
 
@@ -829,19 +822,17 @@ up_fs::fs::origin::origin(init&& arg)
     : origin(std::move(arg._impl))
 { }
 
+up_fs::fs::origin::origin(context context)
+    : _impl(std::make_shared<const impl>(context::accessor::get_impl(std::move(context))))
+{ }
+
+up_fs::fs::origin::origin(context context, const up::string_view& pathname, bool follow)
+    : _impl(std::make_shared<const impl>(context::accessor::get_impl(std::move(context)), pathname, follow, AT_FDCWD))
+{ }
+
 auto up_fs::fs::origin::to_insight() const -> up::insight
 {
     return up::insight(typeid(*this), "fs-origin", _impl->to_insight());
-}
-
-auto up_fs::fs::origin::working() const -> origin
-{
-    return self(_impl->working());
-}
-
-auto up_fs::fs::origin::resolved(const up::string_view& pathname, bool follow) const -> origin
-{
-    return self(_impl->resolved(pathname, follow));
 }
 
 auto up_fs::fs::origin::location() const -> std::string
@@ -849,9 +840,9 @@ auto up_fs::fs::origin::location() const -> std::string
     return _impl->location();
 }
 
-auto up_fs::fs::origin::operator()(std::string pathname, bool follow) const -> path
+auto up_fs::fs::origin::resolved(const up::string_view& pathname, bool follow) const -> origin
 {
-    return path(path::init{std::make_shared<const path::impl>(_impl, std::move(pathname), follow)});
+    return self(_impl->resolved(pathname, follow));
 }
 
 
@@ -1024,8 +1015,8 @@ public:
 };
 
 
-up_fs::fs::path::path(init&& arg)
-    : path(std::move(arg._impl))
+up_fs::fs::path::path(origin origin, std::string pathname, bool follow)
+    : _impl(std::make_shared<const impl>(origin::accessor::get_impl(std::move(origin)), std::move(pathname), follow))
 { }
 
 auto up_fs::fs::path::to_insight() const -> up::insight

@@ -43,12 +43,15 @@ int main(int argc, char* argv[])
 
         std::ios::sync_with_stdio(false);
 
-        auto origin = up::fs::context("root")();
+        auto origin = up::fs::origin(up::fs::context("root"));
+        auto&& p = [origin,follow=false](std::string pathname) {
+            return up::fs::path(origin, std::move(pathname), follow);
+        };
         for (int i = 1; i < argc; ++i) {
             std::cout << "FILE: " << argv[i] << '\n';
             using o = up::fs::file::option;
             auto document = up::xml::document(
-                load(up::fs::file(origin(argv[i]), {o::read})),
+                load(up::fs::file(p(argv[i]), {o::read})),
                 {}, {}, up::xml::null_uri_loader(), {});
             dump(std::cout, document.to_element());
             std::cout << '\n';
