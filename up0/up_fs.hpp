@@ -293,7 +293,7 @@ namespace up_fs
             create, exclusive, tmpfile, truncate,
             // permissions
             executable, group, others,
-            };
+        };
         using options = up::enum_set<option>;
         class lock;
         class channel;
