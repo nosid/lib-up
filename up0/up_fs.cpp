@@ -395,6 +395,20 @@ namespace
         }
     }
 
+
+    void fallocate_aux(int fd, int mode, off_t offset, off_t length)
+    {
+        auto rv = ::fallocate(fd, mode, offset, length);
+        if (rv == EINTR) {
+            // retry once
+            rv = ::fallocate(fd, mode, offset, length);
+        }
+        if (rv) {
+            throw up::make_exception("fs-fallocate-error")
+                .with(fd, mode, offset, length, up::errno_info(rv));
+        }
+    }
+
 }
 
 
@@ -1351,6 +1365,23 @@ void up_fs::fs::file::truncate(off_t length) const
     check(rv, "fs-truncate-error", _impl->fd(), length);
 }
 
+void up_fs::fs::file::collapse(off_t length) const
+{
+    /* Intentionally support collapse only at beginning of file to prevent
+     * holes within files. */
+    fallocate_aux(_impl->fd(), FALLOC_FL_COLLAPSE_RANGE, 0, length);
+}
+
+void up_fs::fs::file::reserve(off_t capacity) const
+{
+    fallocate_aux(_impl->fd(), FALLOC_FL_KEEP_SIZE, 0, capacity);
+}
+
+void up_fs::fs::file::zero_range(off_t offset, off_t length) const
+{
+    fallocate_aux(_impl->fd(), FALLOC_FL_ZERO_RANGE, offset, length);
+}
+
 auto up_fs::fs::file::read_some(up::chunk::into chunk, off_t offset) const
     -> std::size_t
 {
@@ -1393,18 +1424,6 @@ void up_fs::fs::file::write_all(up::chunk::from_bulk_t&& chunks, off_t offset) c
         chunks.drain(n);
         offset += n;
     } while (chunks.total());
-}
-
-void up_fs::fs::file::posix_fallocate(off_t offset, off_t length) const
-{
-    while (auto rv = ::posix_fallocate(_impl->fd(), offset, length)) {
-        if (rv == EINTR) {
-            // continue
-        } else {
-            throw up::make_exception("fs-posix-fallocate-error")
-                .with(_impl->fd(), offset, length, up::errno_info(rv));
-        }
-    }
 }
 
 void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) const

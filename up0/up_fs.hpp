@@ -326,13 +326,15 @@ namespace up_fs
         void fdatasync() const;
         void fsync() const;
         void truncate(off_t length) const;
+        void collapse(off_t length) const; // XXX:IMPL
+        void reserve(off_t capacity) const; // XXX:IMPL
+        void zero_range(off_t offset, off_t length) const; // XXX:IMPL
         auto read_some(up::chunk::into chunk, off_t offset) const -> std::size_t;
         auto write_some(up::chunk::from chunk, off_t offset) const -> std::size_t;
         auto read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t;
         auto write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t;
         void write_all(up::chunk::from chunk, off_t offset) const;
         void write_all(up::chunk::from_bulk_t&& chunks, off_t offset) const;
-        void posix_fallocate(off_t offset, off_t length) const;
         void posix_fadvise(off_t offset, off_t length, int advice) const;
         void linkto(const path& target) const;
         auto acquire_lock(bool exclusive, bool blocking = true) const -> lock;
