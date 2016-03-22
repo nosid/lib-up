@@ -252,15 +252,15 @@ namespace up_string
     };
 
 
-    template <typename Core>
-    class basic_string_base : protected Core
+    template <typename Repr>
+    class basic_string_base : protected Repr
     {
     private: // --- scope ---
         using self = basic_string_base;
-        using base = Core;
+        using base = Repr;
 
     public:
-        using traits_type = typename Core::traits_type;
+        using traits_type = typename Repr::traits_type;
         using value_type = basic_string_types::value_type<traits_type>;
         using size_type = basic_string_types::size_type<traits_type>;
         using difference_type = basic_string_types::difference_type<traits_type>;
@@ -349,7 +349,7 @@ namespace up_string
         explicit basic_string_base(fill_construct_t, size_type baseline, size_type headroom, Fills&&... fills)
             : base(_make_extent(baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...)))
         {
-            _apply_fills(Core::data(), std::forward<Fills>(fills)...);
+            _apply_fills(Repr::data(), std::forward<Fills>(fills)...);
         }
 
     public: // --- operations ---
@@ -401,7 +401,7 @@ namespace up_string
         }
         auto max_size() const noexcept -> size_type
         {
-            return Core::max_size();
+            return Repr::max_size();
         }
 
         auto capacity() const noexcept -> size_type
@@ -438,7 +438,7 @@ namespace up_string
         }
         void swap(self& rhs) noexcept
         {
-            Core::swap(rhs);
+            Repr::swap(rhs);
         }
         friend void swap(self& lhs, self& rhs) noexcept
         {
@@ -596,25 +596,25 @@ namespace up_string
     protected:
         auto _size() const noexcept -> size_type
         {
-            return Core::size();
+            return Repr::size();
         }
         auto _capacity() const -> size_type
         {
-            return Core::capacity();
+            return Repr::capacity();
         }
         auto _data() const noexcept -> const_pointer
         {
-            return Core::data();
+            return Repr::data();
         }
     };
 
 
-    template <typename Core, bool Mutable = false>
-    class basic_string final : protected basic_string_base<Core>
+    template <typename Repr, bool Mutable = false>
+    class basic_string final : protected basic_string_base<Repr>
     {
     private: // --- scope ---
         using self = basic_string;
-        using base = basic_string_base<Core>;
+        using base = basic_string_base<Repr>;
 
     public:
         using traits_type = typename base::traits_type;
@@ -708,12 +708,12 @@ namespace up_string
     };
 
 
-    template <typename Core>
-    class basic_string<Core, true> final : protected basic_string_base<Core>
+    template <typename Repr>
+    class basic_string<Repr, true> final : protected basic_string_base<Repr>
     {
     private: // --- scope ---
         using self = basic_string;
-        using base = basic_string_base<Core>;
+        using base = basic_string_base<Repr>;
 
     public:
         using traits_type = typename base::traits_type;
@@ -1104,13 +1104,13 @@ namespace up_string
         using base::_data;
         auto _data() noexcept -> pointer
         {
-            return Core::data();
+            return Repr::data();
         }
         bool _increase_size(size_type n)
         {
             size_type size = base::sizes::or_length_error::add(_size(), n);
             if (size <= _capacity()) {
-                Core::set_size(size);
+                Repr::set_size(size);
                 return true;
             } else {
                 return false;
@@ -1118,7 +1118,7 @@ namespace up_string
         }
         void _trim_size(size_type n)
         {
-            Core::set_size(n);
+            Repr::set_size(n);
         }
         template <typename..., typename Fill>
         auto _append_fill(Fill&& fill) -> self&
@@ -1213,443 +1213,443 @@ namespace up_string
     };
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs)
-        -> basic_string<Core, Mutable>
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs)
-        -> basic_string<Core, Mutable>
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs)
-        -> basic_string<Core, Mutable>
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const basic_string<Core, Mutable>& lhs,
-        typename basic_string<Core, Mutable>::value_type rhs)
-        -> basic_string<Core, Mutable>
+        const basic_string<Repr, Mutable>& lhs,
+        typename basic_string<Repr, Mutable>::value_type rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs)
-        -> basic_string<Core, Mutable>
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs)
-        -> basic_string<Core, Mutable>
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator+(
-        typename basic_string<Core, Mutable>::value_type lhs,
-        const basic_string<Core, Mutable>& rhs)
-        -> basic_string<Core, Mutable>
+        typename basic_string<Repr, Mutable>::value_type lhs,
+        const basic_string<Repr, Mutable>& rhs)
+        -> basic_string<Repr, Mutable>
     {
-        return basic_string<Core, Mutable>::concat(lhs, rhs);
+        return basic_string<Repr, Mutable>::concat(lhs, rhs);
     }
 
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        basic_string<Core, true>&& lhs,
-        const basic_string<Core, true>& rhs)
-        -> basic_string<Core, true>
+        basic_string<Repr, true>&& lhs,
+        const basic_string<Repr, true>& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(lhs.append(rhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        const basic_string<Core, true>& lhs,
-        basic_string<Core, true>&& rhs)
-        -> basic_string<Core, true>
+        const basic_string<Repr, true>& lhs,
+        basic_string<Repr, true>&& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        basic_string<Core, true>&& lhs,
-        basic_string<Core, true>&& rhs)
-        -> basic_string<Core, true>
+        basic_string<Repr, true>&& lhs,
+        basic_string<Repr, true>&& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(lhs.append(rhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        basic_string<Core, true>&& lhs,
-        const typename basic_string<Core, true>::string_view& rhs)
-        -> basic_string<Core, true>
+        basic_string<Repr, true>&& lhs,
+        const typename basic_string<Repr, true>::string_view& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(lhs.append(rhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        basic_string<Core, true>&& lhs,
-        const typename basic_string<Core, true>::value_type* rhs)
-        -> basic_string<Core, true>
+        basic_string<Repr, true>&& lhs,
+        const typename basic_string<Repr, true>::value_type* rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(lhs.append(rhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        basic_string<Core, true>&& lhs,
-        typename basic_string<Core, true>::value_type rhs)
-        -> basic_string<Core, true>
+        basic_string<Repr, true>&& lhs,
+        typename basic_string<Repr, true>::value_type rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(lhs.append(&rhs, 1));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        const typename basic_string<Core, true>::string_view& lhs,
-        basic_string<Core, true>&& rhs)
-        -> basic_string<Core, true>
+        const typename basic_string<Repr, true>::string_view& lhs,
+        basic_string<Repr, true>&& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        const typename basic_string<Core, true>::value_type* lhs,
-        basic_string<Core, true>&& rhs)
-        -> basic_string<Core, true>
+        const typename basic_string<Repr, true>::value_type* lhs,
+        basic_string<Repr, true>&& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(rhs.insert(0, lhs));
     }
 
-    template <typename..., typename Core>
+    template <typename..., typename Repr>
     auto operator+(
-        typename basic_string<Core, true>::value_type lhs,
-        basic_string<Core, true>&& rhs)
-        -> basic_string<Core, true>
+        typename basic_string<Repr, true>::value_type lhs,
+        basic_string<Repr, true>&& rhs)
+        -> basic_string<Repr, true>
     {
         return std::move(rhs.insert(0, &lhs, 1));
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator==(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() == rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator==(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() == rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator==(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() == rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator==(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs == rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator==(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs == rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator!=(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() != rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator!=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() != rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator!=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() != rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator!=(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs != rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator!=(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs != rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() < rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() < rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() < rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs < rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs < rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() > rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() > rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() > rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs > rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs > rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<=(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() <= rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() <= rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() <= rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<=(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs <= rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator<=(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs <= rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>=(
-        const basic_string<Core, Mutable>& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() >= rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::string_view& rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::string_view& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() >= rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>=(
-        const basic_string<Core, Mutable>& lhs,
-        const typename basic_string<Core, Mutable>::value_type* rhs) noexcept
+        const basic_string<Repr, Mutable>& lhs,
+        const typename basic_string<Repr, Mutable>::value_type* rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs.operator string_view() >= rhs;
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>=(
-        const typename basic_string<Core, Mutable>::string_view& lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::string_view& lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs >= rhs.operator string_view();
     }
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     bool operator>=(
-        const typename basic_string<Core, Mutable>::value_type* lhs,
-        const basic_string<Core, Mutable>& rhs) noexcept
+        const typename basic_string<Repr, Mutable>::value_type* lhs,
+        const basic_string<Repr, Mutable>& rhs) noexcept
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return lhs >= rhs.operator string_view();
     }
 
 
-    template <typename..., typename Core, bool Mutable>
+    template <typename..., typename Repr, bool Mutable>
     auto operator<<(
-        std::basic_ostream<typename Core::traits_type::char_type, typename Core::traits_type>& os,
-        const basic_string<Core, Mutable>& s)
-        -> std::basic_ostream<typename Core::traits_type::char_type, typename Core::traits_type>&
+        std::basic_ostream<typename Repr::traits_type::char_type, typename Repr::traits_type>& os,
+        const basic_string<Repr, Mutable>& s)
+        -> std::basic_ostream<typename Repr::traits_type::char_type, typename Repr::traits_type>&
     {
-        using string_view = typename basic_string<Core, Mutable>::string_view;
+        using string_view = typename basic_string<Repr, Mutable>::string_view;
         return os << s.operator string_view();
     }
 
 
-    class core
+    class repr
     {
     private: // --- scope ---
-        using self = core;
+        using self = repr;
     protected:
         using traits_type = std::char_traits<char>;
         using size_type = basic_string_types::size_type<traits_type>;
@@ -1663,21 +1663,21 @@ namespace up_string
         size_type _size;
         std::unique_ptr<char[]> _data;
     protected: // --- life ---
-        explicit core() noexcept
+        explicit repr() noexcept
             : _capacity(), _size()
         { }
-        core(const self& rhs)
+        repr(const self& rhs)
             : _capacity(rhs._size), _size(rhs._size), _data(std::make_unique<char[]>(rhs._size))
         {
             traits_type::copy(_data.get(), rhs._data.get(), rhs._size);
         }
-        core(self&& rhs) noexcept
-            : core()
+        repr(self&& rhs) noexcept
+            : repr()
         {
             swap(rhs);
         }
-        ~core() noexcept = default;
-        explicit core(const extent<size_type>& extent)
+        ~repr() noexcept = default;
+        explicit repr(const extent<size_type>& extent)
             : _capacity(extent.capacity()), _size(extent.size()), _data(std::make_unique<char[]>(_capacity))
         { }
     protected: // --- operations ---
@@ -1726,27 +1726,27 @@ namespace up_string
         }
     };
 
-    using shared_string = basic_string<core, false>;
-    using unique_string = basic_string<core, true>;
+    using shared_string = basic_string<repr, false>;
+    using unique_string = basic_string<repr, true>;
 
-    extern template class basic_string<core, false>;
-    extern template class basic_string<core, true>;
+    extern template class basic_string<repr, false>;
+    extern template class basic_string<repr, true>;
 
 }
 
 namespace std
 {
 
-    template <typename Core, bool Mutable>
-    class hash<up_string::basic_string<Core, Mutable>> final
+    template <typename Repr, bool Mutable>
+    class hash<up_string::basic_string<Repr, Mutable>> final
     {
     public: // --- scope ---
-        using argument_type = up_string::basic_string<Core, Mutable>;
+        using argument_type = up_string::basic_string<Repr, Mutable>;
         using result_type = std::size_t;
     public: // --- operations ---
-        auto operator()(const up_string::basic_string<Core, Mutable>& value) const noexcept
+        auto operator()(const up_string::basic_string<Repr, Mutable>& value) const noexcept
         {
-            using string_view = typename up_string::basic_string<Core, Mutable>::string_view;
+            using string_view = typename up_string::basic_string<Repr, Mutable>::string_view;
             return hash<string_view>()(value.operator string_view());
         }
     };
