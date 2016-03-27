@@ -1,7 +1,7 @@
 #pragma once
 
 #include "up_ints.hpp"
-#include "up_string_view.hpp"
+#include "up_string_repr.hpp"
 #include "up_swap.hpp"
 
 namespace up_string
@@ -224,40 +224,14 @@ namespace up_string
     };
 
 
-    template <typename SizeType>
-    class extent final
-    {
-    public: // --- scope ---
-        using self = extent;
-        using size_type = SizeType;
-    private: // --- state ---
-        size_type _capacity;
-        size_type _size;
-    public: // --- life ---
-        explicit extent(size_type capacity, size_type size)
-            : _capacity(capacity), _size(size)
-        { }
-    public: // --- operations ---
-        void swap(self& rhs) noexcept
-        {
-            up::swap_noexcept(_capacity, rhs._capacity);
-            up::swap_noexcept(_size, rhs._size);
-        }
-        friend void swap(self& lhs, self& rhs) noexcept
-        {
-            lhs.swap(rhs);
-        }
-        auto capacity() const { return _capacity; }
-        auto size() const { return _size; }
-    };
-
-
     template <typename Repr>
     class basic_string_base : protected Repr
     {
     private: // --- scope ---
         using self = basic_string_base;
         using base = Repr;
+        template <typename Other>
+        friend class basic_string_base;
 
     public:
         using traits_type = typename Repr::traits_type;
@@ -283,13 +257,6 @@ namespace up_string
         using assign_fill = traits_assign_fill<traits_type>;
         template <typename Iterator>
         using iterator_fill = traits_iterator_fill<traits_type, Iterator>;
-
-        static auto _make_extent(size_type baseline, size_type headroom, size_type request)
-        {
-            return extent<size_type>(
-                std::max(request, sizes::unsafe::sum(baseline, baseline / 2, 32)),
-                request - headroom);
-        }
 
         static auto _make_fill(const up::string_view& s) -> copy_fill
         {
@@ -344,10 +311,23 @@ namespace up_string
         basic_string_base(std::initializer_list<value_type> chars)
             : basic_string_base(chars.begin(), chars.end())
         { }
+        template <typename..., typename Other>
+        explicit basic_string_base(const basic_string_base<Other>& rhs)
+            : Repr(static_cast<const Other&>(rhs))
+        { }
+        template <typename..., typename Other>
+        explicit basic_string_base(basic_string_base<Other>&& rhs)
+            : Repr(static_cast<Other&&>(rhs))
+        { }
+        using Repr::Repr;
     protected:
         template <typename..., typename... Fills>
         explicit basic_string_base(fill_construct_t, size_type baseline, size_type headroom, Fills&&... fills)
-            : base(_make_extent(baseline, headroom, sizes::or_length_error::sum(headroom, fills.size()...)))
+            : base(
+                std::max(
+                    sizes::unsafe::sum(baseline, baseline / 2, 32),
+                    sizes::or_length_error::sum(headroom, fills.size()...)),
+                sizes::or_length_error::sum(fills.size()...))
         {
             _apply_fills(Repr::data(), std::forward<Fills>(fills)...);
         }
@@ -355,6 +335,18 @@ namespace up_string
     public: // --- operations ---
         auto operator=(const self& rhs) & -> self& = default;
         auto operator=(self&& rhs) & noexcept -> self& = default;
+        template <typename..., typename Other>
+        auto operator=(const basic_string_base<Other>& rhs) & -> self&
+        {
+            Repr::operator=(static_cast<const Other&>(rhs));
+            return *this;
+        }
+        template <typename..., typename Other>
+        auto operator=(basic_string_base<Other>&& rhs) & noexcept -> self&
+        {
+            Repr::operator=(static_cast<Other&&>(rhs));
+            return *this;
+        }
 
         auto begin() const noexcept -> const_iterator
         {
@@ -615,6 +607,8 @@ namespace up_string
     private: // --- scope ---
         using self = basic_string;
         using base = basic_string_base<Repr>;
+        template <typename R, bool U>
+        friend class basic_string;
 
     public:
         using traits_type = typename base::traits_type;
@@ -648,8 +642,30 @@ namespace up_string
 
     public: // --- life ---
         using base::base;
+        basic_string() noexcept = default;
+        template <typename..., typename R, bool U>
+        explicit basic_string(const basic_string<R, U>& rhs)
+            : base(static_cast<const basic_string_base<R>&>(rhs))
+        { }
+        template <typename..., typename R, bool U>
+        explicit basic_string(basic_string<R, U>&& rhs)
+            : base(static_cast<basic_string_base<R>&&>(rhs))
+        { }
 
     public: // --- operations ---
+        template <typename..., typename R, bool U>
+        auto operator=(const basic_string<R, U>& rhs) & -> self&
+        {
+            base::operator=(static_cast<const basic_string_base<R>&>(rhs));
+            return *this;
+        }
+        template <typename..., typename R, bool U>
+        auto operator=(basic_string<R, U>&& rhs) & -> self&
+        {
+            base::operator=(static_cast<basic_string_base<R>&&>(rhs));
+            return *this;
+        }
+
         using base::begin;
         using base::end;
         using base::rbegin;
@@ -714,6 +730,8 @@ namespace up_string
     private: // --- scope ---
         using self = basic_string;
         using base = basic_string_base<Repr>;
+        template <typename R, bool U>
+        friend class basic_string;
 
     public:
         using traits_type = typename base::traits_type;
@@ -757,8 +775,29 @@ namespace up_string
 
     public: // --- life ---
         using base::base;
+        basic_string() noexcept = default;
+        template <typename..., typename R, bool U>
+        explicit basic_string(const basic_string<R, U>& rhs)
+            : base(static_cast<const basic_string_base<R>&>(rhs))
+        { }
+        template <typename..., typename R, bool U>
+        explicit basic_string(basic_string<R, U>&& rhs)
+            : base(static_cast<basic_string_base<R>&&>(rhs))
+        { }
 
     public: // --- operations ---
+        template <typename..., typename R, bool U>
+        auto operator=(const basic_string<R, U>& rhs) & -> self&
+        {
+            base::operator=(static_cast<const basic_string_base<R>&>(rhs));
+            return *this;
+        }
+        template <typename..., typename R, bool U>
+        auto operator=(basic_string<R, U>&& rhs) & -> self&
+        {
+            base::operator=(static_cast<basic_string_base<R>&&>(rhs));
+            return *this;
+        }
         auto operator=(const string_view& s) -> self&
         {
             return assign(s);
@@ -1646,91 +1685,86 @@ namespace up_string
     }
 
 
+    template <bool Unique>
     class repr
     {
     private: // --- scope ---
         using self = repr;
+        using handle = up::string_repr::handle<Unique>;
+        friend repr<!Unique>;
     protected:
         using traits_type = std::char_traits<char>;
         using size_type = basic_string_types::size_type<traits_type>;
     protected:
         static auto max_size() -> size_type
         {
-            return std::numeric_limits<size_type>::max();
+            return handle::max_size();
         }
     private: // --- state ---
-        size_type _capacity;
-        size_type _size;
-        std::unique_ptr<char[]> _data;
+        handle _handle;
     protected: // --- life ---
         explicit repr() noexcept
-            : _capacity(), _size()
+            : _handle()
+        {}
+        explicit repr(size_type capacity, size_type size)
+            : _handle(capacity, size)
         { }
-        repr(const self& rhs)
-            : _capacity(rhs._size), _size(rhs._size), _data(std::make_unique<char[]>(rhs._size))
-        {
-            traits_type::copy(_data.get(), rhs._data.get(), rhs._size);
-        }
-        repr(self&& rhs) noexcept
-            : repr()
-        {
-            swap(rhs);
-        }
-        ~repr() noexcept = default;
-        explicit repr(const extent<size_type>& extent)
-            : _capacity(extent.capacity()), _size(extent.size()), _data(std::make_unique<char[]>(_capacity))
+        explicit repr(const repr<!Unique>& rhs)
+            : _handle(rhs._handle)
         { }
-    protected: // --- operations ---
-        auto operator=(const self& rhs) & -> self&
+        explicit repr(repr<!Unique>&& rhs) noexcept
+            : _handle(std::move(rhs._handle))
+        { }
+    public: // --- operations ---
+        auto operator=(const repr<!Unique>& rhs) & -> self&
         {
-            if (this == &rhs) {
-                // nothing (required for following condition)
-            } else if (_capacity >= rhs._size) {
-                traits_type::copy(_data.get(), rhs._data.get(), rhs._size);
-                _size = rhs._size;
-            } else {
-                self(rhs).swap(*this);
-            }
+            _handle = rhs._handle;
             return *this;
         }
-        auto operator=(self&& rhs) & noexcept -> self&
+        auto operator=(repr<!Unique>&& rhs) & noexcept -> self&
         {
-            swap(rhs);
+            _handle = std::move(rhs._handle);
             return *this;
         }
         void swap(self& rhs) noexcept
         {
-            up::swap_noexcept(_capacity, rhs._capacity);
-            up::swap_noexcept(_size, rhs._size);
-            up::swap_noexcept(_data, rhs._data);
+            up::swap_noexcept(_handle, rhs._handle);
         }
+        friend void swap(self& lhs, self& rhs) noexcept
+        {
+            lhs.swap(rhs);
+        }
+    protected:
         auto capacity() const noexcept -> size_type
         {
-            return _capacity;
+            return _handle.capacity();
         }
         auto size() const noexcept -> size_type
         {
-            return _size;
+            return _handle.size();
         }
         void set_size(size_type n) noexcept
         {
-            _size = n;
+            _handle.set_size(n);
         }
         auto data() const noexcept -> const char*
         {
-            return _data.get();
+            return _handle.data();
         }
         auto data() noexcept -> char*
         {
-            return _data.get();
+            return _handle.data();
         }
     };
 
-    using shared_string = basic_string<repr, false>;
-    using unique_string = basic_string<repr, true>;
+    extern template class repr<false>;
+    extern template class repr<true>;
 
-    extern template class basic_string<repr, false>;
-    extern template class basic_string<repr, true>;
+    using shared_string = basic_string<repr<false>, false>;
+    using unique_string = basic_string<repr<true>, true>;
+
+    extern template class basic_string<repr<false>, false>;
+    extern template class basic_string<repr<true>, true>;
 
 }
 
