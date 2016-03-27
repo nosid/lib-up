@@ -1685,86 +1685,11 @@ namespace up_string
     }
 
 
-    template <bool Unique>
-    class repr
-    {
-    private: // --- scope ---
-        using self = repr;
-        using handle = up::string_repr::handle<Unique>;
-        friend repr<!Unique>;
-    protected:
-        using traits_type = std::char_traits<char>;
-        using size_type = basic_string_types::size_type<traits_type>;
-    protected:
-        static auto max_size() -> size_type
-        {
-            return handle::max_size();
-        }
-    private: // --- state ---
-        handle _handle;
-    protected: // --- life ---
-        explicit repr() noexcept
-            : _handle()
-        {}
-        explicit repr(size_type capacity, size_type size)
-            : _handle(capacity, size)
-        { }
-        explicit repr(const repr<!Unique>& rhs)
-            : _handle(rhs._handle)
-        { }
-        explicit repr(repr<!Unique>&& rhs) noexcept
-            : _handle(std::move(rhs._handle))
-        { }
-    public: // --- operations ---
-        auto operator=(const repr<!Unique>& rhs) & -> self&
-        {
-            _handle = rhs._handle;
-            return *this;
-        }
-        auto operator=(repr<!Unique>&& rhs) & noexcept -> self&
-        {
-            _handle = std::move(rhs._handle);
-            return *this;
-        }
-        void swap(self& rhs) noexcept
-        {
-            up::swap_noexcept(_handle, rhs._handle);
-        }
-        friend void swap(self& lhs, self& rhs) noexcept
-        {
-            lhs.swap(rhs);
-        }
-    protected:
-        auto capacity() const noexcept -> size_type
-        {
-            return _handle.capacity();
-        }
-        auto size() const noexcept -> size_type
-        {
-            return _handle.size();
-        }
-        void set_size(size_type n) noexcept
-        {
-            _handle.set_size(n);
-        }
-        auto data() const noexcept -> const char*
-        {
-            return _handle.data();
-        }
-        auto data() noexcept -> char*
-        {
-            return _handle.data();
-        }
-    };
+    using shared_string = basic_string<up::string_repr::handle<false>, false>;
+    using unique_string = basic_string<up::string_repr::handle<true>, true>;
 
-    extern template class repr<false>;
-    extern template class repr<true>;
-
-    using shared_string = basic_string<repr<false>, false>;
-    using unique_string = basic_string<repr<true>, true>;
-
-    extern template class basic_string<repr<false>, false>;
-    extern template class basic_string<repr<true>, true>;
+    extern template class basic_string<up::string_repr::handle<false>, false>;
+    extern template class basic_string<up::string_repr::handle<true>, true>;
 
 }
 

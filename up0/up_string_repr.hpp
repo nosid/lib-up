@@ -9,16 +9,13 @@
 namespace up_string_repr
 {
 
-    using size_type = std::size_t;
-    static_assert(std::is_same<size_type, up::string_view::size_type>::value, "type mismatch");
-
-    using traits_type = std::char_traits<char>;
-    static_assert(std::is_same<traits_type, up::string_view::traits_type>::value, "type mismatch");
-
-
     class string_repr final
     {
     public: // --- scope ---
+        using size_type = std::size_t;
+        static_assert(std::is_same<size_type, up::string_view::size_type>::value, "type mismatch");
+        using traits_type = std::char_traits<char>;
+        static_assert(std::is_same<traits_type, up::string_view::traits_type>::value, "type mismatch");
         class storage;
         template <bool Unique>
         class storage_deleter;
@@ -182,12 +179,13 @@ namespace up_string_repr
 
 
     template <bool Unique>
-    class string_repr::handle final
+    class string_repr::handle
     {
     private: // --- scope ---
         using self = handle;
         friend handle<!Unique>;
     public:
+        using traits_type = string_repr::traits_type;
         static auto max_size() -> size_type
         {
             return storage::max_size();
