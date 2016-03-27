@@ -319,7 +319,7 @@ namespace up_string
         explicit basic_string_base(basic_string_base<Other>&& rhs)
             : Repr(static_cast<Other&&>(rhs))
         { }
-        using Repr::Repr;
+        using base::base;
     protected:
         template <typename..., typename... Fills>
         explicit basic_string_base(fill_construct_t, size_type baseline, size_type headroom, Fills&&... fills)
@@ -338,13 +338,13 @@ namespace up_string
         template <typename..., typename Other>
         auto operator=(const basic_string_base<Other>& rhs) & -> self&
         {
-            Repr::operator=(static_cast<const Other&>(rhs));
+            base::operator=(static_cast<const Other&>(rhs));
             return *this;
         }
         template <typename..., typename Other>
         auto operator=(basic_string_base<Other>&& rhs) & noexcept -> self&
         {
-            Repr::operator=(static_cast<Other&&>(rhs));
+            base::operator=(static_cast<Other&&>(rhs));
             return *this;
         }
 
@@ -430,7 +430,7 @@ namespace up_string
         }
         void swap(self& rhs) noexcept
         {
-            Repr::swap(rhs);
+            base::swap(rhs);
         }
         friend void swap(self& lhs, self& rhs) noexcept
         {
