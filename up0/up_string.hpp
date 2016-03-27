@@ -284,7 +284,7 @@ namespace up_string
         }
 
     public: // --- life ---
-        basic_string_base() noexcept = default;
+        basic_string_base() noexcept { }
         basic_string_base(const self& rhs) = default;
         basic_string_base(self&& rhs) noexcept = default;
         ~basic_string_base() noexcept = default;
@@ -642,7 +642,7 @@ namespace up_string
 
     public: // --- life ---
         using base::base;
-        basic_string() noexcept = default;
+        basic_string() noexcept { }
         template <typename..., typename R, bool U>
         explicit basic_string(const basic_string<R, U>& rhs)
             : base(static_cast<const basic_string_base<R>&>(rhs))
@@ -775,7 +775,7 @@ namespace up_string
 
     public: // --- life ---
         using base::base;
-        basic_string() noexcept = default;
+        basic_string() noexcept { }
         template <typename..., typename R, bool U>
         explicit basic_string(const basic_string<R, U>& rhs)
             : base(static_cast<const basic_string_base<R>&>(rhs))
