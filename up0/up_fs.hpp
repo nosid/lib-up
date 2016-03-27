@@ -113,10 +113,10 @@ namespace up_fs
         using self = directory_entry;
     private: // --- state ---
         ino_t _inode;
-        up::istring _name;
+        up::shared_string _name;
         kind _type;
     public: // --- life ---
-        explicit directory_entry(ino_t inode, up::istring name, kind type)
+        explicit directory_entry(ino_t inode, up::shared_string name, kind type)
             : _inode(std::move(inode))
             , _name(std::move(name))
             , _type(std::move(type))

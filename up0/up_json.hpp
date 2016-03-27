@@ -19,7 +19,7 @@ namespace up_json
         enum class kind : uint8_t;
         class value;
         using array = std::vector<value>;
-        using object = up::linked_map<up::istring, value>;
+        using object = up::linked_map<up::shared_string, value>;
         class builder;
     };
 
@@ -55,7 +55,7 @@ namespace up_json
         // implicit
         value(double value);
         // implicit
-        value(up::istring value);
+        value(up::shared_string value);
         // implicit
         value(up::string_view value);
         // implicit
@@ -79,7 +79,7 @@ namespace up_json
         auto get_kind() const -> kind;
         auto get_boolean() const -> bool;
         auto get_number() const -> double;
-        auto get_string() const -> const up::istring&;
+        auto get_string() const -> const up::shared_string&;
         auto get_array() const -> const array&;
         auto get_object() const -> const object&;
         template <typename Visitor>

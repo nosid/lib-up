@@ -3,8 +3,8 @@
 #include <unordered_map>
 
 #include "up_buffer.hpp"
-#include "up_istring.hpp"
 #include "up_optional.hpp"
+#include "up_string.hpp"
 #include "up_swap.hpp"
 #include "up_utility.hpp"
 
@@ -46,7 +46,7 @@ namespace up_xml
         }
         auto uri() const -> const up::optional<std::string>&;
         auto prefix() const -> const up::optional<std::string>&;
-        auto operator()(up::istring local_name) const -> qname;
+        auto operator()(up::shared_string local_name) const -> qname;
     };
 
 
@@ -55,10 +55,10 @@ namespace up_xml
     public: // --- scope ---
         using self = qname;
     private: // --- state ---
-        up::istring _local_name;
+        up::shared_string _local_name;
         std::shared_ptr<const ns::impl> _ns; // may be empty
     public: // --- life ---
-        explicit qname(up::istring local_name, std::shared_ptr<const ns::impl> ns)
+        explicit qname(up::shared_string local_name, std::shared_ptr<const ns::impl> ns)
             : _local_name(std::move(local_name)) , _ns(std::move(ns))
         { }
     public: // --- operations ---
@@ -83,9 +83,9 @@ namespace up_xml
         using self = attr;
     private: // --- state ---
         qname _name;
-        up::istring _value;
+        up::shared_string _value;
     public: // --- life ---
-        explicit attr(qname name, up::istring value)
+        explicit attr(qname name, up::shared_string value)
             : _name(std::move(name)), _value(std::move(value))
         { }
     public: // --- operations ---

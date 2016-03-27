@@ -346,7 +346,7 @@ namespace
                         throw up::make_exception("xml-bad-attr-node-type").with(node->type);
                     }
                 }
-                result.emplace_back(_qname(attr->name, attr->ns), up::istring(value));
+                result.emplace_back(_qname(attr->name, attr->ns), up::shared_string(value));
             }
             return result;
         }
@@ -561,7 +561,7 @@ auto up_xml::xml::ns::prefix() const -> const up::optional<std::string>&
     return get_prefix(_impl);
 }
 
-auto up_xml::xml::ns::operator()(up::istring local_name) const -> qname
+auto up_xml::xml::ns::operator()(up::shared_string local_name) const -> qname
 {
     return qname(std::move(local_name), _impl);
 }

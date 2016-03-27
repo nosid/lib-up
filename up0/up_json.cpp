@@ -41,9 +41,9 @@ namespace
     class impl_string : public up_json::json::value::impl
     {
     public: // --- state ---
-        up::istring _value;
+        up::shared_string _value;
     public: // --- life ---
-        explicit impl_string(up::istring value)
+        explicit impl_string(up::shared_string value)
             : impl(up_json::json::kind::string), _value(std::move(value))
         { }
     };
@@ -94,16 +94,16 @@ up_json::json::value::value(double value)
     : _impl(std::make_shared<const impl_number>(std::move(value)))
 { }
 
-up_json::json::value::value(up::istring value)
+up_json::json::value::value(up::shared_string value)
     : _impl(std::make_shared<const impl_string>(std::move(value)))
 { }
 
 up_json::json::value::value(up::string_view value)
-    : _impl(std::make_shared<const impl_string>(up::istring(value)))
+    : _impl(std::make_shared<const impl_string>(up::shared_string(value)))
 { }
 
 up_json::json::value::value(const char* value)
-    : _impl(std::make_shared<const impl_string>(up::istring(value)))
+    : _impl(std::make_shared<const impl_string>(up::shared_string(value)))
 { }
 
 up_json::json::value::value(array values)
@@ -129,7 +129,7 @@ auto up_json::json::value::get_number() const -> double
     return cast<impl_number>(_impl)._value;
 }
 
-auto up_json::json::value::get_string() const -> const up::istring&
+auto up_json::json::value::get_string() const -> const up::shared_string&
 {
     return cast<impl_string>(_impl)._value;
 }

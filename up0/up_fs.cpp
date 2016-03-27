@@ -791,7 +791,7 @@ public: // --- operations ---
         handle current(_context->openat(_handle.get_or(AT_FDCWD), "..", flags));
         auto next = inode(current.get());
 
-        std::vector<up::istring> names;
+        std::vector<up::shared_string> names;
         while (previous.first == next.first && previous.second != next.second) {
             handle parent(_context->openat(current.get(), "..", flags));
             bool found = scan_directory(std::move(current), [&](auto entry) {

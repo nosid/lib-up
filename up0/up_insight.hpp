@@ -1,6 +1,6 @@
 #pragma once
 
-#include "up_istring.hpp"
+#include "up_string.hpp"
 #include "up_to_string.hpp"
 
 
@@ -26,7 +26,7 @@ namespace up_insight
     {
     private: // --- state ---
         const std::type_info& _type_info;
-        up::istring _value;
+        up::shared_string _value;
         insights _nested;
     public: // --- life ---
         template <typename Value, typename... Insights>
