@@ -7,7 +7,7 @@
  */
 
 #include "up_impl_ptr.hpp"
-#include "up_string_view.hpp"
+#include "up_string.hpp"
 #include "up_swap.hpp"
 
 namespace up_iconv
@@ -26,7 +26,7 @@ namespace up_iconv
     private: // --- state ---
         up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
-        explicit unique_iconv(std::string to, std::string from);
+        explicit unique_iconv(up::shared_string to, up::shared_string from);
         unique_iconv(const self& rhs) = delete;
         unique_iconv(self&& rhs) noexcept = default;
         ~unique_iconv() noexcept = default;
@@ -49,7 +49,7 @@ namespace up_iconv
          * Hint: There is currently no bulk support, because non-consecutive
          * buffers are not easy to use with the underlying iconv library.
          */
-        auto operator()(up::string_view string) -> std::string;
+        auto operator()(up::string_view string) -> up::unique_string;
     };
 
 
@@ -67,7 +67,7 @@ namespace up_iconv
     private: // --- state ---
         up::impl_ptr<impl, destroy> _impl;
     public: // --- life ---
-        explicit shared_iconv(std::string to, std::string from);
+        explicit shared_iconv(up::shared_string to, up::shared_string from);
         shared_iconv(const self& rhs) = delete;
         shared_iconv(self&& rhs) noexcept = default;
         ~shared_iconv() noexcept = default;
@@ -90,7 +90,7 @@ namespace up_iconv
          * Hint: There is currently no bulk support, because non-consecutive
          * buffers are not easy to use with the underlying iconv library.
          */
-        auto operator()(up::string_view string) const -> std::string;
+        auto operator()(up::string_view string) const -> up::unique_string;
     };
 
 }

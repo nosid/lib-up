@@ -35,7 +35,7 @@ namespace
     void tls_echo_server(up::tcp::endpoint endpoint)
     {
         using o = up::tcp::socket::option;
-        std::string pathname = "/usr/share/doc/libssl-doc/demos/bio/server.pem";
+        up::shared_string pathname = "/usr/share/doc/libssl-doc/demos/bio/server.pem";
         up::tls::server_context tls(up::tls::identity(pathname, pathname), {});
         // up::tls::secure_context tls(
         //     up::tls::authority::system(),
@@ -46,7 +46,7 @@ namespace
             auto now = up::steady_clock::now();
             auto deadline = up::stream::deadline_patience(now + 30s);
             auto stream = listener.accept(deadline);
-            up::tls::server_context::hostname_callback callback = [](std::string hostname) -> up::tls::server_context& {
+            up::tls::server_context::hostname_callback callback = [](up::shared_string hostname) -> up::tls::server_context& {
                 std::cerr << "HOSTNAME:" << hostname << '\n';
                 throw up::make_exception("accept", up::tls::server_context::accept_hostname());
             };
@@ -80,7 +80,7 @@ namespace
     __attribute__((unused))
     void http_get(up::stream stream, up::stream::patience& patience)
     {
-        std::string request("GET / HTTP/1.0\r\n\r\n");
+        up::unique_string request("GET / HTTP/1.0\r\n\r\n");
         stream.write_all(up::chunk::from(request), patience);
         auto buffer = up::buffer();
         while (auto count = stream.read_some(buffer.reserve(1 << 14), patience)) {
@@ -99,7 +99,7 @@ int main(int argc, char* argv[])
 
         // echo_server(up::tcp::endpoint(up::ipv4::endpoint::any, up::tcp::resolve_port("http-alt")));
 
-        if (argc == 2 && std::string(argv[1]) == "server") {
+        if (argc == 2 && up::unique_string(argv[1]) == "server") {
             tls_echo_server(up::tcp::endpoint(up::ipv4::endpoint::any, up::tcp::resolve_port("http-alt")));
         }
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
             up::nullopt,
             {});
 
-        std::string hostname = "www.google.com";
+        up::shared_string hostname = "www.google.com";
         auto endpoints = up::ip::resolve_endpoints(hostname);
         if (endpoints.empty()) {
             std::cerr << "INVALID HOSTNAME: " << hostname << '\n';

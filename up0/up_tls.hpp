@@ -57,13 +57,13 @@ namespace up_tls
          * see verify for more information. These are also used when building
          * the client certificate chain.
          */
-        auto with_directory(std::string pathname) -> authority;
+        auto with_directory(up::shared_string pathname) -> authority;
         /**
          * From the OpenSSL documentation: A file containing trusted
          * certificates to use during server authentication and to use when
          * attempting to build the client certificate chain.
          */
-        auto with_file(std::string pathname) -> authority;
+        auto with_file(up::shared_string pathname) -> authority;
         /**
          * Add single certificate from the given buffer.
          */
@@ -86,12 +86,12 @@ namespace up_tls
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit identity(
-            std::string private_key_pathname,
-            std::string certificate_pathname);
+            up::shared_string private_key_pathname,
+            up::shared_string certificate_pathname);
         explicit identity(
-            std::string private_key_pathname,
-            std::string certificate_pathname,
-            up::optional<std::string> certificate_chain_pathname);
+            up::shared_string private_key_pathname,
+            up::shared_string certificate_pathname,
+            up::optional<up::shared_string> certificate_chain_pathname);
     };
 
 
@@ -112,7 +112,7 @@ namespace up_tls
         { }
     public: // --- operations ---
         // returns most specific common name (if any)
-        auto common_name() const -> up::optional<std::string>;
+        auto common_name() const -> up::optional<up::unique_string>;
         bool matches_hostname(up::string_view hostname) const;
     };
 
@@ -131,7 +131,7 @@ namespace up_tls
         class impl;
         enum class option : uint8_t { tls_v10, tls_v11, tls_v12, workarounds, cipher_server_preference, };
         using options = up::enum_set<option>;
-        using hostname_callback = std::function<self&(std::string)>;
+        using hostname_callback = std::function<self&(up::shared_string)>;
         class accept_hostname { };
         class reject_hostname { };
         static void destroy(impl* ptr);
@@ -247,7 +247,7 @@ namespace up_tls
         auto upgrade(
             std::unique_ptr<up::stream::engine> engine,
             up::stream::patience& patience,
-            const up::optional<std::string>& hostname,
+            const up::optional<up::shared_string>& hostname,
             const verify_callback& callback)
             -> std::unique_ptr<up::stream::engine>;
     };

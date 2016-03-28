@@ -92,7 +92,7 @@ namespace
             from_data = nullptr;
             process();
             _dirty = false;
-            return std::string(buffer.warm(), buffer.available());
+            return up::unique_string(buffer.warm(), buffer.available());
         }
     };
 
@@ -100,11 +100,11 @@ namespace
     class base
     {
     private: // --- state ---
-        std::string _to;
-        std::string _from;
+        up::shared_string _to;
+        up::shared_string _from;
         wrapper _wrapper;
     public: // --- life ---
-        explicit base(std::string&& to, std::string&& from)
+        explicit base(up::shared_string&& to, up::shared_string&& from)
             : _to(std::move(to))
             , _from(std::move(from))
             , _wrapper(_to, _from)
@@ -133,11 +133,11 @@ void up_iconv::unique_iconv::destroy(impl* ptr)
     std::default_delete<impl>()(ptr);
 }
 
-up_iconv::unique_iconv::unique_iconv(std::string to, std::string from)
+up_iconv::unique_iconv::unique_iconv(up::shared_string to, up::shared_string from)
     : _impl(up::impl_make(std::move(to), std::move(from)))
 { }
 
-auto up_iconv::unique_iconv::operator()(up::string_view string) -> std::string
+auto up_iconv::unique_iconv::operator()(up::string_view string) -> up::unique_string
 {
     return _impl->transform(string);
 }
@@ -157,11 +157,11 @@ void up_iconv::shared_iconv::destroy(impl* ptr)
     std::default_delete<impl>()(ptr);
 }
 
-up_iconv::shared_iconv::shared_iconv(std::string to, std::string from)
+up_iconv::shared_iconv::shared_iconv(up::shared_string to, up::shared_string from)
     : _impl(up::impl_make(std::move(to), std::move(from)))
 { }
 
-auto up_iconv::shared_iconv::operator()(up::string_view string) const -> std::string
+auto up_iconv::shared_iconv::operator()(up::string_view string) const -> up::unique_string
 {
     std::unique_lock<std::mutex> lock(_impl->_mutex);
     return _impl->transform(string);

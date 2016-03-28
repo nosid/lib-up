@@ -30,14 +30,21 @@ up_nts::nts::nts(const char* data, size_type size)
     }
 }
 
+up_nts::nts::nts(std::nullptr_t) noexcept
+{
+    _handle._padded._ref._size = 0;
+    _handle._padded._ref._data = nullptr;
+    std::memset(_handle._padded._pad.data(), 1, handle_size - sizeof(ref));
+}
+
 up_nts::nts::~nts() noexcept
 {
-    if (_handle._data[handle_size - 1]) {
+    if (_handle._data[handle_size - 1] && _handle._padded._ref._data) {
         ::operator delete(_handle._padded._ref._data, _handle._padded._ref._size);
     } // else: nothing
 }
 
-up_nts::nts::operator const char*() const &&
+up_nts::nts::operator const char*() const
 {
     if (_handle._data[handle_size - 1]) {
         return _handle._padded._ref._data;

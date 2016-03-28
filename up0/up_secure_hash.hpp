@@ -2,6 +2,7 @@
 
 #include "up_chunk.hpp"
 #include "up_impl_ptr.hpp"
+#include "up_string.hpp"
 #include "up_swap.hpp"
 
 namespace up_secure_hash
@@ -10,7 +11,7 @@ namespace up_secure_hash
     // TODO: Add SHA-3 (aka Keccak) as soon as OpenSSL supports it.
     enum class secure_hash_mechanism { md5, sha1, sha224, sha256, sha384, sha512, };
 
-    auto to_string(secure_hash_mechanism mechanism) -> std::string;
+    auto to_string(secure_hash_mechanism mechanism) -> up::unique_string;
 
     constexpr auto secure_hash_digest_size(secure_hash_mechanism mechanism) -> std::size_t
     {

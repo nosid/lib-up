@@ -15,11 +15,11 @@ namespace
             auto buffer = std::make_unique<char[]>(buffer_size);
             int rv = func(value, buffer.get(), buffer_size);
             if (rv == 0) {
-                return std::string(buffer.get());
+                return up::unique_string(buffer.get());
             } else if (rv == ERANGE || (rv < 0 && errno == ERANGE)) {
                 buffer_size *= 2;
             } else {
-                return std::string("invalid-strerror");
+                return up::unique_string("invalid-strerror");
             }
         }
     }
@@ -29,14 +29,14 @@ namespace
     {
         std::size_t buffer_size = 256;
         auto buffer = std::make_unique<char[]>(buffer_size);
-        return std::string(func(value, buffer.get(), buffer_size));
+        return up::unique_string(func(value, buffer.get(), buffer_size));
     }
 
 
     void log_insight(std::ostream& os, const up::insight& insight, std::size_t depth)
     {
         up::out(os,
-            std::string(depth * 4, ' '),
+            up::unique_string(depth * 4, ' '),
             up::type_display_name(insight.type_info()),
             ':',
             insight.value(),

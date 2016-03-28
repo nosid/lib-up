@@ -46,7 +46,7 @@ namespace
     public: // --- operations ---
         auto to_insight() const
         {
-            return up::insight(typeid(*this), std::string(::gai_strerror(_value)),
+            return up::insight(typeid(*this), up::shared_string(::gai_strerror(_value)),
                 up::invoke_to_insight_with_fallback(_value));
         }
     };
@@ -80,7 +80,7 @@ namespace
 
     enum class address_family : int { v4 = AF_INET, v6 = AF_INET6, };
 
-    auto to_string(address_family value)
+    auto to_string(address_family value) -> up::unique_string
     {
         using namespace up::literals;
         if (value == address_family::v4) {
@@ -119,7 +119,7 @@ namespace
         const char* rv = ::inet_ntop(up::to_underlying_type(af), address,
             buffer.get(), up::to_underlying_type(length));
         if (rv != nullptr) {
-            return std::string(rv);
+            return up::unique_string(rv);
         } else {
             throw up::make_exception("ip-address-conversion-error")
                 .with(af, length, up::errno_info(errno));
@@ -157,7 +157,7 @@ namespace
         int rv = ::getnameinfo(reinterpret_cast<sockaddr*>(&sa), sizeof(sa),
             nullptr, 0, buffer.get(), length, traits<Protocol>::ni_flags);
         if (rv == 0) {
-            return std::string(buffer.get());
+            return up::unique_string(buffer.get());
         } else if (rv == EAI_NONAME) {
             throw up::make_exception("unknown-service-name", typename Protocol::invalid_service())
                 .with(port, ai_error_info(rv));
@@ -241,7 +241,7 @@ namespace
         int rv = ::getnameinfo(reinterpret_cast<const sockaddr*>(&sa), sizeof(sa),
             buffer.get(), length, nullptr, 0, NI_NAMEREQD);
         if (rv == 0) {
-            return std::string(buffer.get());
+            return up::unique_string(buffer.get());
         } else {
             throw up::make_exception("ip-address-resolver-error").with(ai_error_info(rv));
         }
@@ -335,7 +335,7 @@ up_inet::ipv4::endpoint::endpoint(init&& arg)
     std::memcpy(&_data, &arg._data, sizeof(_data));
 }
 
-auto up_inet::ipv4::endpoint::to_string() const -> std::string
+auto up_inet::ipv4::endpoint::to_string() const -> up::unique_string
 {
     return ip_address_to_string(address_family::v4, address_length::v4, &_data);
 }
@@ -406,17 +406,17 @@ up_inet::ipv6::endpoint::endpoint(init&& arg)
     std::memcpy(&_data, &arg._data, sizeof(_data));
 }
 
-auto up_inet::ipv6::endpoint::to_string() const -> std::string
+auto up_inet::ipv6::endpoint::to_string() const -> up::unique_string
 {
     return ip_address_to_string(address_family::v6, address_length::v6, &_data);
 }
 
 
-auto up_inet::ip::resolve_canonical(const up::string_view& name) -> std::string
+auto up_inet::ip::resolve_canonical(const up::string_view& name) -> up::unique_string
 {
-    return getaddrinfo_aux(name, AI_CANONNAME, [&name](addrinfo* ai) -> std::string {
+    return getaddrinfo_aux(name, AI_CANONNAME, [&name](addrinfo* ai) -> up::unique_string {
             if (ai && ai->ai_canonname) {
-                return std::string(ai->ai_canonname);
+                return up::unique_string(ai->ai_canonname);
             } else {
                 throw up::make_exception("canonical-host-name-resolver-error").with(name);
             }
@@ -441,7 +441,7 @@ auto up_inet::ip::resolve_endpoints(const up::string_view& name) -> std::vector<
 }
 
 
-auto up_inet::ip::resolve_name(const endpoint& endpoint) -> std::string
+auto up_inet::ip::resolve_name(const endpoint& endpoint) -> up::unique_string
 {
     if (endpoint.version() == ip::version::v4) {
         sockaddr_in sa;
@@ -462,7 +462,7 @@ auto up_inet::ip::resolve_name(const endpoint& endpoint) -> std::string
 }
 
 
-auto up_inet::to_string(ip::version value) -> std::string
+auto up_inet::to_string(ip::version value) -> up::unique_string
 {
     using namespace up::literals;
     switch (value) {
@@ -588,7 +588,7 @@ auto up_inet::ip::endpoint::operator=(const ipv6::endpoint& rhs) & -> endpoint&
     throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
 }
 
-auto up_inet::ip::endpoint::to_string() const -> std::string
+auto up_inet::ip::endpoint::to_string() const -> up::unique_string
 {
     switch (_version) {
     case ip::version::v4:
@@ -789,7 +789,7 @@ namespace
 }
 
 
-auto up_inet::tcp::resolve_name(port port) -> std::string
+auto up_inet::tcp::resolve_name(port port) -> up::unique_string
 {
     return resolve_service_name<tcp>(port);
 }
@@ -799,7 +799,7 @@ auto up_inet::tcp::resolve_port(const up::string_view& name) -> port
     return resolve_service_port<tcp>(name);
 }
 
-auto up_inet::to_string(tcp::port value) -> std::string
+auto up_inet::to_string(tcp::port value) -> up::unique_string
 {
     return up::invoke_to_string(up::to_underlying_type(value));
 }
@@ -1208,7 +1208,7 @@ auto up_inet::tcp::socket::listen(int backlog) && -> listener
 }
 
 
-auto up_inet::udp::resolve_name(port port) -> std::string
+auto up_inet::udp::resolve_name(port port) -> up::unique_string
 {
     return resolve_service_name<udp>(port);
 }
@@ -1218,7 +1218,7 @@ auto up_inet::udp::resolve_port(const up::string_view& name) -> port
     return resolve_service_port<udp>(name);
 }
 
-auto up_inet::to_string(udp::port value) -> std::string
+auto up_inet::to_string(udp::port value) -> up::unique_string
 {
     return up::invoke_to_string(up::to_underlying_type(value));
 }

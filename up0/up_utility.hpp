@@ -8,6 +8,7 @@
 #include "up_buffer.hpp"
 #include "up_insight.hpp"
 #include "up_source.hpp"
+#include "up_string.hpp"
 #include "up_swap.hpp"
 
 namespace up_utility
@@ -18,14 +19,14 @@ namespace up_utility
      * used for debugging purposes only, because the form might change in the
      * future.
      */
-    auto type_display_name(const std::type_info& type_info) -> std::string;
+    auto type_display_name(const std::type_info& type_info) -> up::unique_string;
 
 
     __attribute__((__format__(__printf__, 2, 0)))
     void cformat(up::buffer& buffer, const char* format, va_list ap);
 
     __attribute__((__format__(__printf__, 1, 0)))
-    auto cformat(const char* format, va_list ap) -> std::string;
+    auto cformat(const char* format, va_list ap) -> up::unique_string;
 
 
     template <typename Type>
@@ -79,7 +80,7 @@ namespace up_utility
             }
         }
     public: // --- operations ---
-        auto to_string() const -> std::string
+        auto to_string() const -> up::unique_string
         {
             return up::invoke_to_string(_bits);
         }

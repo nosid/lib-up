@@ -221,7 +221,7 @@ void up_stream::stream::_vtable_dummy() const { }
 
 void up_stream::stream::patience::_vtable_dummy() const { }
 
-auto up_stream::to_string(stream::patience::operation op) -> std::string
+auto up_stream::to_string(stream::patience::operation op) -> up::unique_string
 {
     using namespace up::literals;
     switch (op) {

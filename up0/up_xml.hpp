@@ -18,7 +18,7 @@ namespace up_xml
         class qname;
         class attr;
         class element;
-        using uri_loader = std::function<std::unique_ptr<up::buffer>(std::string)>;
+        using uri_loader = std::function<std::unique_ptr<up::buffer>(up::shared_string)>;
         class document;
         class stylesheet;
         static auto null_uri_loader() -> uri_loader;
@@ -34,7 +34,7 @@ namespace up_xml
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit ns();
-        explicit ns(up::optional<std::string> uri, up::optional<std::string> prefix);
+        explicit ns(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -44,8 +44,8 @@ namespace up_xml
         {
             lhs.swap(rhs);
         }
-        auto uri() const -> const up::optional<std::string>&;
-        auto prefix() const -> const up::optional<std::string>&;
+        auto uri() const -> const up::optional<up::shared_string>&;
+        auto prefix() const -> const up::optional<up::shared_string>&;
         auto operator()(up::shared_string local_name) const -> qname;
     };
 
@@ -72,8 +72,8 @@ namespace up_xml
             lhs.swap(rhs);
         }
         auto local_name() const -> auto& { return _local_name; }
-        auto ns_uri() const -> const up::optional<std::string>&;
-        auto ns_prefix() const -> const up::optional<std::string>&;
+        auto ns_uri() const -> const up::optional<up::shared_string>&;
+        auto ns_prefix() const -> const up::optional<up::shared_string>&;
     };
 
 
@@ -110,16 +110,16 @@ namespace up_xml
     private: // --- state ---
         qname _tag;
         std::vector<attr> _attrs;
-        std::string _head;
+        up::shared_string _head;
         std::vector<element> _elements;
-        std::string _tail;
+        up::shared_string _tail;
     public: // --- life ---
         explicit element(
             qname tag,
             std::vector<attr> attrs,
-            std::string head,
+            up::shared_string head,
             std::vector<element> elements,
-            std::string tail)
+            up::shared_string tail)
             : _tag(std::move(tag))
             , _attrs(std::move(attrs))
             , _head(std::move(head))
@@ -161,8 +161,8 @@ namespace up_xml
         // parse document
         explicit document(
             up::chunk::from chunk,
-            const up::optional<std::string>& uri,
-            const up::optional<std::string>& encoding,
+            const up::optional<up::shared_string>& uri,
+            const up::optional<up::shared_string>& encoding,
             const uri_loader& loader,
             options options);
         // create document from element
@@ -189,7 +189,7 @@ namespace up_xml
         using self = stylesheet;
         class impl;
         friend document;
-        using parameters = std::unordered_map<std::string, std::string>;
+        using parameters = std::unordered_map<up::shared_string, up::shared_string>;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---

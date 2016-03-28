@@ -5,7 +5,7 @@ namespace
 {
 
     UP_TEST_CASE {
-        up::linked_map<std::string, int> map;
+        up::linked_map<up::shared_string, int> map;
         map.emplace("foo", 1);
         map.emplace("bar", 2);
     };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "up_string.hpp"
+
 namespace up_string_literal
 {
 
@@ -35,7 +37,7 @@ namespace up_string_literal
         }
         auto to_string() const
         {
-            return std::string(_data, _size);
+            return up::unique_string(_data, _size);
         }
         void out(std::ostream& os) const;
     public: // --- friends ---

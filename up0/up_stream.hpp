@@ -112,7 +112,7 @@ namespace up_stream
         virtual void _vtable_dummy() const;
     };
 
-    auto to_string(stream::patience::operation op) -> std::string;
+    auto to_string(stream::patience::operation op) -> up::unique_string;
 
 
     class stream::steady_patience final : public stream::patience

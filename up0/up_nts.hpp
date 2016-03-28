@@ -36,6 +36,7 @@ namespace up_nts
         explicit nts() noexcept;
         explicit nts(const up::string_view& s);
         explicit nts(const char* data, size_type size);
+        explicit nts(std::nullptr_t) noexcept;
         nts(const self& rhs) = delete;
         nts(self&& rhs) noexcept
             : nts()
@@ -58,7 +59,7 @@ namespace up_nts
         {
             lhs.swap(rhs);
         }
-        operator const char*() const &&;
+        operator const char*() const;
     };
 
 }

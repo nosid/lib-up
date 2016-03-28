@@ -51,11 +51,11 @@ namespace
             : _buffer(std::move(buffer))
         { }
     public: // --- operations ---
-        auto to_string() const -> std::string
+        auto to_string() const -> up::unique_string
         {
             const char* chars = "0123456789abcdef";
             unsigned char _16 = 16;
-            std::string result;
+            up::unique_string result;
             result.reserve(_buffer.available() * 2);
             const unsigned char* p = up::char_cast<unsigned char>(_buffer.warm());
             const unsigned char* q = p + _buffer.available();
@@ -79,7 +79,7 @@ namespace
 
     auto compress(const char* text)
     {
-        return bytes::raw(up::zlib::compress(up::chunk::from(std::string(text))));
+        return bytes::raw(up::zlib::compress(up::chunk::from(up::unique_string(text))));
     }
 
     UP_TEST_CASE {

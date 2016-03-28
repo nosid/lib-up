@@ -53,7 +53,7 @@ namespace
             auto buffer = std::make_unique<char[]>(size);
             char* cwd = ::getcwd(buffer.get(), size);
             if (cwd) {
-                return std::string(cwd);
+                return up::unique_string(cwd);
             } else if (errno != ERANGE) {
                 fail("fs-getcwd-error");
             } // else: continue
@@ -174,27 +174,31 @@ namespace
      */
     auto unmangle_pathname_from_proc(const char* first, const char* last)
     {
-        std::string result;
+        up::unique_string result;
         result.reserve(last - first);
         for (auto p = first; p != last; ++p) {
             if (*p != '\\') {
                 result.push_back(*p);
             } else if (last - p < 4) {
-                throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
+                throw up::make_exception("fs-unmangle-path")
+                    .with(up::shared_string(first, last));
             } else {
                 ++p;
                 if (*p < '0' || *p > '3') {
-                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path")
+                        .with(up::shared_string(first, last));
                 }
                 unsigned value = *p - '0';
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path")
+                        .with(up::shared_string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 ++p;
                 if (*p < '0' || *p > '7') {
-                    throw up::make_exception("fs-unmangle-path").with(std::string(first, last));
+                    throw up::make_exception("fs-unmangle-path")
+                        .with(up::shared_string(first, last));
                 }
                 value = (value << 3) + (*p - '0');
                 result.push_back(static_cast<unsigned char>(value));
@@ -210,9 +214,9 @@ namespace
         using self = mount;
     private: // --- state ---
         dev_t _device;
-        std::string _path;
+        up::shared_string _path;
     public: // --- life ---
-        explicit mount(dev_t device, std::string path)
+        explicit mount(dev_t device, up::shared_string path)
             : _device(std::move(device)), _path(std::move(path))
         { }
     public: // --- operations ---
@@ -231,16 +235,16 @@ namespace
             int pos;
             int rv = sscanf(first, "%*d %*d %u:%u%n", &major, &minor, &pos);
             if (rv != 2 && rv != 3) {
-                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(up::shared_string(first, p));
             }
             char* r = std::find(first + pos + 1, last, ' ');
             if (r == last) {
-                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(up::shared_string(first, p));
             }
             ++r;
             char* s = std::find(r, last, ' ');
             if (s == last) {
-                throw up::make_exception("fs-mountinfo-error").with(std::string(first, p));
+                throw up::make_exception("fs-mountinfo-error").with(up::shared_string(first, p));
             }
             result.emplace_back(makedev(major, minor), unmangle_pathname_from_proc(r, s));
             first = p + 1;
@@ -331,7 +335,7 @@ namespace
     {
         auto&& invoke = [&callable](const char* first, const char* last) {
             if (first != last && (first + 1 != last || *first != '.')) {
-                callable(std::string(first, last));
+                callable(up::unique_string(first, last));
             }
         };
         const char* p = data;
@@ -348,7 +352,7 @@ namespace
     {
         bool absolute = pathname.compare(0, 1, "/") == 0;
         bool separator = absolute;
-        std::string result;
+        up::unique_string result;
         pathname_split(pathname.data(), pathname.size(), [&](auto&& name) {
                 result.append(separator ? 1 : 0, '/');
                 separator = true;
@@ -454,7 +458,7 @@ public: // --- state ---
 };
 
 
-auto up_fs::to_string(fs::kind value) -> std::string
+auto up_fs::to_string(fs::kind value) -> up::shared_string
 {
     switch (value) {
     case fs::kind::block_device: return "block-device";
@@ -630,11 +634,11 @@ class up_fs::fs::context::impl final
 public: // --- scope ---
     using self = impl;
 private: // --- state ---
-    std::string _name;
+    up::shared_string _name;
     int _additional_open_flags;
     bool _avoid_access_time;
 public: // --- life ---
-    explicit impl(std::string name, int additional_open_flags, bool avoid_access_time)
+    explicit impl(up::shared_string name, int additional_open_flags, bool avoid_access_time)
         : _name(std::move(name))
         , _additional_open_flags(std::move(additional_open_flags))
         , _avoid_access_time(std::move(avoid_access_time))
@@ -656,7 +660,7 @@ public: // --- operations ---
             if (rv >= 0) {
                 return rv;
             } else if (errno != EPERM) {
-                fail("fs-open-error", dir_fd, std::string(pathname), flags | O_NOATIME);
+                fail("fs-open-error", dir_fd, up::shared_string(pathname), flags | O_NOATIME);
             } // else: continue
         }
         return check(
@@ -668,7 +672,7 @@ public: // --- operations ---
         flags |= (_additional_open_flags & O_CLOEXEC) ? MFD_CLOEXEC : 0;
         return check(
             syscall_memfd_create(name, flags),
-            "fs-memfd-error", std::string(name), flags);
+            "fs-memfd-error", up::shared_string(name), flags);
     }
     auto dup(int fd) const -> int
     {
@@ -695,7 +699,7 @@ public:
 };
 
 
-up_fs::fs::context::context(std::string name)
+up_fs::fs::context::context(up::shared_string name)
     : _impl(std::make_shared<const impl>(std::move(name), O_CLOEXEC | O_NOCTTY | O_NONBLOCK, false))
 { }
 
@@ -750,7 +754,7 @@ public: // --- operations ---
     {
         return std::make_shared<const self>(_context, pathname, follow, dir_fd());
     }
-    auto location() const -> std::string
+    auto location() const -> up::unique_string
     {
         int dir_fd = _handle.get_or(AT_FDCWD);
         if (dir_fd == AT_FDCWD) {
@@ -764,13 +768,13 @@ public: // --- operations ---
         int flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_PATH;
         /* Find all mount points of the device, dir_fd belongs to. */
         auto previous = inode(dir_fd);
-        using root = std::pair<ino_t, std::string>;
+        using root = std::pair<ino_t, up::shared_string>;
         std::vector<root> roots;
         for (auto&& mount : find_mounts()) {
             if (mount.device() == previous.first) {
                 struct stat st;
                 check(
-                    ::fstatat(AT_FDCWD, mount.path().c_str(), &st, AT_SYMLINK_NOFOLLOW),
+                    ::fstatat(AT_FDCWD, up::nts(mount.path()), &st, AT_SYMLINK_NOFOLLOW),
                     "fs-stat-error", mount.path());
                 roots.emplace_back(st.st_ino, std::move(mount.path()));
             }
@@ -791,7 +795,7 @@ public: // --- operations ---
         handle current(_context->openat(_handle.get_or(AT_FDCWD), "..", flags));
         auto next = inode(current.get());
 
-        std::vector<up::shared_string> names;
+        std::vector<up::unique_string> names;
         while (previous.first == next.first && previous.second != next.second) {
             handle parent(_context->openat(current.get(), "..", flags));
             bool found = scan_directory(std::move(current), [&](auto entry) {
@@ -812,7 +816,7 @@ public: // --- operations ---
                     return r.first < next.second;
                 });
             if (q != roots.end() && q->first == next.second) {
-                std::string result = q->second;
+                up::unique_string result = q->second;
                 while (!names.empty()) {
                     result.append(1, '/');
                     result.append(names.back().to_string());
@@ -863,7 +867,7 @@ auto up_fs::fs::origin::to_insight() const -> up::insight
     return up::insight(typeid(*this), "fs-origin", _impl->to_insight());
 }
 
-auto up_fs::fs::origin::location() const -> std::string
+auto up_fs::fs::origin::location() const -> up::unique_string
 {
     return _impl->location();
 }
@@ -880,10 +884,10 @@ public: // --- scope ---
     using self = impl;
 private: // --- state ---
     std::shared_ptr<const origin::impl> _origin;
-    std::string _pathname; // note: empty paths are not allowed
+    up::shared_string _pathname; // note: empty paths are not allowed
     bool _follow;
 public: // --- life ---
-    explicit impl(std::shared_ptr<const origin::impl> origin, std::string pathname, bool follow)
+    explicit impl(std::shared_ptr<const origin::impl> origin, up::shared_string pathname, bool follow)
         : _origin(std::move(origin))
         , _pathname(std::move(pathname))
         , _follow(std::move(follow))
@@ -903,7 +907,7 @@ public: // --- operations ---
     auto make_handle(int flags, mode_t mode = ignored_mode) const -> handle
     {
         flags |= _follow ? 0 : O_NOFOLLOW;
-        return _origin->make_handle(_pathname.c_str(), flags, mode);
+        return _origin->make_handle(up::nts(_pathname), flags, mode);
     }
     auto follow(bool value) const -> std::shared_ptr<const self>
     {
@@ -913,9 +917,10 @@ public: // --- operations ---
     {
         if (pathname.compare(0, 1, "/") == 0) {
             return std::make_shared<const self>(
-                _origin->working(), std::string(pathname.data(), pathname.size()), _follow);
+                _origin->working(), up::shared_string(pathname), _follow);
         } else {
-            std::string s = (_pathname + '/').append(pathname.data(), pathname.size());
+            up::unique_string s = _pathname;
+            s.append(1, '/').append(pathname);
             return std::make_shared<const self>(_origin, pathname_normalize(s), _follow);
         }
     }
@@ -927,72 +932,72 @@ public: // --- operations ---
     {
         auto result = std::make_shared<stats::impl>();
         auto flags = flags_follow(AT_SYMLINK_FOLLOW);
-        check(::fstatat(_origin->dir_fd(), _pathname.c_str(), &result->_stat, flags),
+        check(::fstatat(_origin->dir_fd(), up::nts(_pathname), &result->_stat, flags),
             "fs-stat-error", *this, flags);
         return result;
     }
     void chmod(mode_t mode) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
-        check(::fchmodat(_origin->dir_fd(), _pathname.c_str(), mode, flags),
+        check(::fchmodat(_origin->dir_fd(), up::nts(_pathname), mode, flags),
             "fs-chmod-error", *this, mode, flags);
     }
     void chown(uid_t owner, gid_t group) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
-        check(::fchownat(_origin->dir_fd(), _pathname.c_str(), owner, group, flags),
+        check(::fchownat(_origin->dir_fd(), up::nts(_pathname), owner, group, flags),
             "fs-chown-error", *this, owner, group, flags);
     }
     void mkdir(mode_t mode) const
     {
-        check(::mkdirat(_origin->dir_fd(), _pathname.c_str(), mode),
+        check(::mkdirat(_origin->dir_fd(), up::nts(_pathname), mode),
             "fs-mkdir-error", *this, mode);
     }
     void rmdir() const
     {
-        check(::unlinkat(_origin->dir_fd(), _pathname.c_str(), AT_REMOVEDIR),
+        check(::unlinkat(_origin->dir_fd(), up::nts(_pathname), AT_REMOVEDIR),
             "fs-rmdir-error", *this);
     }
     void link(const self& target) const
     {
         int flags = flags_follow(AT_SYMLINK_FOLLOW);
         check(::linkat(
-                _origin->dir_fd(), _pathname.c_str(),
-                target._origin->dir_fd(), target._pathname.c_str(),
+                _origin->dir_fd(), up::nts(_pathname),
+                target._origin->dir_fd(), up::nts(target._pathname),
                 flags),
             "fs-link-error", *this, target, flags);
     }
     void unlink() const
     {
-        check(::unlinkat(_origin->dir_fd(), _pathname.c_str(), 0),
+        check(::unlinkat(_origin->dir_fd(), up::nts(_pathname), 0),
             "fs-unlink-error", *this);
     }
     void rename(const self& target, bool replace) const
     {
         check(::syscall_renameat2(
-                _origin->dir_fd(), _pathname.c_str(),
-                target._origin->dir_fd(), target._pathname.c_str(),
+                _origin->dir_fd(), up::nts(_pathname),
+                target._origin->dir_fd(), up::nts(target._pathname),
                 replace ? 0 : RENAME_NOREPLACE),
             "fs-rename-error", *this, target, replace);
     }
     void exchange(const self& target) const
     {
         check(::syscall_renameat2(
-                _origin->dir_fd(), _pathname.c_str(),
-                target._origin->dir_fd(), target._pathname.c_str(),
+                _origin->dir_fd(), up::nts(_pathname),
+                target._origin->dir_fd(), up::nts(target._pathname),
                 RENAME_EXCHANGE),
             "fs-exchange-error", *this, target);
     }
-    auto readlink() const -> std::string
+    auto readlink() const -> up::unique_string
     {
         for (std::size_t i = 8; i <= 16; ++i) {
             std::size_t size = 1 << i;
             auto buffer = std::make_unique<char[]>(size);
             auto rv = check(
-                ::readlinkat(_origin->dir_fd(), _pathname.c_str(), buffer.get(), size),
+                ::readlinkat(_origin->dir_fd(), up::nts(_pathname), buffer.get(), size),
                 "fs-readlink-error", *this);
             if (static_cast<std::size_t>(rv) < size) {
-                return std::string(buffer.get(), static_cast<std::size_t>(rv));
+                return up::unique_string(buffer.get(), static_cast<std::size_t>(rv));
             }
         }
         throw up::make_exception("fs-readlink-error").with(up::errno_info(errno));
@@ -1005,20 +1010,20 @@ public: // --- operations ---
     auto list() const -> std::vector<directory_entry>
     {
         int flags = flags_nofollow(O_NOFOLLOW, O_RDONLY | O_DIRECTORY);
-        return scan_directory(_origin->make_handle(_pathname.c_str(), flags));
+        return scan_directory(_origin->make_handle(up::nts(_pathname), flags));
     }
     bool list(std::function<bool(directory_entry)>&& visitor) const
     {
         int flags = flags_nofollow(O_NOFOLLOW, O_RDONLY | O_DIRECTORY);
-        return scan_directory(_origin->make_handle(_pathname.c_str(), flags), std::move(visitor));
+        return scan_directory(_origin->make_handle(up::nts(_pathname), flags), std::move(visitor));
     }
-    auto absolute() const -> std::string
+    auto absolute() const -> up::unique_string
     {
-        std::string result;
+        up::unique_string result;
         if (_pathname.compare(0, 1, "/") == 0) {
             return pathname_normalize(_pathname);
         } else {
-            return pathname_normalize(_origin->location() + '/' + _pathname);
+            return pathname_normalize(_origin->location().append(1, '/').append(_pathname));
         }
     }
 private:
@@ -1043,7 +1048,7 @@ public:
 };
 
 
-up_fs::fs::path::path(origin origin, std::string pathname, bool follow)
+up_fs::fs::path::path(origin origin, up::shared_string pathname, bool follow)
     : _impl(std::make_shared<const impl>(origin::accessor::get_impl(std::move(origin)), std::move(pathname), follow))
 { }
 
@@ -1112,7 +1117,7 @@ void up_fs::fs::path::exchange(const path& target) const
     _impl->exchange(*target._impl);
 }
 
-auto up_fs::fs::path::readlink() const -> std::string
+auto up_fs::fs::path::readlink() const -> up::unique_string
 {
     return _impl->readlink();
 }
@@ -1135,10 +1140,10 @@ bool up_fs::fs::path::list(std::function<bool(directory_entry)> visitor) const
 auto up_fs::fs::path::statvfs() const -> statfs
 {
     auto result = std::make_shared<statfs::impl>();
-    std::string pathname = absolute();
+    auto pathname = absolute();
     int rv;
     do {
-        rv = ::statvfs(pathname.c_str(), &result->_statvfs);
+        rv = ::statvfs(up::nts(pathname), &result->_statvfs);
     } while (rv == -1 && errno == EINTR);
     check(rv, "fs-statvfs-error", *this);
     return statfs(statfs::init{result});
@@ -1146,11 +1151,11 @@ auto up_fs::fs::path::statvfs() const -> statfs
 
 void up_fs::fs::path::truncate(off_t length) const
 {
-    check(::truncate(absolute().c_str(), length),
+    check(::truncate(up::nts(absolute()), length),
         "fs-truncate-error", *this, length);
 }
 
-auto up_fs::fs::path::absolute() const -> std::string
+auto up_fs::fs::path::absolute() const -> up::unique_string
 {
     return _impl->absolute();
 }
@@ -1436,7 +1441,7 @@ void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) cons
 
 void up_fs::fs::file::linkto(const path& target) const
 {
-    auto source = "/proc/self/fd/" + std::to_string(_impl->fd());
+    auto source = "/proc/self/fd/" + up::invoke_to_string(_impl->fd());
     target.joined(source).follow(true).link(target);
 }
 

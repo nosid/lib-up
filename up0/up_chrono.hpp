@@ -9,6 +9,8 @@
 
 #include <chrono>
 
+#include "up_string.hpp"
+
 namespace up_chrono
 {
 
@@ -25,7 +27,7 @@ namespace up_chrono
     using nanoseconds = std::chrono::nanoseconds;
     using duration = nanoseconds;
 
-    auto to_string(const duration& value) -> std::string;
+    auto to_string(const duration& value) -> up::unique_string;
 
 
     class system_clock final
@@ -56,7 +58,7 @@ namespace up_chrono
 
     using system_time_point = system_clock::time_point;
 
-    auto to_string(const system_time_point& value) -> std::string;
+    auto to_string(const system_time_point& value) -> up::unique_string;
 
 
     class steady_clock final
@@ -78,7 +80,7 @@ namespace up_chrono
 
     using steady_time_point = steady_clock::time_point;
 
-    auto to_string(const steady_time_point& value) -> std::string;
+    auto to_string(const steady_time_point& value) -> up::unique_string;
 
 }
 

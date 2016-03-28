@@ -14,6 +14,12 @@ namespace up_string_view
     using std::experimental::basic_string_view;
     using std::experimental::string_view;
 
+    template <typename..., typename Type>
+    auto to_string_view(Type&& value) -> string_view
+    {
+        return {value.data(), value.size()};
+    }
+
 }
 
 namespace up
@@ -21,5 +27,6 @@ namespace up
 
     using up_string_view::basic_string_view;
     using up_string_view::string_view;
+    using up_string_view::to_string_view;
 
 }

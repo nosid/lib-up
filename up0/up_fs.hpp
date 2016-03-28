@@ -41,7 +41,7 @@ namespace up_fs
         socket,
     };
 
-    auto to_string(fs::kind value) -> std::string;
+    auto to_string(fs::kind value) -> up::shared_string;
 
 
     /**
@@ -147,7 +147,7 @@ namespace up_fs
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit context(std::string name);
+        explicit context(up::shared_string name);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -188,7 +188,7 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
-        auto location() const -> std::string;
+        auto location() const -> up::unique_string;
         auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         // convenience operator
         auto operator()(const up::string_view& pathname, bool follow = false) const -> origin
@@ -207,7 +207,7 @@ namespace up_fs
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit path(origin origin, std::string pathname, bool follow = false);
+        explicit path(origin origin, up::shared_string pathname, bool follow = false);
     private:
         explicit path(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))
@@ -234,7 +234,7 @@ namespace up_fs
         void unlink() const;
         void rename(const self& target, bool replace) const;
         void exchange(const self& target) const;
-        auto readlink() const -> std::string;
+        auto readlink() const -> up::unique_string;
         void symlink(const up::string_view& value) const;
         auto list() const -> std::vector<directory_entry>;
         bool list(std::function<bool(directory_entry)> visitor) const;
@@ -242,7 +242,7 @@ namespace up_fs
          * are no corresponding system calls with an dir_fd. */
         auto statvfs() const -> statfs;
         void truncate(off_t length) const;
-        auto absolute() const -> std::string;
+        auto absolute() const -> up::unique_string;
     };
 
 
@@ -326,9 +326,9 @@ namespace up_fs
         void fdatasync() const;
         void fsync() const;
         void truncate(off_t length) const;
-        void collapse(off_t length) const; // XXX:IMPL
-        void reserve(off_t capacity) const; // XXX:IMPL
-        void zero_range(off_t offset, off_t length) const; // XXX:IMPL
+        void collapse(off_t length) const;
+        void reserve(off_t capacity) const;
+        void zero_range(off_t offset, off_t length) const;
         auto read_some(up::chunk::into chunk, off_t offset) const -> std::size_t;
         auto write_some(up::chunk::from chunk, off_t offset) const -> std::size_t;
         auto read_some(up::chunk::into_bulk_t&& chunks, off_t offset) const -> std::size_t;

@@ -2,7 +2,7 @@
 
 #include "up_detection_idiom.hpp"
 #include "up_promote.hpp"
-#include "up_string_view.hpp"
+#include "up_string.hpp"
 
 /**
  * The following namespace is used to find and invoke the correct overloaded,
@@ -15,16 +15,13 @@
 namespace up_adl_to_string
 {
 
-    // required for primitive types
-    using std::to_string;
-
     // for zero-terminated C-strings
-    inline auto to_string(const char* text) -> std::string
+    inline auto to_string(const char* text) -> up::unique_string
     {
-        return std::string(text);
+        return up::unique_string(text);
     }
 
-    inline auto to_string(const up::string_view& value) -> std::string
+    inline auto to_string(const up::string_view& value) -> up::unique_string
     {
         return {value.data(), value.size()};
     }
@@ -46,7 +43,7 @@ namespace up_adl_to_string
 
 
     // avoid choosing the overload with the const lvalue-reference
-    auto to_string(const std::string&& value) -> std::string = delete;
+    void to_string(const std::string&& value) = delete;
 
     /**
      * Explicitly provide a template of integral types to avoid signed-ness
@@ -54,9 +51,9 @@ namespace up_adl_to_string
      */
     template <typename Type>
     auto to_string(Type value)
-        -> std::enable_if_t<std::is_integral<Type>::value, std::string>
+        -> std::enable_if_t<std::is_integral<Type>::value, up::unique_string>
     {
-        return std::to_string(up::promote(value));
+        return up::to_string_view(std::to_string(up::promote(value)));
     }
 
     /**
@@ -65,9 +62,9 @@ namespace up_adl_to_string
      */
     template <typename Type>
     auto to_string(Type value)
-        -> std::enable_if_t<std::is_enum<Type>::value, std::string>
+        -> std::enable_if_t<std::is_enum<Type>::value, up::unique_string>
     {
-        return std::to_string(up::promote(static_cast<std::underlying_type_t<Type>>(value)));
+        return up::to_string_view(std::to_string(up::promote(static_cast<std::underlying_type_t<Type>>(value))));
     }
 
 

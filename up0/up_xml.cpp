@@ -16,8 +16,9 @@
 #include "up_char_cast.hpp"
 #include "up_defer.hpp"
 #include "up_exception.hpp"
-#include "up_ints.hpp"
 #include "up_hash.hpp"
+#include "up_ints.hpp"
+#include "up_nts.hpp"
 #include "up_utility.hpp"
 
 
@@ -105,9 +106,9 @@ namespace
         class errors final
         {
         private: // --- state ---
-            std::vector<std::string> _values;
+            std::vector<up::shared_string> _values;
         public: // --- life ---
-            explicit errors(std::vector<std::string>&& values)
+            explicit errors(std::vector<up::shared_string>&& values)
                 : _values()
             {
                 // guarantee that values will be empty afterwards
@@ -140,10 +141,10 @@ namespace
         {
             std::ostringstream os;
             os << error->message << '(' << error->domain << '-' << error->code << ')';
-            static_cast<libxml_thread*>(cookie)->push_error(os.str());
+            static_cast<libxml_thread*>(cookie)->push_error(up::to_string_view(os.str()));
         }
     private: // --- state ---
-        std::vector<std::string> _errors;
+        std::vector<up::shared_string> _errors;
         context* _context = nullptr;
     public: // --- life ---
         explicit libxml_thread()
@@ -161,7 +162,7 @@ namespace
                 return nullptr;
             }
             try {
-                auto buffer = _context->_loader(std::string(url));
+                auto buffer = _context->_loader(up::shared_string(url));
                 if (auto result = ::xmlAllocParserInputBuffer(encoding)) {
                     result->context = buffer.get();
                     result->readcallback = [](void* context, char* buf, int len) -> int {
@@ -198,7 +199,7 @@ namespace
         {
             _errors.clear();
         }
-        void push_error(std::string&& error)
+        void push_error(up::unique_string&& error)
         {
             if (!error.empty() && error.back() == '\n') {
                 error.pop_back();
@@ -317,7 +318,7 @@ namespace
     private:
         auto _ns(const xmlNs* ns)
         {
-            using ostring = up::optional<std::string>;
+            using ostring = up::optional<up::shared_string>;
             return xml::ns(
                 ns->href ? ostring(_chars(ns->href)) : ostring(),
                 ns->prefix ? ostring(_chars(ns->prefix)) : ostring());
@@ -338,7 +339,7 @@ namespace
         {
             std::vector<xml::attr> result;
             for (; attr; attr = attr->next) {
-                std::string value;
+                up::unique_string value;
                 for (auto node = attr->children; node; node = node->next) {
                     if (node->type == XML_TEXT_NODE || node->type == XML_CDATA_SECTION_NODE) {
                         value.append(_chars(node->content));
@@ -346,15 +347,15 @@ namespace
                         throw up::make_exception("xml-bad-attr-node-type").with(node->type);
                     }
                 }
-                result.emplace_back(_qname(attr->name, attr->ns), up::shared_string(value));
+                result.emplace_back(_qname(attr->name, attr->ns), value);
             }
             return result;
         }
-        auto _element(const xmlNode* element, std::string&& tail) -> xml::element
+        auto _element(const xmlNode* element, up::shared_string&& tail) -> xml::element
         {
-            std::string head;
+            up::unique_string head;
             std::vector<xml::element> elements;
-            std::string text;
+            up::unique_string text;
             const xmlNode* pending = nullptr;
             for (auto node = element->children; node; node = node->next) {
                 switch (node->type) {
@@ -398,7 +399,7 @@ namespace
     {
     private: // --- scope ---
         using xml = up_xml::xml;
-        using ostring = up::optional<std::string>;
+        using ostring = up::optional<up::shared_string>;
         using prefixes = std::unordered_map<ostring, std::pair<ostring, xmlNs*>>;
         static auto _chars(const char* value)
         {
@@ -441,8 +442,8 @@ namespace
                         if (q == defaults.end() || !(q->second.first == uri)) {
                             auto ns = ::xmlNewNs(
                                 node,
-                                uri ? _chars(uri->c_str()) : nullptr,
-                                prefix ? _chars(prefix->c_str()) : nullptr);
+                                uri ? _chars(up::nts(*uri)) : nullptr,
+                                prefix ? _chars(up::nts(*prefix)) : nullptr);
                             if (ns == nullptr && prefix && *prefix == "xml") {
                                 ns = ::xmlSearchNs(node->doc, node, _chars("xml"));
                             }
@@ -509,7 +510,7 @@ namespace
 
 auto up_xml::xml::null_uri_loader() -> uri_loader
 {
-    return [](std::string) { return std::unique_ptr<up::buffer>(); };
+    return [](up::shared_string) { return std::unique_ptr<up::buffer>(); };
 }
 
 
@@ -518,26 +519,26 @@ class up_xml::xml::ns::impl final
 public: // --- scope ---
     using self = impl;
 private: // --- state ---
-    up::optional<std::string> _uri;
-    up::optional<std::string> _prefix;
+    up::optional<up::shared_string> _uri;
+    up::optional<up::shared_string> _prefix;
 public: // --- life ---
     explicit impl()
         : _uri(), _prefix()
     { }
-    explicit impl(up::optional<std::string> uri, up::optional<std::string> prefix)
+    explicit impl(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix)
         : _uri(std::move(uri)), _prefix(std::move(prefix))
     { }
 public: // --- operations ---
     friend auto get_uri(const std::shared_ptr<const impl>& ns)
-        -> const up::optional<std::string>&
+        -> const up::optional<up::shared_string>&
     {
-        static up::optional<std::string> none;
+        static up::optional<up::shared_string> none;
         return ns ? ns->_uri : none;
     }
     friend auto get_prefix(const std::shared_ptr<const impl>& ns)
-        -> const up::optional<std::string>&
+        -> const up::optional<up::shared_string>&
     {
-        static up::optional<std::string> none;
+        static up::optional<up::shared_string> none;
         return ns ? ns->_prefix : none;
     }
 };
@@ -547,16 +548,16 @@ up_xml::xml::ns::ns()
     : _impl()
 { }
 
-up_xml::xml::ns::ns(up::optional<std::string> uri, up::optional<std::string> prefix)
+up_xml::xml::ns::ns(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix)
     : _impl(std::make_shared<const impl>(std::move(uri), std::move(prefix)))
 { }
 
-auto up_xml::xml::ns::uri() const -> const up::optional<std::string>&
+auto up_xml::xml::ns::uri() const -> const up::optional<up::shared_string>&
 {
     return get_uri(_impl);
 }
 
-auto up_xml::xml::ns::prefix() const -> const up::optional<std::string>&
+auto up_xml::xml::ns::prefix() const -> const up::optional<up::shared_string>&
 {
     return get_prefix(_impl);
 }
@@ -567,12 +568,12 @@ auto up_xml::xml::ns::operator()(up::shared_string local_name) const -> qname
 }
 
 
-auto up_xml::xml::qname::ns_uri() const -> const up::optional<std::string>&
+auto up_xml::xml::qname::ns_uri() const -> const up::optional<up::shared_string>&
 {
     return get_uri(_ns);
 }
 
-auto up_xml::xml::qname::ns_prefix() const -> const up::optional<std::string>&
+auto up_xml::xml::qname::ns_prefix() const -> const up::optional<up::shared_string>&
 {
     return get_prefix(_ns);
 }
@@ -618,17 +619,17 @@ public: // --- operations ---
 class up_xml::xml::document::impl::simple final : public up_xml::xml::document::impl
 {
 private: // --- scope ---
-    static auto as_c_str(const up::optional<std::string>& value) -> const char*
+    static auto as_c_str(const up::optional<up::shared_string>& value) -> up::nts
     {
-        return value ? value->c_str() : nullptr;
+        return value ? up::nts(*value) : up::nts(nullptr);
     }
-    static auto as_c_str(const up::optional<std::string>&& value) -> const char* = delete;
+    static auto as_c_str(const up::optional<up::shared_string>&& value) -> const char* = delete;
 public: // --- life ---
     // parsing XML
     explicit simple(
         up::chunk::from chunk,
-        const up::optional<std::string>& URL,
-        const up::optional<std::string>& encoding,
+        const up::optional<up::shared_string>& URL,
+        const up::optional<up::shared_string>& encoding,
         const uri_loader& loader,
         options options)
         : impl()
@@ -669,7 +670,7 @@ public: // --- life ---
              * errors. For example if a NS URIs is not absolute. */
             UP_DEFER { ::xmlCtxtResetLastError(parser); };
             raise("xml-parser-error", URL, encoding, options,
-                error->domain, error->code, error->level, std::string(error->message));
+                error->domain, error->code, error->level, up::shared_string(error->message));
         } else if (_ptr == nullptr || parser->valid == 0) {
             raise("xml-parser-error", URL, encoding, options);
         }
@@ -682,7 +683,7 @@ public: // --- life ---
             } else if (auto error = ::xmlCtxtGetLastError(parser)) {
                 UP_DEFER { ::xmlCtxtResetLastError(parser); };
                 raise("xml-parser-xinclude-error", URL, encoding, options,
-                    error->domain, error->code, error->level, std::string(error->message));
+                    error->domain, error->code, error->level, up::shared_string(error->message));
             } else {
                 raise("xml-parser-xinclude-error", URL, encoding, options);
             }
@@ -760,8 +761,8 @@ private:
 
 up_xml::xml::document::document(
     up::chunk::from chunk,
-    const up::optional<std::string>& uri,
-    const up::optional<std::string>& encoding,
+    const up::optional<up::shared_string>& uri,
+    const up::optional<up::shared_string>& encoding,
     const uri_loader& loader,
     options options)
     : _impl(flush_make_shared<const impl::simple>(chunk, uri, encoding, loader, options))
@@ -837,15 +838,15 @@ private: // --- scope ---
              * (e.g. '&' can't be used as an escape character. To be on the
              * safe side, the list of allowed characters is very restrictive,
              * but may be relaxed in the future. */
-            std::string result;
-            using sizes = up::ints::domain<std::string::size_type>::or_range_error;
+            up::unique_string result;
+            using sizes = up::ints::domain<up::unique_string::size_type>::or_range_error;
             result.reserve(sizes::add(size, 2));
             result.push_back('"');
             for (std::size_t i = 0; i != size; ++i) {
                 char c = data[i];
                 if (!std::isalnum(c) && c != '-' && c != '.' && c != '/' && c != ':' && c != '_') {
                     throw up::make_exception("xslt-bad-string-parameter-character")
-                        .with(c, std::string(data, size));
+                        .with(c, up::shared_string(data, size));
                 }
                 result.push_back(c);
             }
@@ -853,8 +854,8 @@ private: // --- scope ---
             return result;
         }
     private: // --- fields ---
-        std::vector<std::string> _values;
-        std::vector<const char*> _result;
+        std::vector<up::nts> _nts_items;
+        std::vector<const char*> _raw_items;
     public: // --- life ---
         explicit params(const parameters& parameters)
         {
@@ -862,23 +863,22 @@ private: // --- scope ---
             if (size) {
                 /* The XSLT library expects the parameters flattened and
                  * terminated with a nullptr. */
-                _values.reserve(size);
-                for (auto&& parameter : parameters) {
-                    _values.push_back(escape(parameter.second.data(), parameter.second.size()));
-                }
                 using sizes = up::ints::domain<decltype(size)>::or_range_error;
-                _result.reserve(sizes::sum(size, size, 1));
+                _nts_items.reserve(sizes::sum(size, size));
+                _raw_items.reserve(sizes::sum(size, size, 1));
                 for (auto&& parameter : parameters) {
-                    _result.push_back(parameter.first.c_str());
-                    _result.push_back(_values.back().c_str());
+                    _nts_items.emplace_back(parameter.first);
+                    _raw_items.push_back(_nts_items.back());
+                    _nts_items.emplace_back(escape(parameter.second.data(), parameter.second.size()));
+                    _raw_items.push_back(_nts_items.back());
                 }
-                _result.push_back(nullptr);
+                _raw_items.push_back(nullptr);
             }
         }
     public: // --- operations ---
         auto operator()() &&
         {
-            return _result.empty() ? nullptr : &_result[0];
+            return _raw_items.empty() ? nullptr : &_raw_items[0];
         }
     };
 private: // --- fields ---

@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
         std::ios::sync_with_stdio(false);
 
         auto origin = up::fs::origin(up::fs::context("root"));
-        auto&& p = [origin,follow=false](std::string pathname) {
+        auto&& p = [origin,follow=false](up::shared_string pathname) {
             return up::fs::path(origin, std::move(pathname), follow);
         };
         for (int i = 1; i < argc; ++i) {

@@ -9,13 +9,13 @@
 #include "up_ints.hpp"
 
 
-auto up_utility::type_display_name(const std::type_info& type_info) -> std::string
+auto up_utility::type_display_name(const std::type_info& type_info) -> up::unique_string
 {
     int status = 0;
     char* result = abi::__cxa_demangle(type_info.name(), nullptr, nullptr, &status);
     UP_DEFER { std::free(result); };
     if (status == 0) {
-        return std::string(result);
+        return up::unique_string(result);
     } else {
         throw up::make_exception("type-demangle-error").with(type_info.name(), status);
     }
@@ -30,7 +30,7 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
     int rv = std::vsnprintf(buffer.cold(), buffer.capacity(), format, aq);
     va_end(aq);
     if (rv < 0) {
-        throw up::make_exception("cformat-error").with(std::string(format), rv);
+        throw up::make_exception("cformat-error").with(up::shared_string(format), rv);
     }
     auto size = up::ints::cast<std::size_t>(rv);
     if (size < buffer.capacity()) {
@@ -40,24 +40,24 @@ void up_utility::cformat(up::buffer& buffer, const char* format, va_list ap)
         buffer.reserve(sizes::add(size, 1));
         rv = std::vsnprintf(buffer.cold(), buffer.capacity(), format, ap);
         if (rv < 0) {
-            throw up::make_exception("cformat-error").with(std::string(format), size, rv);
+            throw up::make_exception("cformat-error").with(up::shared_string(format), size, rv);
         }
         size = up::ints::cast<std::size_t>(rv);
         if (size < buffer.capacity()) {
             buffer.produce(size);
         } else {
-            throw up::make_exception("cformat-error").with(std::string(format), size);
+            throw up::make_exception("cformat-error").with(up::shared_string(format), size);
         }
     }
 }
 
 
 __attribute__((__format__(__printf__, 1, 0)))
-auto up_utility::cformat(const char* format, va_list ap) -> std::string
+auto up_utility::cformat(const char* format, va_list ap) -> up::unique_string
 {
     auto buffer = up::buffer();
     cformat(buffer, format, ap);
-    return std::string(buffer.warm(), buffer.available());
+    return up::unique_string(buffer.warm(), buffer.available());
 }
 
 

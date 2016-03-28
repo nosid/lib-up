@@ -312,11 +312,11 @@ namespace up_string
             : basic_string_base(chars.begin(), chars.end())
         { }
         template <typename..., typename Other>
-        explicit basic_string_base(const basic_string_base<Other>& rhs)
+        basic_string_base(const basic_string_base<Other>& rhs)
             : Repr(static_cast<const Other&>(rhs))
         { }
         template <typename..., typename Other>
-        explicit basic_string_base(basic_string_base<Other>&& rhs)
+        basic_string_base(basic_string_base<Other>&& rhs)
             : Repr(static_cast<Other&&>(rhs))
         { }
         using base::base;
@@ -574,11 +574,6 @@ namespace up_string
         {
             return {_data(), _size()};
         }
-        // XXX: temporary workaround for up::to_string
-        auto to_string() const -> std::string
-        {
-            return {_data(), _size()};
-        }
         // XXX: temporary workaround for up::out
         void out(std::ostream& os) const
         {
@@ -644,11 +639,11 @@ namespace up_string
         using base::base;
         basic_string() noexcept { }
         template <typename..., typename R, bool U>
-        explicit basic_string(const basic_string<R, U>& rhs)
+        basic_string(const basic_string<R, U>& rhs)
             : base(static_cast<const basic_string_base<R>&>(rhs))
         { }
         template <typename..., typename R, bool U>
-        explicit basic_string(basic_string<R, U>&& rhs)
+        basic_string(basic_string<R, U>&& rhs)
             : base(static_cast<basic_string_base<R>&&>(rhs))
         { }
 
@@ -715,8 +710,16 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
-        using base::to_string;
         using base::out;
+
+        auto to_string() const & -> const self&
+        {
+            return *this;
+        }
+        auto to_string() && -> self
+        {
+            return std::move(*this);
+        }
 
     private:
         using base::_size;
@@ -777,11 +780,11 @@ namespace up_string
         using base::base;
         basic_string() noexcept { }
         template <typename..., typename R, bool U>
-        explicit basic_string(const basic_string<R, U>& rhs)
+        basic_string(const basic_string<R, U>& rhs)
             : base(static_cast<const basic_string_base<R>&>(rhs))
         { }
         template <typename..., typename R, bool U>
-        explicit basic_string(basic_string<R, U>&& rhs)
+        basic_string(basic_string<R, U>&& rhs)
             : base(static_cast<basic_string_base<R>&&>(rhs))
         { }
 
@@ -1134,8 +1137,16 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
-        using base::to_string;
         using base::out;
+
+        auto to_string() const & -> const self&
+        {
+            return *this;
+        }
+        auto to_string() && -> self
+        {
+            return std::move(*this);
+        }
 
     private:
         using base::_size;

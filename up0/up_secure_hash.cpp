@@ -108,7 +108,7 @@ namespace
 }
 
 
-auto up_secure_hash::to_string(secure_hash_mechanism mechanism) -> std::string
+auto up_secure_hash::to_string(secure_hash_mechanism mechanism) -> up::unique_string
 {
     switch (mechanism) {
     case secure_hash_mechanism::md5: return "md5";

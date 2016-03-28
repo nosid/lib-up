@@ -17,6 +17,7 @@
 #include "up_defer.hpp"
 #include "up_exception.hpp"
 #include "up_ints.hpp"
+#include "up_nts.hpp"
 #include "up_utility.hpp"
 
 namespace
@@ -585,7 +586,7 @@ protected:
         } else if ((rv = ::SSL_add_dir_cert_subjects_to_stack(names, pathname)) == 1) {
             return rv;
         } else {
-            raise_ssl_error("tls-internal-authority-error", rv, std::string(pathname));
+            raise_ssl_error("tls-internal-authority-error", rv, up::shared_string(pathname));
         }
     }
     bool _load_file(SSL_CTX* ctx, STACK_OF(X509_NAME)* names, const char* pathname) const
@@ -598,7 +599,7 @@ protected:
         } else if ((rv = ::SSL_add_file_cert_subjects_to_stack(names, pathname)) == 1) {
             return rv;
         } else {
-            raise_ssl_error("tls-internal-authority-error", rv, std::string(pathname));
+            raise_ssl_error("tls-internal-authority-error", rv, up::shared_string(pathname));
         }
     }
 };
@@ -620,7 +621,7 @@ private: // --- operations ---
          * and directory lookup fail. */
         if (rv != 1 && rw != 1) {
             raise_ssl_error("tls-system-authority-error",
-                std::string(file), rv, std::string(directory), rw);
+                up::shared_string(file), rv, up::shared_string(directory), rw);
         }
     }
     auto _lookup(const char* name, const char* fallback) const -> const char*
@@ -634,15 +635,15 @@ private: // --- operations ---
 class up_tls::tls::authority::impl::directory final : public impl
 {
 private: // --- state ---
-    std::string _pathname;
+    up::shared_string _pathname;
 public: // --- life ---
-    explicit directory(std::shared_ptr<const impl> parent, std::string&& pathname)
+    explicit directory(std::shared_ptr<const impl> parent, up::shared_string&& pathname)
         : impl(std::move(parent)), _pathname(std::move(pathname))
     { }
 private: // --- operations ---
     void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
-        int rv = _load_directory(ctx, names, _pathname.c_str());
+        int rv = _load_directory(ctx, names, up::nts(_pathname));
         if (rv != 1) {
             raise_ssl_error("tls-directory-authority-error", rv, _pathname);
         } // else: OK
@@ -653,15 +654,15 @@ private: // --- operations ---
 class up_tls::tls::authority::impl::file final : public impl
 {
 private: // --- state ---
-    std::string _pathname;
+    up::shared_string _pathname;
 public: // --- life ---
-    explicit file(std::shared_ptr<const impl> parent, std::string&& pathname)
+    explicit file(std::shared_ptr<const impl> parent, up::shared_string&& pathname)
         : impl(std::move(parent)), _pathname(std::move(pathname))
     { }
 private: // --- operations ---
     void _apply(SSL_CTX* ctx, STACK_OF(X509_NAME)* names) const override
     {
-        int rv = _load_file(ctx, names, _pathname.c_str());
+        int rv = _load_file(ctx, names, up::nts(_pathname));
         if (rv != 1) {
             raise_ssl_error("tls-file-authority-error", rv, _pathname);
         } // else: OK
@@ -716,12 +717,12 @@ up_tls::tls::authority::authority(std::shared_ptr<const impl> impl)
     : _impl(std::move(impl))
 { }
 
-auto up_tls::tls::authority::with_directory(std::string pathname) -> authority
+auto up_tls::tls::authority::with_directory(up::shared_string pathname) -> authority
 {
     return authority(std::make_shared<const impl::directory>(_impl, std::move(pathname)));
 }
 
-auto up_tls::tls::authority::with_file(std::string pathname) -> authority
+auto up_tls::tls::authority::with_file(up::shared_string pathname) -> authority
 {
     return authority(std::make_shared<const impl::file>(_impl, std::move(pathname)));
 }
@@ -736,14 +737,14 @@ auto up_tls::tls::authority::with_certificate(const up::buffer& buffer) -> autho
 class up_tls::tls::identity::impl final
 {
 private: // --- state ---
-    std::string _private_key_pathname;
-    std::string _certificate_pathname;
-    up::optional<std::string> _certificate_chain_pathname;
+    up::shared_string _private_key_pathname;
+    up::shared_string _certificate_pathname;
+    up::optional<up::shared_string> _certificate_chain_pathname;
 public: // --- life ---
     explicit impl(
-        std::string&& private_key_pathname,
-        std::string&& certificate_pathname,
-        up::optional<std::string>&& certificate_chain_pathname)
+        up::shared_string&& private_key_pathname,
+        up::shared_string&& certificate_pathname,
+        up::optional<up::shared_string>&& certificate_chain_pathname)
         : _private_key_pathname(std::move(private_key_pathname))
         , _certificate_pathname(std::move(certificate_pathname))
         , _certificate_chain_pathname(std::move(certificate_chain_pathname))
@@ -755,16 +756,16 @@ public: // --- operations ---
          * certificate from a memory buffer. However, there is no
          * corresponding function for the certificate chain. */
         int rv;
-        rv = ::SSL_CTX_use_PrivateKey_file(ctx, _private_key_pathname.c_str(), SSL_FILETYPE_PEM);
+        rv = ::SSL_CTX_use_PrivateKey_file(ctx, up::nts(_private_key_pathname), SSL_FILETYPE_PEM);
         if (rv != 1) {
             raise_ssl_error("tls-private-key-error", rv);
         }
-        rv = ::SSL_CTX_use_certificate_file(ctx, _certificate_pathname.c_str(), SSL_FILETYPE_PEM);
+        rv = ::SSL_CTX_use_certificate_file(ctx, up::nts(_certificate_pathname), SSL_FILETYPE_PEM);
         if (rv != 1) {
             raise_ssl_error("tls-certificate-error", rv);
         }
         if (_certificate_chain_pathname) {
-            rv = ::SSL_CTX_use_certificate_chain_file(ctx, _certificate_chain_pathname->c_str());
+            rv = ::SSL_CTX_use_certificate_chain_file(ctx, up::nts(*_certificate_chain_pathname));
             if (rv != 1) {
                 raise_ssl_error("tls-certificate-chain-error", rv);
             }
@@ -774,18 +775,18 @@ public: // --- operations ---
 
 
 up_tls::tls::identity::identity(
-    std::string private_key_pathname,
-    std::string certificate_pathname)
+    up::shared_string private_key_pathname,
+    up::shared_string certificate_pathname)
     : _impl(std::make_shared<const impl>(
             std::move(private_key_pathname),
             std::move(certificate_pathname),
-            up::optional<std::string>()))
+            up::optional<up::shared_string>()))
 { }
 
 up_tls::tls::identity::identity(
-    std::string private_key_pathname,
-    std::string certificate_pathname,
-    up::optional<std::string> certificate_chain_pathname)
+    up::shared_string private_key_pathname,
+    up::shared_string certificate_pathname,
+    up::optional<up::shared_string> certificate_chain_pathname)
     : _impl(std::make_shared<const impl>(
             std::move(private_key_pathname),
             std::move(certificate_pathname),
@@ -804,7 +805,7 @@ public: // --- life ---
 };
 
 
-auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
+auto up_tls::tls::certificate::common_name() const -> up::optional<up::unique_string>
 {
     X509_NAME* subject = ::X509_get_subject_name(_impl._x509);
     int pos = -1;
@@ -817,7 +818,7 @@ auto up_tls::tls::certificate::common_name() const -> up::optional<std::string>
         int rv = ::ASN1_STRING_to_UTF8(&buffer, ::X509_NAME_ENTRY_get_data(entry));
         if (rv >= 0) {
             UP_DEFER { ::OPENSSL_free(buffer); };
-            return std::string(up::char_cast<char>(buffer), up::ints::cast<std::size_t>(rv));
+            return up::unique_string(up::char_cast<char>(buffer), up::ints::cast<std::size_t>(rv));
         } else {
             raise_ssl_error("tls-bad-common-name");
         }
@@ -930,7 +931,7 @@ private:
         auto&& callback = openssl_process::instance().ssl_get_ptr<auxiliary>(ssl)->_callback;
         if (auto servername = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name)) {
             try {
-                auto&& other = callback(std::string(servername));
+                auto&& other = callback(up::shared_string(servername));
                 ::SSL_set_SSL_CTX(ssl, other._impl->_ssl_ctx.get());
                 return SSL_TLSEXT_ERR_OK;
             } catch (const accept_hostname&) {
@@ -1005,7 +1006,7 @@ void up_tls::tls::server_context::destroy(impl* ptr)
 
 auto up_tls::tls::server_context::ignore_hostname() -> hostname_callback
 {
-    return [](std::string hostname) -> self& {
+    return [](up::shared_string hostname) -> self& {
         throw up::make_exception("tls-ignore-hostname", accept_hostname()).with(std::move(hostname));
     };
 }
@@ -1240,11 +1241,11 @@ class up_tls::tls::client_context::impl::client_engine final : private auxiliary
 private: // --- scope ---
     static auto prepare(
         SSL_CTX* ssl_ctx,
-        const up::optional<std::string>& hostname,
+        const up::optional<up::shared_string>& hostname,
         auxiliary* auxiliary) -> ssl_ptr
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
-        if (hostname && !SSL_set_tlsext_host_name(ssl.get(), hostname->c_str())) {
+        if (hostname && !SSL_set_tlsext_host_name(ssl.get(), static_cast<const char*>(up::nts(*hostname)))) {
             raise_ssl_error("tls-hostname-error", *hostname);
         }
         openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
@@ -1255,7 +1256,7 @@ public: // --- life ---
         SSL_CTX* ssl_ctx,
         std::unique_ptr<up::stream::engine> underlying,
         patience& patience,
-        const up::optional<std::string>& hostname,
+        const up::optional<up::shared_string>& hostname,
         const verify_callback& callback)
         : auxiliary(callback)
         , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), patience, ::SSL_connect)
@@ -1287,7 +1288,7 @@ up_tls::tls::client_context::client_context(
 auto up_tls::tls::client_context::upgrade(
     std::unique_ptr<up::stream::engine> engine,
     up::stream::patience& patience,
-    const up::optional<std::string>& hostname,
+    const up::optional<up::shared_string>& hostname,
     const verify_callback& callback)
     -> std::unique_ptr<up::stream::engine>
 {
