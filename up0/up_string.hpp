@@ -574,11 +574,6 @@ namespace up_string
         {
             return {_data(), _size()};
         }
-        // XXX: temporary workaround for up::out
-        void out(std::ostream& os) const
-        {
-            os.write(_data(), _size());
-        }
 
     protected:
         auto _size() const noexcept -> size_type
@@ -710,7 +705,6 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
-        using base::out;
 
         auto to_string() const & -> const self&
         {
@@ -1137,7 +1131,6 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
-        using base::out;
 
         auto to_string() const & -> const self&
         {
