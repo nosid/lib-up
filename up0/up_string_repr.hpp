@@ -266,16 +266,11 @@ namespace up_string_repr
         }
         auto operator=(const handle<!Unique>& rhs) & -> self&
         {
-            return operator=(handle<!Unique>(rhs));
+            return operator=(self(rhs));
         }
-        auto operator=(handle<!Unique>&& rhs) & noexcept -> self&
+        auto operator=(handle<!Unique>&& rhs) & -> self&
         {
-            if (_sso._external._tag == tag_external) {
-                storage_ptr<Unique>(_sso._external._ptr);
-            } // else: nothing
-            std::memcpy(&_sso, &rhs._sso, sso_size);
-            std::memset(&rhs._sso, 0, sso_size);
-            return *this;
+            return operator=(self(std::move(rhs)));
         }
         void swap(self& rhs) noexcept
         {
