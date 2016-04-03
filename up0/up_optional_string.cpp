@@ -8,7 +8,7 @@ bool up_optional_string::operator==(const optional_string& lhs, const optional_s
     } else if (!rhs) {
         return false;
     } else {
-        return *lhs == *rhs;
+        return up::to_string_view(lhs.repr()) == up::to_string_view(rhs.repr());
     }
 }
 
@@ -24,7 +24,7 @@ bool up_optional_string::operator<(const optional_string& lhs, const optional_st
     } else if (!rhs) {
         return false;
     } else {
-        return *lhs < *rhs;
+        return up::to_string_view(lhs.repr()) < up::to_string_view(rhs.repr());
     }
 }
 
@@ -105,12 +105,12 @@ bool up_optional_string::operator>=(up::nullopt_t, const optional_string& rhs) n
 
 bool up_optional_string::operator==(const optional_string& lhs, const up::string_view& rhs)
 {
-    return lhs && *lhs == rhs;
+    return lhs && up::to_string_view(lhs.repr()) == rhs;
 }
 
 bool up_optional_string::operator==(const up::string_view& lhs, const optional_string& rhs)
 {
-    return rhs && lhs == *rhs;
+    return rhs && lhs == up::to_string_view(rhs.repr());
 }
 
 bool up_optional_string::operator!=(const optional_string& lhs, const up::string_view& rhs)
@@ -125,12 +125,12 @@ bool up_optional_string::operator!=(const up::string_view& lhs, const optional_s
 
 bool up_optional_string::operator<(const optional_string& lhs, const up::string_view& rhs)
 {
-    return !lhs || *lhs < rhs;
+    return !lhs || up::to_string_view(lhs.repr()) < rhs;
 }
 
 bool up_optional_string::operator<(const up::string_view& lhs, const optional_string& rhs)
 {
-    return rhs && lhs < *rhs;
+    return rhs && lhs < up::to_string_view(rhs.repr());
 }
 
 bool up_optional_string::operator>(const optional_string& lhs, const up::string_view& rhs)
