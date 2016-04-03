@@ -188,6 +188,8 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
+        /* This function returns an absolute path, not a canonical path. There
+         * is currently no support for getting a canonical path. */
         auto location() const -> up::unique_string;
         auto resolved(const up::string_view& pathname, bool follow = false) const -> origin;
         // convenience operator
@@ -242,6 +244,8 @@ namespace up_fs
          * are no corresponding system calls with an dir_fd. */
         auto statvfs() const -> statfs;
         void truncate(off_t length) const;
+        /* This function returns an absolute path, not a canonical path. There
+         * is currently no support for getting a canonical path. */
         auto absolute() const -> up::unique_string;
     };
 
