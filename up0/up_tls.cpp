@@ -739,12 +739,12 @@ class up_tls::tls::identity::impl final
 private: // --- state ---
     up::shared_string _private_key_pathname;
     up::shared_string _certificate_pathname;
-    up::optional<up::shared_string> _certificate_chain_pathname;
+    up::optional_string _certificate_chain_pathname;
 public: // --- life ---
     explicit impl(
         up::shared_string&& private_key_pathname,
         up::shared_string&& certificate_pathname,
-        up::optional<up::shared_string>&& certificate_chain_pathname)
+        up::optional_string&& certificate_chain_pathname)
         : _private_key_pathname(std::move(private_key_pathname))
         , _certificate_pathname(std::move(certificate_pathname))
         , _certificate_chain_pathname(std::move(certificate_chain_pathname))
@@ -780,13 +780,13 @@ up_tls::tls::identity::identity(
     : _impl(std::make_shared<const impl>(
             std::move(private_key_pathname),
             std::move(certificate_pathname),
-            up::optional<up::shared_string>()))
+            up::optional_string()))
 { }
 
 up_tls::tls::identity::identity(
     up::shared_string private_key_pathname,
     up::shared_string certificate_pathname,
-    up::optional<up::shared_string> certificate_chain_pathname)
+    up::optional_string certificate_chain_pathname)
     : _impl(std::make_shared<const impl>(
             std::move(private_key_pathname),
             std::move(certificate_pathname),
@@ -1241,7 +1241,7 @@ class up_tls::tls::client_context::impl::client_engine final : private auxiliary
 private: // --- scope ---
     static auto prepare(
         SSL_CTX* ssl_ctx,
-        const up::optional<up::shared_string>& hostname,
+        const up::optional_string& hostname,
         auxiliary* auxiliary) -> ssl_ptr
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
@@ -1256,7 +1256,7 @@ public: // --- life ---
         SSL_CTX* ssl_ctx,
         std::unique_ptr<up::stream::engine> underlying,
         patience& patience,
-        const up::optional<up::shared_string>& hostname,
+        const up::optional_string& hostname,
         const verify_callback& callback)
         : auxiliary(callback)
         , base_engine(prepare(ssl_ctx, hostname, this), std::move(underlying), patience, ::SSL_connect)
@@ -1288,7 +1288,7 @@ up_tls::tls::client_context::client_context(
 auto up_tls::tls::client_context::upgrade(
     std::unique_ptr<up::stream::engine> engine,
     up::stream::patience& patience,
-    const up::optional<up::shared_string>& hostname,
+    const up::optional_string& hostname,
     const verify_callback& callback)
     -> std::unique_ptr<up::stream::engine>
 {

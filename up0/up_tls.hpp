@@ -1,9 +1,8 @@
 #pragma once
 
 #include "up_buffer.hpp"
-#include "up_optional.hpp"
+#include "up_optional_string.hpp"
 #include "up_stream.hpp"
-#include "up_string_view.hpp"
 #include "up_swap.hpp"
 
 
@@ -91,7 +90,7 @@ namespace up_tls
         explicit identity(
             up::shared_string private_key_pathname,
             up::shared_string certificate_pathname,
-            up::optional<up::shared_string> certificate_chain_pathname);
+            up::optional_string certificate_chain_pathname);
     };
 
 
@@ -247,7 +246,7 @@ namespace up_tls
         auto upgrade(
             std::unique_ptr<up::stream::engine> engine,
             up::stream::patience& patience,
-            const up::optional<up::shared_string>& hostname,
+            const up::optional_string& hostname,
             const verify_callback& callback)
             -> std::unique_ptr<up::stream::engine>;
     };
