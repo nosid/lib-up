@@ -442,9 +442,9 @@ namespace
                         if (q == defaults.end() || !(q->second.first == uri)) {
                             auto ns = ::xmlNewNs(
                                 node,
-                                uri ? _chars(up::nts(*uri)) : nullptr,
-                                prefix ? _chars(up::nts(*prefix)) : nullptr);
-                            if (ns == nullptr && prefix && *prefix == "xml") {
+                                uri ? _chars(up::nts(up::to_string_view(uri.repr()))) : nullptr,
+                                prefix ? _chars(up::nts(up::to_string_view(prefix.repr()))) : nullptr);
+                            if (ns == nullptr && prefix && up::to_string_view(prefix.repr()) == "xml") {
                                 ns = ::xmlSearchNs(node->doc, node, _chars("xml"));
                             }
                             if (ns == nullptr) {
@@ -621,7 +621,7 @@ class up_xml::xml::document::impl::simple final : public up_xml::xml::document::
 private: // --- scope ---
     static auto as_c_str(const up::optional_string& value) -> up::nts
     {
-        return value ? up::nts(*value) : up::nts(nullptr);
+        return value ? up::nts(up::to_string_view(value.repr())) : up::nts(nullptr);
     }
     static auto as_c_str(const up::optional_string&& value) -> const char* = delete;
 public: // --- life ---
