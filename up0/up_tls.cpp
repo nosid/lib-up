@@ -765,7 +765,8 @@ public: // --- operations ---
             raise_ssl_error("tls-certificate-error", rv);
         }
         if (_certificate_chain_pathname) {
-            rv = ::SSL_CTX_use_certificate_chain_file(ctx, up::nts(*_certificate_chain_pathname));
+            rv = ::SSL_CTX_use_certificate_chain_file(
+                ctx, up::nts(up::to_string_view(_certificate_chain_pathname.repr())));
             if (rv != 1) {
                 raise_ssl_error("tls-certificate-chain-error", rv);
             }
@@ -1245,8 +1246,8 @@ private: // --- scope ---
         auxiliary* auxiliary) -> ssl_ptr
     {
         ssl_ptr ssl = make_ssl(ssl_ctx);
-        if (hostname && !SSL_set_tlsext_host_name(ssl.get(), static_cast<const char*>(up::nts(*hostname)))) {
-            raise_ssl_error("tls-hostname-error", *hostname);
+        if (hostname && !SSL_set_tlsext_host_name(ssl.get(), static_cast<const char*>(up::nts(up::to_string_view(hostname.repr()))))) {
+            raise_ssl_error("tls-hostname-error", up::to_string_view(hostname.repr()));
         }
         openssl_process::instance().ssl_put_ptr(ssl.get(), auxiliary);
         return ssl;
