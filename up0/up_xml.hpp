@@ -3,8 +3,7 @@
 #include <unordered_map>
 
 #include "up_buffer.hpp"
-#include "up_optional.hpp"
-#include "up_string.hpp"
+#include "up_optional_string.hpp"
 #include "up_swap.hpp"
 #include "up_utility.hpp"
 
@@ -34,7 +33,7 @@ namespace up_xml
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit ns();
-        explicit ns(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix);
+        explicit ns(up::optional_string uri, up::optional_string prefix);
     public: // --- operations ---
         void swap(self& rhs) noexcept
         {
@@ -44,8 +43,8 @@ namespace up_xml
         {
             lhs.swap(rhs);
         }
-        auto uri() const -> const up::optional<up::shared_string>&;
-        auto prefix() const -> const up::optional<up::shared_string>&;
+        auto uri() const -> const up::optional_string&;
+        auto prefix() const -> const up::optional_string&;
         auto operator()(up::shared_string local_name) const -> qname;
     };
 
@@ -72,8 +71,8 @@ namespace up_xml
             lhs.swap(rhs);
         }
         auto local_name() const -> auto& { return _local_name; }
-        auto ns_uri() const -> const up::optional<up::shared_string>&;
-        auto ns_prefix() const -> const up::optional<up::shared_string>&;
+        auto ns_uri() const -> const up::optional_string&;
+        auto ns_prefix() const -> const up::optional_string&;
     };
 
 
@@ -161,8 +160,8 @@ namespace up_xml
         // parse document
         explicit document(
             up::chunk::from chunk,
-            const up::optional<up::shared_string>& uri,
-            const up::optional<up::shared_string>& encoding,
+            const up::optional_string& uri,
+            const up::optional_string& encoding,
             const uri_loader& loader,
             options options);
         // create document from element

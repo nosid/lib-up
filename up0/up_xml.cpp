@@ -318,7 +318,7 @@ namespace
     private:
         auto _ns(const xmlNs* ns)
         {
-            using ostring = up::optional<up::shared_string>;
+            using ostring = up::optional_string;
             return xml::ns(
                 ns->href ? ostring(_chars(ns->href)) : ostring(),
                 ns->prefix ? ostring(_chars(ns->prefix)) : ostring());
@@ -399,7 +399,7 @@ namespace
     {
     private: // --- scope ---
         using xml = up_xml::xml;
-        using ostring = up::optional<up::shared_string>;
+        using ostring = up::optional_string;
         using prefixes = std::unordered_map<ostring, std::pair<ostring, xmlNs*>>;
         static auto _chars(const char* value)
         {
@@ -519,26 +519,26 @@ class up_xml::xml::ns::impl final
 public: // --- scope ---
     using self = impl;
 private: // --- state ---
-    up::optional<up::shared_string> _uri;
-    up::optional<up::shared_string> _prefix;
+    up::optional_string _uri;
+    up::optional_string _prefix;
 public: // --- life ---
     explicit impl()
         : _uri(), _prefix()
     { }
-    explicit impl(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix)
+    explicit impl(up::optional_string uri, up::optional_string prefix)
         : _uri(std::move(uri)), _prefix(std::move(prefix))
     { }
 public: // --- operations ---
     friend auto get_uri(const std::shared_ptr<const impl>& ns)
-        -> const up::optional<up::shared_string>&
+        -> const up::optional_string&
     {
-        static up::optional<up::shared_string> none;
+        static up::optional_string none;
         return ns ? ns->_uri : none;
     }
     friend auto get_prefix(const std::shared_ptr<const impl>& ns)
-        -> const up::optional<up::shared_string>&
+        -> const up::optional_string&
     {
-        static up::optional<up::shared_string> none;
+        static up::optional_string none;
         return ns ? ns->_prefix : none;
     }
 };
@@ -548,16 +548,16 @@ up_xml::xml::ns::ns()
     : _impl()
 { }
 
-up_xml::xml::ns::ns(up::optional<up::shared_string> uri, up::optional<up::shared_string> prefix)
+up_xml::xml::ns::ns(up::optional_string uri, up::optional_string prefix)
     : _impl(std::make_shared<const impl>(std::move(uri), std::move(prefix)))
 { }
 
-auto up_xml::xml::ns::uri() const -> const up::optional<up::shared_string>&
+auto up_xml::xml::ns::uri() const -> const up::optional_string&
 {
     return get_uri(_impl);
 }
 
-auto up_xml::xml::ns::prefix() const -> const up::optional<up::shared_string>&
+auto up_xml::xml::ns::prefix() const -> const up::optional_string&
 {
     return get_prefix(_impl);
 }
@@ -568,12 +568,12 @@ auto up_xml::xml::ns::operator()(up::shared_string local_name) const -> qname
 }
 
 
-auto up_xml::xml::qname::ns_uri() const -> const up::optional<up::shared_string>&
+auto up_xml::xml::qname::ns_uri() const -> const up::optional_string&
 {
     return get_uri(_ns);
 }
 
-auto up_xml::xml::qname::ns_prefix() const -> const up::optional<up::shared_string>&
+auto up_xml::xml::qname::ns_prefix() const -> const up::optional_string&
 {
     return get_prefix(_ns);
 }
@@ -619,17 +619,17 @@ public: // --- operations ---
 class up_xml::xml::document::impl::simple final : public up_xml::xml::document::impl
 {
 private: // --- scope ---
-    static auto as_c_str(const up::optional<up::shared_string>& value) -> up::nts
+    static auto as_c_str(const up::optional_string& value) -> up::nts
     {
         return value ? up::nts(*value) : up::nts(nullptr);
     }
-    static auto as_c_str(const up::optional<up::shared_string>&& value) -> const char* = delete;
+    static auto as_c_str(const up::optional_string&& value) -> const char* = delete;
 public: // --- life ---
     // parsing XML
     explicit simple(
         up::chunk::from chunk,
-        const up::optional<up::shared_string>& URL,
-        const up::optional<up::shared_string>& encoding,
+        const up::optional_string& URL,
+        const up::optional_string& encoding,
         const uri_loader& loader,
         options options)
         : impl()
@@ -761,8 +761,8 @@ private:
 
 up_xml::xml::document::document(
     up::chunk::from chunk,
-    const up::optional<up::shared_string>& uri,
-    const up::optional<up::shared_string>& encoding,
+    const up::optional_string& uri,
+    const up::optional_string& encoding,
     const uri_loader& loader,
     options options)
     : _impl(flush_make_shared<const impl::simple>(chunk, uri, encoding, loader, options))
