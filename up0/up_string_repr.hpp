@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "up_ints.hpp"
+#include "up_throwable.hpp"
 
 namespace up_string_repr
 {
@@ -25,7 +26,7 @@ namespace up_string_repr
         static auto make_storage(size_type capacity, size_type size) -> storage_ptr<Unique>;
         template <bool Unique>
         static auto clone_storage(const storage& storage) -> storage_ptr<Unique>;
-        template <bool Unique>
+        template <bool Unique, bool Nullable>
         class handle;
     private:
         using tag = unsigned char;
@@ -178,12 +179,13 @@ namespace up_string_repr
     extern template auto string_repr::clone_storage<true>(const storage& storage) -> storage_ptr<true>;
 
 
-    template <bool Unique>
+    template <bool Unique, bool Nullable>
     class string_repr::handle
     {
     private: // --- scope ---
         using self = handle;
-        friend handle<!Unique>;
+        template <bool U, bool N>
+        friend class handle;
     public:
         using traits_type = string_repr::traits_type;
         static auto max_size() -> size_type
@@ -196,6 +198,12 @@ namespace up_string_repr
         handle() noexcept
         {
             std::memset(&_sso, 0, sso_size);
+        }
+        explicit handle(std::nullptr_t) noexcept
+        {
+            static_assert(tag_external > inline_size, "consistency check");
+            _sso._external._tag = tag_external;
+            _sso._external._ptr = nullptr;
         }
         explicit handle(size_type capacity, size_type size)
         {
@@ -212,6 +220,8 @@ namespace up_string_repr
             std::memcpy(&_sso, &rhs._sso, sso_size);
             if (_sso._external._tag != tag_external) {
                 // nothing
+            } else if (_is_null()) {
+                // nothing
             } else if (Unique) {
                 _sso._external._ptr = clone_storage<true>(*_sso._external._ptr).release();
             } else {
@@ -225,29 +235,43 @@ namespace up_string_repr
         }
         ~handle() noexcept
         {
-            if (_sso._external._tag == tag_external) {
+            if (_sso._external._tag == tag_external && !_is_null()) {
                 storage_ptr<Unique>(_sso._external._ptr);
             } // else: nothing
         }
-        explicit handle(const handle<!Unique>& rhs)
+        template <bool U, bool N>
+        explicit handle(const handle<U, N>& rhs)
         {
             std::memcpy(&_sso, &rhs._sso, sso_size);
-            if (_sso._external._tag == tag_external) {
+            if (_sso._external._tag != tag_external) {
+                // nothing
+            } else if (rhs._is_null()) {
+                if (!Nullable) {
+                    throw up::make_throwable("null-string-repr");
+                } // else: nothing
+            } else if (U || Unique) {
                 _sso._external._ptr = clone_storage<true>(*_sso._external._ptr).release();
-            } // else: nothing
+            } else {
+                _sso._external._ptr->acquire();
+            }
         }
-        explicit handle(handle<!Unique>&& rhs)
+        template <bool U, bool N>
+        explicit handle(handle<U, N>&& rhs)
         {
             std::memcpy(&_sso, &rhs._sso, sso_size);
             std::memset(&rhs._sso, 0, sso_size);
             if (_sso._external._tag != tag_external) {
                 // nothing
-            } else if (!Unique) {
+            } else if (_is_null()) {
+                if (!Nullable) {
+                    throw up::make_throwable("null-string-repr");
+                } // else: nothing
+            } else if (U || !Unique) {
                 // nothing
             } else if (_sso._external._ptr->unique()) {
                 // nothing
             } else {
-                _sso._external._ptr = clone_storage<true>(*storage_ptr<!Unique>(_sso._external._ptr)).release();
+                _sso._external._ptr = clone_storage<true>(*storage_ptr<U>(_sso._external._ptr)).release();
             }
         }
     public: // --- operations ---
@@ -257,18 +281,21 @@ namespace up_string_repr
         }
         auto operator=(self&& rhs) & noexcept -> self&
         {
-            if (_sso._external._tag == tag_external) {
+            if (_sso._external._tag == tag_external && !_is_null()) {
                 storage_ptr<Unique>(_sso._external._ptr);
             } // else: nothing
             std::memcpy(&_sso, &rhs._sso, sso_size);
             std::memset(&rhs._sso, 0, sso_size);
             return *this;
         }
-        auto operator=(const handle<!Unique>& rhs) & -> self&
+
+        template <bool U, bool N>
+        auto operator=(const handle<U, N>& rhs) & -> self&
         {
             return operator=(self(rhs));
         }
-        auto operator=(handle<!Unique>&& rhs) & -> self&
+        template <bool U, bool N>
+        auto operator=(handle<U, N>&& rhs) & -> self&
         {
             return operator=(self(std::move(rhs)));
         }
@@ -285,50 +312,73 @@ namespace up_string_repr
         {
             lhs.swap(rhs);
         }
-        auto capacity() const noexcept -> size_type
+        auto capacity() const noexcept(!Nullable) -> size_type
         {
-            if (_sso._external._tag == tag_external) {
-                return _sso._external._ptr->capacity();
-            } else {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } else if (_sso._external._tag != tag_external) {
                 return inline_size;
+            } else {
+                return _sso._external._ptr->capacity();
             }
         }
-        auto size() const noexcept -> size_type
+        auto size() const noexcept(!Nullable) -> size_type
         {
-            if (_sso._external._tag == tag_external) {
-                return _sso._external._ptr->size();
-            } else {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } else if (_sso._external._tag != tag_external) {
                 return _sso._internal._tag;
+            } else {
+                return _sso._external._ptr->size();
             }
         }
-        void set_size(size_type size) noexcept
+        void set_size(size_type size) noexcept(!Nullable)
         {
-            if (_sso._external._tag == tag_external) {
-                _sso._external._ptr->set_size(size);
-            } else {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } else if (_sso._external._tag != tag_external) {
                 _sso._internal._tag = up::ints::caster(size);
+            } else {
+                _sso._external._ptr->set_size(size);
             }
         }
-        auto data() const noexcept -> const char*
+        auto data() const noexcept(!Nullable) -> const char*
         {
-            if (_sso._external._tag == tag_external) {
-                return _sso._external._ptr->data();
-            } else {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } else if (_sso._external._tag != tag_external) {
                 return _sso._internal._data;
+            } else {
+                return _sso._external._ptr->data();
             }
         }
-        auto data() noexcept -> char*
+        auto data() noexcept(!Nullable) -> char*
         {
-            if (_sso._external._tag == tag_external) {
-                return _sso._external._ptr->data();
-            } else {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } else if (_sso._external._tag != tag_external) {
                 return _sso._internal._data;
+            } else {
+                return _sso._external._ptr->data();
             }
+        }
+        explicit operator bool() const noexcept
+        {
+            return _is_null();
+        }
+    private:
+        bool _is_null() const noexcept
+        {
+            return Nullable
+                && _sso._external._tag == tag_external
+                && _sso._external._ptr == nullptr;
         }
     };
 
-    extern template class string_repr::handle<false>;
-    extern template class string_repr::handle<true>;
+    extern template class string_repr::handle<false, false>;
+    extern template class string_repr::handle<false, true>;
+    extern template class string_repr::handle<true, false>;
+    extern template class string_repr::handle<true, true>;
 
 }
 

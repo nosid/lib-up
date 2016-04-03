@@ -574,6 +574,14 @@ namespace up_string
         {
             return {_data(), _size()};
         }
+        auto repr() const & -> const Repr&
+        {
+            return *this;
+        }
+        auto repr() && -> Repr
+        {
+            return std::move(*this);
+        }
 
     protected:
         auto _size() const noexcept -> size_type
@@ -705,6 +713,7 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
+        using base::repr;
 
         auto to_string() const & -> const self&
         {
@@ -1131,6 +1140,7 @@ namespace up_string
 
         using base::compare;
         using base::operator string_view;
+        using base::repr;
 
         auto to_string() const & -> const self&
         {
@@ -1689,11 +1699,11 @@ namespace up_string
     }
 
 
-    using shared_string = basic_string<up::string_repr::handle<false>, false>;
-    using unique_string = basic_string<up::string_repr::handle<true>, true>;
+    using shared_string = basic_string<up::string_repr::handle<false, false>, false>;
+    using unique_string = basic_string<up::string_repr::handle<true, false>, true>;
 
-    extern template class basic_string<up::string_repr::handle<false>, false>;
-    extern template class basic_string<up::string_repr::handle<true>, true>;
+    extern template class basic_string<up::string_repr::handle<false, false>, false>;
+    extern template class basic_string<up::string_repr::handle<true, false>, true>;
 
 }
 
@@ -1708,6 +1718,7 @@ namespace std
         using result_type = std::size_t;
     public: // --- operations ---
         auto operator()(const up_string::basic_string<Repr, Unique>& value) const noexcept
+            -> result_type
         {
             using string_view = typename up_string::basic_string<Repr, Unique>::string_view;
             return hash<string_view>()(value.operator string_view());

@@ -10,5 +10,7 @@ template auto up_string_repr::string_repr::make_storage<true>(size_type capacity
 template auto up_string_repr::string_repr::clone_storage<false>(const storage& storage) -> storage_ptr<false>;
 template auto up_string_repr::string_repr::clone_storage<true>(const storage& storage) -> storage_ptr<true>;
 
-template class up_string_repr::string_repr::handle<false>;
-template class up_string_repr::string_repr::handle<true>;
+template class up_string_repr::string_repr::handle<false, false>;
+template class up_string_repr::string_repr::handle<false, true>;
+template class up_string_repr::string_repr::handle<true, false>;
+template class up_string_repr::string_repr::handle<true, true>;

@@ -13,9 +13,13 @@
 namespace up_optional
 {
 
+    using std::experimental::bad_optional_access;
     using std::experimental::optional;
-
+    using std::experimental::in_place_t;
+    using std::experimental::in_place;
+    using std::experimental::nullopt_t;
     using std::experimental::nullopt;
+    using std::experimental::make_optional;
 
 }
 
@@ -49,7 +53,12 @@ namespace std
 namespace up
 {
 
+    using up_optional::bad_optional_access;
     using up_optional::optional;
+    using up_optional::in_place_t;
+    using up_optional::in_place;
+    using up_optional::nullopt_t;
     using up_optional::nullopt;
+    using up_optional::make_optional;
 
 }
