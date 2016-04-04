@@ -147,7 +147,7 @@ namespace up_optional_string
     private:
         bool _is_null() const noexcept
         {
-            return operator bool();
+            return !operator bool();
         }
     };
 

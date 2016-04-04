@@ -364,7 +364,7 @@ namespace up_string_repr
         }
         explicit operator bool() const noexcept
         {
-            return _is_null();
+            return !_is_null();
         }
     private:
         bool _is_null() const noexcept
