@@ -105,7 +105,7 @@ namespace up_test
     {
     public: // --- scope ---
         template <typename Actual, typename Expected>
-        static void equal(location location, Actual&& actual, Expected&& expected)
+        static void check_equal(location location, Actual&& actual, Expected&& expected)
         {
             using namespace up::literals;
             if (actual != expected || !(actual == expected)) {
@@ -114,6 +114,28 @@ namespace up_test
                     std::forward<Expected>(expected));
             } else {
                 _passed(location, "equal"_sl);
+            }
+        }
+        template <typename Condition>
+        static void check_false(location location, Condition&& condition)
+        {
+            using namespace up::literals;
+            if (condition) {
+                _failed_aux(location, "condition"_sl,
+                    std::forward<Condition>(condition));
+            } else {
+                _passed(location, "condition"_sl);
+            }
+        }
+        template <typename Condition>
+        static void check_true(location location, Condition&& condition)
+        {
+            using namespace up::literals;
+            if (!condition) {
+                _failed_aux(location, "condition"_sl,
+                    std::forward<Condition>(condition));
+            } else {
+                _passed(location, "condition"_sl);
             }
         }
     private:
@@ -153,5 +175,15 @@ namespace up
 
 #define UP_TEST_EQUAL(...) \
     do { \
-        ::up_test::check::equal({__FILE__, __LINE__, __PRETTY_FUNCTION__}, __VA_ARGS__); \
+        ::up_test::check::check_equal({__FILE__, __LINE__, __PRETTY_FUNCTION__}, __VA_ARGS__); \
+    } while (false)
+
+#define UP_TEST_FALSE(...) \
+    do { \
+        ::up_test::check::check_false({__FILE__, __LINE__, __PRETTY_FUNCTION__}, __VA_ARGS__); \
+    } while (false)
+
+#define UP_TEST_TRUE(...) \
+    do { \
+        ::up_test::check::check_true({__FILE__, __LINE__, __PRETTY_FUNCTION__}, __VA_ARGS__); \
     } while (false)

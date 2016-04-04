@@ -15,11 +15,6 @@ namespace
 
         UP_TEST_EQUAL('b' + up::unique_string("ar"), "bar");
         UP_TEST_EQUAL(up::unique_string("ba") + 'r', "bar");
-
-        up::shared_string a;
-        up::unique_string b(a);
-        up::shared_string c(b);
-        b = a;
     };
 
 }
