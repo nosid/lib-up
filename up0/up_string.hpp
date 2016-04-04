@@ -1122,6 +1122,10 @@ namespace up_string
         }
 
         using base::data;
+        auto data() noexcept -> value_type*
+        {
+            return _data();
+        }
         using base::c_str;
 
         using base::find;
