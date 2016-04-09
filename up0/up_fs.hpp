@@ -224,6 +224,7 @@ namespace up_fs
             lhs.swap(rhs);
         }
         auto to_insight() const -> up::insight;
+        auto pathname() const -> const up::shared_string&;
         auto follow(bool value) const -> self;
         auto joined(const up::string_view& pathname) const -> self;
         auto resolved() const -> origin;
@@ -246,7 +247,10 @@ namespace up_fs
         void truncate(off_t length) const;
         /* This function returns an absolute path, not a canonical path. There
          * is currently no support for getting a canonical path. */
-        auto absolute() const -> up::unique_string;
+        auto absolute() const -> self;
+        auto detached() const -> self;
+        // see also: path_resolution(7)
+        auto lexically_normal(bool relaxed = false) const -> self;
     };
 
 

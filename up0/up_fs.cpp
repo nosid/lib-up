@@ -330,36 +330,92 @@ namespace
     }
 
 
-    template <typename Callable>
-    void pathname_split(const char* data, std::size_t size, Callable&& callable)
+    template <typename..., typename Parts>
+    auto pathname_concat(bool absolute, const Parts& parts) -> up::unique_string
     {
-        auto&& invoke = [&callable](const char* first, const char* last) {
-            if (first != last && (first + 1 != last || *first != '.')) {
-                callable(up::unique_string(first, last));
+        auto p = parts.begin(), q = parts.end();
+        if (p != q) {
+            up::unique_string result(absolute, '/');
+            result.append(*p);
+            for (++p; p != q; ++p) {
+                result.append(1, '/');
+                result.append(*p);
             }
-        };
-        const char* p = data;
-        const char* q = data + size;
-        const char* r;
-        while ((r = std::find(p, q, '/')) != q) {
-            invoke(p, r);
-            p = r + 1;
+            return result;
+        } else {
+            return up::unique_string(1, absolute ? '/' : '.');
         }
-        invoke(p, q);
     }
 
-    auto pathname_normalize(const up::string_view& pathname)
+    template <typename..., typename Parts, typename Tail>
+    auto pathname_concat(bool absolute, const Parts& parts, const Tail& tail) -> up::unique_string
     {
-        bool absolute = pathname.compare(0, 1, "/") == 0;
-        bool separator = absolute;
-        up::unique_string result;
-        pathname_split(pathname.data(), pathname.size(), [&](auto&& name) {
-                result.append(separator ? 1 : 0, '/');
-                separator = true;
-                result.append(name);
-            });
-        result.append(result.empty() ? 1 : 0, absolute ? '/' : '.');
+        up::unique_string result(absolute, '/');
+        for (auto&& s : parts) {
+            result.append(s);
+            result.append(1, '/');
+        }
+        result.append(tail);
         return result;
+    }
+
+    auto pathname_lexically_normal(const up::string_view& pathname, bool relaxed)
+        -> up::unique_string
+    {
+        /* In relaxed mode the following two additional transformations are
+         * made, that made change the semantics (for at least some
+         * operations):
+         *
+         * collapsing: ".." segments are collapsed with the preceding path
+         *
+         * truncation: "." and "/" are truncated
+         */
+        if (pathname.empty()) {
+            return {};
+        } else {
+            auto dot = up::string_view(".", 1);
+            auto dotdot = up::string_view("..", 2);
+            bool absolute = pathname[0] == '/';
+
+            std::vector<up::string_view> parts;
+
+            up::string_view::size_type p = absolute, q;
+            for (; (q = pathname.find('/', p)) != up::string_view::npos; p = q + 1) {
+                auto s = pathname.substr(p, q - p);
+                if (s.empty() || s == dot) {
+                    // nothing
+                } else if (s != dotdot) {
+                    parts.push_back(s);
+                } else if (absolute && parts.empty()) {
+                    // nothing (special case for absolute paths)
+                } else if (relaxed && !parts.empty() && parts.back() != dotdot) {
+                    parts.pop_back();
+                } else {
+                    parts.push_back(s);
+                }
+            }
+
+            /* Note: dot and dotdot at the end of a pathname are meaningful
+             * for some operations and retained if !relaxed, e.g. there is a
+             * difference between `mkdir("foo/")` and `mkdir("foo/.")`. */
+
+            auto s = pathname.substr(p);
+            if (s.empty() || s == dot) {
+                return (relaxed || parts.empty() || parts.back() == dotdot)
+                    ? pathname_concat(absolute, parts)
+                    : pathname_concat(absolute, parts, s);
+            } else if (s != dotdot) {
+                return pathname_concat(absolute, parts, s);
+            } else if (parts.empty()) {
+                return absolute ? up::string_view("/", 1) : s;
+            } else if (!relaxed || parts.back() == dotdot) {
+                return pathname_concat(absolute, parts, s);
+            } else {
+                // relaxed && !parts.empty() && parts.back() != dotdot && s == dotdot
+                parts.pop_back();
+                return pathname_concat(absolute, parts);
+            }
+        }
     }
 
 
@@ -789,7 +845,7 @@ public: // --- operations ---
                 return r.first < previous.second;
             });
         if (p != roots.end() && p->first == previous.second) {
-            return pathname_normalize(p->second);
+            return pathname_lexically_normal(p->second, false);
         }
 
         handle current(_context->openat(_handle.get_or(AT_FDCWD), "..", flags));
@@ -822,7 +878,7 @@ public: // --- operations ---
                     result.append(names.back().to_string());
                     names.pop_back();
                 }
-                return pathname_normalize(result);
+                return pathname_lexically_normal(result, false);
             }
             previous = inode(parent.get());
             up::swap_noexcept(current, parent);
@@ -891,7 +947,11 @@ public: // --- life ---
         : _origin(std::move(origin))
         , _pathname(std::move(pathname))
         , _follow(std::move(follow))
-    { }
+    {
+        if (_pathname.empty()) {
+            throw up::make_exception("fs-empty-pathname");
+        } // else: okay
+    }
 public: // --- operations ---
     auto to_insight() const -> up::insight
     {
@@ -909,19 +969,23 @@ public: // --- operations ---
         flags |= _follow ? 0 : O_NOFOLLOW;
         return _origin->make_handle(up::nts(_pathname), flags, mode);
     }
+    auto pathname() const -> const up::shared_string&
+    {
+        return _pathname;
+    }
     auto follow(bool value) const -> std::shared_ptr<const self>
     {
         return std::make_shared<const self>(_origin, _pathname, value);
     }
     auto joined(const up::string_view& pathname) const -> std::shared_ptr<const self>
     {
-        if (pathname.compare(0, 1, "/") == 0) {
-            return std::make_shared<const self>(
-                _origin->working(), up::shared_string(pathname), _follow);
+        if (pathname.empty()) {
+            throw up::make_exception("fs-empty-pathname");
+        } else if (pathname[0] == '/') {
+            return std::make_shared<const self>(_origin, pathname, _follow);
         } else {
-            up::unique_string s = _pathname;
-            s.append(1, '/').append(pathname);
-            return std::make_shared<const self>(_origin, pathname_normalize(s), _follow);
+            auto s = up::shared_string::concat(_pathname, up::string_view("/", 1), pathname);
+            return std::make_shared<const self>(_origin, std::move(s), _follow);
         }
     }
     auto resolved() const -> std::shared_ptr<const origin::impl>
@@ -1017,14 +1081,29 @@ public: // --- operations ---
         int flags = flags_nofollow(O_NOFOLLOW, O_RDONLY | O_DIRECTORY);
         return scan_directory(_origin->make_handle(up::nts(_pathname), flags), std::move(visitor));
     }
-    auto absolute() const -> up::unique_string
+    auto absolute_pathname() const -> up::shared_string
     {
-        up::unique_string result;
-        if (_pathname.compare(0, 1, "/") == 0) {
-            return pathname_normalize(_pathname);
+        if (_pathname.empty()) {
+            // this should already have been checked in the constructor
+            throw up::make_exception("fs-internal-empty-pathname");
+        } else if (_pathname[0] == '/') {
+            return _pathname;
         } else {
-            return pathname_normalize(_origin->location().append(1, '/').append(_pathname));
+            return _origin->location().append(1, '/').append(_pathname);
         }
+    }
+    auto absolute() const -> std::shared_ptr<const self>
+    {
+        return std::make_shared<const self>(_origin, absolute_pathname(), _follow);
+    }
+    auto detached() const -> std::shared_ptr<const self>
+    {
+        return std::make_shared<const self>(_origin->working(), _pathname, _follow);
+    }
+    auto lexically_normal(bool relaxed) const -> std::shared_ptr<const self>
+    {
+        return std::make_shared<const self>(
+            _origin->working(), pathname_lexically_normal(_pathname, relaxed), _follow);
     }
 private:
     auto flags_follow(int additional, int base = 0) const -> int
@@ -1050,11 +1129,20 @@ public:
 
 up_fs::fs::path::path(origin origin, up::shared_string pathname, bool follow)
     : _impl(std::make_shared<const impl>(origin::accessor::get_impl(std::move(origin)), std::move(pathname), follow))
-{ }
+{
+    if (pathname.empty()) {
+        throw up::make_exception("fs-empty-pathname");
+    } // else: okay
+}
 
 auto up_fs::fs::path::to_insight() const -> up::insight
 {
     return up::insight(typeid(*this), "fs-path", _impl->to_insight());
+}
+
+auto up_fs::fs::path::pathname() const -> const up::shared_string&
+{
+    return _impl->pathname();
 }
 
 auto up_fs::fs::path::follow(bool value) const -> self
@@ -1064,7 +1152,11 @@ auto up_fs::fs::path::follow(bool value) const -> self
 
 auto up_fs::fs::path::joined(const up::string_view& pathname) const -> self
 {
-    return self(_impl->joined(pathname));
+    if (pathname.empty()) {
+        throw up::make_exception("fs-empty-pathname");
+    } else {
+        return self(_impl->joined(pathname));
+    }
 }
 
 auto up_fs::fs::path::resolved() const -> origin
@@ -1140,10 +1232,9 @@ bool up_fs::fs::path::list(std::function<bool(directory_entry)> visitor) const
 auto up_fs::fs::path::statvfs() const -> statfs
 {
     auto result = std::make_shared<statfs::impl>();
-    auto pathname = absolute();
     int rv;
     do {
-        rv = ::statvfs(up::nts(pathname), &result->_statvfs);
+        rv = ::statvfs(up::nts(_impl->absolute_pathname()), &result->_statvfs);
     } while (rv == -1 && errno == EINTR);
     check(rv, "fs-statvfs-error", *this);
     return statfs(statfs::init{result});
@@ -1151,13 +1242,23 @@ auto up_fs::fs::path::statvfs() const -> statfs
 
 void up_fs::fs::path::truncate(off_t length) const
 {
-    check(::truncate(up::nts(absolute()), length),
+    check(::truncate(up::nts(_impl->absolute_pathname()), length),
         "fs-truncate-error", *this, length);
 }
 
-auto up_fs::fs::path::absolute() const -> up::unique_string
+auto up_fs::fs::path::absolute() const -> self
 {
-    return _impl->absolute();
+    return self(_impl->absolute());
+}
+
+auto up_fs::fs::path::detached() const -> self
+{
+    return self(_impl->detached());
+}
+
+auto up_fs::fs::path::lexically_normal(bool relaxed) const -> self
+{
+    return self(_impl->lexically_normal(relaxed));
 }
 
 
