@@ -17,7 +17,7 @@ namespace up_fs
         class directory_entry;
         class context;
         class origin;
-        class path;
+        class location;
         class object;
         class locked_file;
         class file;
@@ -200,18 +200,18 @@ namespace up_fs
     };
 
 
-    class fs::path final
+    class fs::location final
     {
     public: // --- scope ---
-        using self = path;
+        using self = location;
         class impl;
         class accessor;
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit path(origin origin, up::shared_string pathname, bool follow = false);
+        explicit location(origin origin, up::shared_string pathname, bool follow = false);
     private:
-        explicit path(std::shared_ptr<const impl>&& impl)
+        explicit location(std::shared_ptr<const impl>&& impl)
             : _impl(std::move(impl))
         { }
     public: // --- operations ---
@@ -245,8 +245,9 @@ namespace up_fs
          * are no corresponding system calls with an dir_fd. */
         auto statvfs() const -> statfs;
         void truncate(off_t length) const;
-        /* This function returns an absolute path, not a canonical path. There
-         * is currently no support for getting a canonical path. */
+        /* This function returns an absolute location, not a canonical
+         * location. There is currently no support for getting a canonical
+         * location. */
         auto absolute() const -> self;
         auto detached() const -> self;
         // see also: path_resolution(7)
@@ -264,7 +265,7 @@ namespace up_fs
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
         explicit object(init&& arg);
-        explicit object(const path& path);
+        explicit object(const location& location);
         object(const self& rhs) = delete;
         object(self&& rhs) noexcept = default;
         ~object() noexcept = default;
@@ -310,7 +311,7 @@ namespace up_fs
     private: // --- state ---
         std::shared_ptr<const impl> _impl;
     public: // --- life ---
-        explicit file(const path& path, options options);
+        explicit file(const location& location, options options);
         explicit file(memory_t, context context, const up::string_view& name);
         file(const self& rhs) = delete;
         file(self&& rhs) noexcept = default;
@@ -344,7 +345,7 @@ namespace up_fs
         void write_all(up::chunk::from chunk, off_t offset) const;
         void write_all(up::chunk::from_bulk_t&& chunks, off_t offset) const;
         void posix_fadvise(off_t offset, off_t length, int advice) const;
-        void linkto(const path& target) const;
+        void linkto(const location& target) const;
         auto acquire_lock(bool exclusive, bool blocking = true) const -> lock;
         auto make_channel() const -> channel;
     };
@@ -415,7 +416,7 @@ namespace up_fs
     private: // --- state ---
         std::shared_ptr<impl> _impl;
     public: // --- life ---
-        explicit directory(const path& path);
+        explicit directory(const location& location);
         directory(const self& rhs) = delete;
         directory(self&& rhs) noexcept = default;
         ~directory() noexcept = default;

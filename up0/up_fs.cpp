@@ -921,8 +921,8 @@ public: // --- operations ---
 private:
     auto find_mounts() const -> std::vector<mount>
     {
-        auto path = up_fs::fs::path(origin(origin::init{std::make_shared<impl>(_context)}), "/proc/self/mountinfo");
-        auto file = up_fs::fs::file(path, {up_fs::fs::file::option::read});
+        auto location = up_fs::fs::location(origin(origin::init{std::make_shared<impl>(_context)}), "/proc/self/mountinfo");
+        auto file = up_fs::fs::file(location, {up_fs::fs::file::option::read});
         return parse_file_content(file, 1 << 12, parse_mountinfo);
     }
 };
@@ -966,7 +966,7 @@ auto up_fs::fs::origin::resolved(const up::string_view& pathname, bool follow) c
 }
 
 
-class up_fs::fs::path::impl final
+class up_fs::fs::location::impl final
 {
 public: // --- scope ---
     using self = impl;
@@ -987,7 +987,7 @@ public: // --- life ---
 public: // --- operations ---
     auto to_insight() const -> up::insight
     {
-        return up::insight(typeid(*this), "fs-path-impl",
+        return up::insight(typeid(*this), "fs-location-impl",
             up::invoke_to_insight_with_fallback(*_origin),
             up::invoke_to_insight_with_fallback(_pathname),
             up::invoke_to_insight_with_fallback(_follow));
@@ -1212,17 +1212,17 @@ private:
 };
 
 
-class up_fs::fs::path::accessor final
+class up_fs::fs::location::accessor final
 {
 public:
-    static auto get_impl(const path& path) -> auto&
+    static auto get_impl(const location& location) -> auto&
     {
-        return path._impl;
+        return location._impl;
     }
 };
 
 
-up_fs::fs::path::path(origin origin, up::shared_string pathname, bool follow)
+up_fs::fs::location::location(origin origin, up::shared_string pathname, bool follow)
     : _impl(std::make_shared<const impl>(origin::accessor::get_impl(std::move(origin)), std::move(pathname), follow))
 {
     if (pathname.empty()) {
@@ -1230,22 +1230,22 @@ up_fs::fs::path::path(origin origin, up::shared_string pathname, bool follow)
     } // else: okay
 }
 
-auto up_fs::fs::path::to_insight() const -> up::insight
+auto up_fs::fs::location::to_insight() const -> up::insight
 {
-    return up::insight(typeid(*this), "fs-path", _impl->to_insight());
+    return up::insight(typeid(*this), "fs-location", _impl->to_insight());
 }
 
-auto up_fs::fs::path::pathname() const -> const up::shared_string&
+auto up_fs::fs::location::pathname() const -> const up::shared_string&
 {
     return _impl->pathname();
 }
 
-auto up_fs::fs::path::follow(bool value) const -> self
+auto up_fs::fs::location::follow(bool value) const -> self
 {
     return self(_impl->follow(value));
 }
 
-auto up_fs::fs::path::joined(const up::string_view& pathname) const -> self
+auto up_fs::fs::location::joined(const up::string_view& pathname) const -> self
 {
     if (pathname.empty()) {
         throw up::make_exception("fs-empty-pathname");
@@ -1254,77 +1254,77 @@ auto up_fs::fs::path::joined(const up::string_view& pathname) const -> self
     }
 }
 
-auto up_fs::fs::path::resolved() const -> origin
+auto up_fs::fs::location::resolved() const -> origin
 {
     return origin(origin::init{_impl->resolved()});
 }
 
-auto up_fs::fs::path::stat() const -> stats
+auto up_fs::fs::location::stat() const -> stats
 {
     return stats(stats::init{_impl->stat()});
 }
 
-void up_fs::fs::path::chmod(mode_t mode) const
+void up_fs::fs::location::chmod(mode_t mode) const
 {
     _impl->chmod(mode);
 }
 
-void up_fs::fs::path::chown(uid_t owner, gid_t group) const
+void up_fs::fs::location::chown(uid_t owner, gid_t group) const
 {
     _impl->chown(owner, group);
 }
 
-void up_fs::fs::path::mkdir(mode_t mode) const
+void up_fs::fs::location::mkdir(mode_t mode) const
 {
     _impl->mkdir(mode);
 }
 
-void up_fs::fs::path::rmdir() const
+void up_fs::fs::location::rmdir() const
 {
     _impl->rmdir();
 }
 
-void up_fs::fs::path::link(const path& target) const
+void up_fs::fs::location::link(const location& target) const
 {
     _impl->link(*target._impl);
 }
 
-void up_fs::fs::path::unlink() const
+void up_fs::fs::location::unlink() const
 {
     _impl->unlink();
 }
 
-void up_fs::fs::path::rename(const path& target, bool replace) const
+void up_fs::fs::location::rename(const location& target, bool replace) const
 {
     _impl->rename(*target._impl, replace);
 }
 
-void up_fs::fs::path::exchange(const path& target) const
+void up_fs::fs::location::exchange(const location& target) const
 {
     _impl->exchange(*target._impl);
 }
 
-auto up_fs::fs::path::readlink() const -> up::unique_string
+auto up_fs::fs::location::readlink() const -> up::unique_string
 {
     return _impl->readlink();
 }
 
-void up_fs::fs::path::symlink(const up::string_view& value) const
+void up_fs::fs::location::symlink(const up::string_view& value) const
 {
     _impl->symlink(value);
 }
 
-auto up_fs::fs::path::list() const -> std::vector<directory_entry>
+auto up_fs::fs::location::list() const -> std::vector<directory_entry>
 {
     return _impl->list();
 }
 
-bool up_fs::fs::path::list(std::function<bool(directory_entry)> visitor) const
+bool up_fs::fs::location::list(std::function<bool(directory_entry)> visitor) const
 {
     return _impl->list(std::move(visitor));
 }
 
-auto up_fs::fs::path::statvfs() const -> statfs
+auto up_fs::fs::location::statvfs() const -> statfs
 {
     auto result = std::make_shared<statfs::impl>();
     int rv;
@@ -1335,7 +1335,7 @@ auto up_fs::fs::path::statvfs() const -> statfs
     return statfs(statfs::init{result});
 }
 
-void up_fs::fs::path::truncate(off_t length) const
+void up_fs::fs::location::truncate(off_t length) const
 {
     auto pathname = up::nts(_impl->absolute_pathname());
     int rv;
@@ -1345,17 +1345,17 @@ void up_fs::fs::path::truncate(off_t length) const
     check(rv, "fs-truncate-error", *this, length);
 }
 
-auto up_fs::fs::path::absolute() const -> self
+auto up_fs::fs::location::absolute() const -> self
 {
     return self(_impl->absolute());
 }
 
-auto up_fs::fs::path::detached() const -> self
+auto up_fs::fs::location::detached() const -> self
 {
     return self(_impl->detached());
 }
 
-auto up_fs::fs::path::lexically_normal(bool relaxed) const -> self
+auto up_fs::fs::location::lexically_normal(bool relaxed) const -> self
 {
     return self(_impl->lexically_normal(relaxed));
 }
@@ -1450,8 +1450,8 @@ up_fs::fs::object::object(init&& arg)
     : _impl(std::move(arg._impl))
 { }
 
-up_fs::fs::object::object(const path& path)
-    : _impl(std::make_shared<const impl>(path::accessor::get_impl(path)->make_handle(O_RDONLY)))
+up_fs::fs::object::object(const location& location)
+    : _impl(std::make_shared<const impl>(location::accessor::get_impl(location)->make_handle(O_RDONLY)))
 { }
 
 void up_fs::fs::object::chmod(mode_t mode) const
@@ -1508,7 +1508,7 @@ public: // --- operations ---
 };
 
 
-up_fs::fs::file::file(const path& path, options options)
+up_fs::fs::file::file(const location& location, options options)
     : _impl(nullptr)
 {
     int flags = 0;
@@ -1550,7 +1550,7 @@ up_fs::fs::file::file(const path& path, options options)
     if (options.all(option::others, option::executable)) {
         mode |= S_IXOTH;
     }
-    auto&& p = path::accessor::get_impl(path);
+    auto&& p = location::accessor::get_impl(location);
     _impl = std::make_shared<const impl>(p->make_handle(flags, mode), p->get_context());
 }
 
@@ -1681,7 +1681,7 @@ void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) cons
     }
 }
 
-void up_fs::fs::file::linkto(const path& target) const
+void up_fs::fs::file::linkto(const location& target) const
 {
     auto source = "/proc/self/fd/" + up::invoke_to_string(_impl->fd());
     target.joined(source).follow(true).link(target);
@@ -1835,10 +1835,10 @@ public: // --- operations ---
 };
 
 
-up_fs::fs::directory::directory(const path& path)
+up_fs::fs::directory::directory(const location& location)
     : _impl(nullptr)
 {
-    auto&& p = path::accessor::get_impl(path);
+    auto&& p = location::accessor::get_impl(location);
     int flags = O_RDONLY | O_DIRECTORY;
     _impl = std::make_shared<impl>(p->make_handle(flags), p->get_context());
  }

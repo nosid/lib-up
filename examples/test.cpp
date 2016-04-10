@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 
         auto origin = up::fs::origin(up::fs::context("root"));
         auto&& p = [origin,follow=false](up::shared_string pathname) {
-            return up::fs::path(origin, std::move(pathname), follow);
+            return up::fs::location(origin, std::move(pathname), follow);
         };
         for (int i = 1; i < argc; ++i) {
             std::cout << "FILE: " << argv[i] << '\n';
