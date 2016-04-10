@@ -19,6 +19,7 @@ lib up0
     <library>xslt
     <library>z
     :
+    <library>../up1//up1
     <include>.
     ;
 
