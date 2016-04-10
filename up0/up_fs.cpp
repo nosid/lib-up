@@ -140,6 +140,10 @@ namespace
         void close() noexcept
         {
             if (_fd != -1) {
+                /* Note that according to the man page for close(2), the
+                 * return value should be used only for diagnostics. In
+                 * particular the operation should not be retried after an
+                 * EINTR. */
                 int temp = std::exchange(_fd, -1);
                 int rv = ::close(temp);
                 if (rv != 0) {
@@ -280,12 +284,20 @@ namespace
          * will close it. */
 
         int fd = handle.get();
-        DIR* dirp = ::fdopendir(fd);
+        DIR* dirp;
+        do {
+            /* Version 4.05 of the documentation does not mention
+             * EINTR. However, the operation is potentially blocking, and so
+             * the specification might change in the future. */
+            dirp = ::fdopendir(fd);
+        } while (dirp == nullptr && errno == EINTR);
         if (dirp == nullptr) {
             throw up::make_exception("fs-opendir-error").with(fd, up::errno_info(errno));
         }
 
         UP_DEFER {
+            /* It is assumed that the operation calls close(2) internally. For
+             * that reason, the operation is not retried in case of EINTR. */
             int rv = ::closedir(dirp);
             if (rv != 0) {
                 up::terminate("bad-closedir", rv, errno);
@@ -304,7 +316,12 @@ namespace
             dirent* de = nullptr;
             int rv = ::readdir_r(dirp, reinterpret_cast<dirent*>(buffer.get()), &de);
             if (rv != 0) {
-                throw up::make_exception("fs-readdir-error").with(fd, up::errno_info(rv));
+                /* Version 4.05 of the documentation does not mention
+                 * EINTR. However, the operation is potentially blocking, and
+                 * so the specification might change in the future. */
+                if (errno != EINTR) {
+                    throw up::make_exception("fs-readdir-error").with(fd, up::errno_info(rv));
+                } // else: retry
             } else if (de == nullptr) {
                 return false;
             } else if (std::strcmp(de->d_name, ".") == 0
@@ -458,15 +475,11 @@ namespace
 
     void fallocate_aux(int fd, int mode, off_t offset, off_t length)
     {
-        auto rv = ::fallocate(fd, mode, offset, length);
-        if (rv == EINTR) {
-            // retry once
+        int rv;
+        do {
             rv = ::fallocate(fd, mode, offset, length);
-        }
-        if (rv) {
-            throw up::make_exception("fs-fallocate-error")
-                .with(fd, mode, offset, length, up::errno_info(rv));
-        }
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-allocate-error", fd, mode, offset, length);
     }
 
 }
@@ -712,20 +725,27 @@ public: // --- operations ---
     {
         flags |= _additional_open_flags;
         if (_avoid_access_time && (flags & O_NOATIME) == 0) {
-            int rv = ::openat(dir_fd, pathname, flags | O_NOATIME, mode);
+            int rv;
+            do {
+                rv = ::openat(dir_fd, pathname, flags | O_NOATIME, mode);
+            } while (rv == -1 && errno == EINTR);
             if (rv >= 0) {
                 return rv;
             } else if (errno != EPERM) {
                 fail("fs-open-error", dir_fd, up::shared_string(pathname), flags | O_NOATIME);
             } // else: continue
         }
-        return check(
-            ::openat(dir_fd, pathname, flags, mode),
-            "fs-open-error", dir_fd, pathname, flags, mode);
+        int rv;
+        do {
+            rv = ::openat(dir_fd, pathname, flags, mode);
+        } while (rv == -1 && errno == EINTR);
+        return check(rv, "fs-open-error", dir_fd, up::shared_string(pathname), flags, mode);
     }
     auto memfd_create(const char* name, unsigned int flags) const
     {
         flags |= (_additional_open_flags & O_CLOEXEC) ? MFD_CLOEXEC : 0;
+        /* Version 4.05 of the documentation does not mention EINTR, and the
+         * operation is not expected to block. */
         return check(
             syscall_memfd_create(name, flags),
             "fs-memfd-error", up::shared_string(name), flags);
@@ -818,7 +838,14 @@ public: // --- operations ---
         }
         auto&& inode = [](int dir_fd) {
             struct stat st;
-            check(::fstat(dir_fd, &st), "fs-stat-error", dir_fd);
+            /* Version 4.05 of the documentation does not mention
+             * EINTR. However, the operation is potentially blocking, and so
+             * the specification might change in the future. */
+            int rv;
+            do {
+                rv = ::fstat(dir_fd, &st);
+            } while (rv == -1 && errno == EINTR);
+            check(rv, "fs-stat-error", dir_fd);
             return std::make_pair(st.st_dev, st.st_ino);
         };
         int flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_PATH;
@@ -829,9 +856,14 @@ public: // --- operations ---
         for (auto&& mount : find_mounts()) {
             if (mount.device() == previous.first) {
                 struct stat st;
-                check(
-                    ::fstatat(AT_FDCWD, up::nts(mount.path()), &st, AT_SYMLINK_NOFOLLOW),
-                    "fs-stat-error", mount.path());
+                /* Version 4.05 of the documentation does not mention
+                 * EINTR. However, the operation is potentially blocking, and
+                 * so the specification might change in the future. */
+                int rv;
+                do {
+                    rv = ::fstatat(AT_FDCWD, up::nts(mount.path()), &st, AT_SYMLINK_NOFOLLOW);
+                } while (rv == -1 && errno == EINTR);
+                check(rv, "fs-stat-error", mount.path());
                 roots.emplace_back(st.st_ino, std::move(mount.path()));
             }
         }
@@ -996,70 +1028,127 @@ public: // --- operations ---
     {
         auto result = std::make_shared<stats::impl>();
         auto flags = flags_follow(AT_SYMLINK_FOLLOW);
-        check(::fstatat(_origin->dir_fd(), up::nts(_pathname), &result->_stat, flags),
-            "fs-stat-error", *this, flags);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fstatat(_origin->dir_fd(), up::nts(_pathname), &result->_stat, flags);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-stat-error", *this, flags);
         return result;
     }
     void chmod(mode_t mode) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
-        check(::fchmodat(_origin->dir_fd(), up::nts(_pathname), mode, flags),
-            "fs-chmod-error", *this, mode, flags);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fchmodat(_origin->dir_fd(), up::nts(_pathname), mode, flags);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-chmod-error", *this, mode, flags);
     }
     void chown(uid_t owner, gid_t group) const
     {
         int flags = flags_nofollow(AT_SYMLINK_NOFOLLOW);
-        check(::fchownat(_origin->dir_fd(), up::nts(_pathname), owner, group, flags),
-            "fs-chown-error", *this, owner, group, flags);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fchownat(_origin->dir_fd(), up::nts(_pathname), owner, group, flags);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-chown-error", *this, owner, group, flags);
     }
     void mkdir(mode_t mode) const
     {
-        check(::mkdirat(_origin->dir_fd(), up::nts(_pathname), mode),
-            "fs-mkdir-error", *this, mode);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::mkdirat(_origin->dir_fd(), up::nts(_pathname), mode);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-mkdir-error", *this, mode);
     }
     void rmdir() const
     {
-        check(::unlinkat(_origin->dir_fd(), up::nts(_pathname), AT_REMOVEDIR),
-            "fs-rmdir-error", *this);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::unlinkat(_origin->dir_fd(), up::nts(_pathname), AT_REMOVEDIR);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-rmdir-error", *this);
     }
     void link(const self& target) const
     {
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
         int flags = flags_follow(AT_SYMLINK_FOLLOW);
-        check(::linkat(
-                _origin->dir_fd(), up::nts(_pathname),
-                target._origin->dir_fd(), up::nts(target._pathname),
-                flags),
-            "fs-link-error", *this, target, flags);
+        int rv;
+        do {
+            rv = ::linkat(_origin->dir_fd(), up::nts(_pathname),
+                target._origin->dir_fd(), up::nts(target._pathname), flags);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-link-error", *this, target, flags);
     }
     void unlink() const
     {
-        check(::unlinkat(_origin->dir_fd(), up::nts(_pathname), 0),
-            "fs-unlink-error", *this);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::unlinkat(_origin->dir_fd(), up::nts(_pathname), 0);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-unlink-error", *this);
     }
     void rename(const self& target, bool replace) const
     {
-        check(::syscall_renameat2(
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = syscall_renameat2(
                 _origin->dir_fd(), up::nts(_pathname),
                 target._origin->dir_fd(), up::nts(target._pathname),
-                replace ? 0 : RENAME_NOREPLACE),
-            "fs-rename-error", *this, target, replace);
+                replace ? 0 : RENAME_NOREPLACE);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-rename-error", *this, target, replace);
     }
     void exchange(const self& target) const
     {
-        check(::syscall_renameat2(
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = syscall_renameat2(
                 _origin->dir_fd(), up::nts(_pathname),
                 target._origin->dir_fd(), up::nts(target._pathname),
-                RENAME_EXCHANGE),
-            "fs-exchange-error", *this, target);
+                RENAME_EXCHANGE);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-exchange-error", *this, target);
     }
     auto readlink() const -> up::unique_string
     {
         for (std::size_t i = 8; i <= 16; ++i) {
             std::size_t size = 1 << i;
             auto buffer = std::make_unique<char[]>(size);
-            auto rv = check(
-                ::readlinkat(_origin->dir_fd(), up::nts(_pathname), buffer.get(), size),
-                "fs-readlink-error", *this);
+            /* Version 4.05 of the documentation does not mention
+             * EINTR. However, the operation is potentially blocking, and so
+             * the specification might change in the future. */
+            ssize_t rv;
+            do {
+                rv = ::readlinkat(_origin->dir_fd(), up::nts(_pathname), buffer.get(), size);
+            } while (rv == -1 && errno == EINTR);
+            check(rv, "fs-readlink-error", *this);
             if (static_cast<std::size_t>(rv) < size) {
                 return up::unique_string(buffer.get(), static_cast<std::size_t>(rv));
             }
@@ -1068,8 +1157,14 @@ public: // --- operations ---
     }
     void symlink(const up::string_view& value) const
     {
-        check(::symlinkat(up::nts(value), _origin->dir_fd(), up::nts(_pathname)),
-            "fs-symlink-error", *this, value);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::symlinkat(up::nts(value), _origin->dir_fd(), up::nts(_pathname));
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-symlink-error", *this, value);
     }
     auto list() const -> std::vector<directory_entry>
     {
@@ -1242,8 +1337,12 @@ auto up_fs::fs::path::statvfs() const -> statfs
 
 void up_fs::fs::path::truncate(off_t length) const
 {
-    check(::truncate(up::nts(_impl->absolute_pathname()), length),
-        "fs-truncate-error", *this, length);
+    auto pathname = up::nts(_impl->absolute_pathname());
+    int rv;
+    do {
+        rv = ::truncate(pathname, length);
+    } while (rv == -1 && errno == EINTR);
+    check(rv, "fs-truncate-error", *this, length);
 }
 
 auto up_fs::fs::path::absolute() const -> self
@@ -1279,16 +1378,37 @@ public: // --- operations ---
     }
     void chmod(mode_t mode) const
     {
-        check(::fchmod(fd(), mode), "fs-chmod-error", fd(), mode);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fchmod(fd(), mode);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-chmod-error", fd(), mode);
     }
     void chown(uid_t owner, gid_t group) const
     {
-        check(::fchown(fd(), owner, group), "fs-chown-error", fd(), owner, group);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fchown(fd(), owner, group);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-chown-error", fd(), owner, group);
     }
     auto stat() const -> std::shared_ptr<const stats::impl>
     {
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
         auto result = std::make_shared<stats::impl>();
-        check(::fstat(fd(), &result->_stat), "fs-stat-error", fd());
+        int rv;
+        do {
+            rv = ::fstat(fd(), &result->_stat);
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-stat-error", fd());
         return result;
     }
     auto statvfs() const -> std::shared_ptr<const statfs::impl>
@@ -1303,11 +1423,25 @@ public: // --- operations ---
     }
     void fdatasync() const
     {
-        check(::fdatasync(fd()), "fs-fdatasync-error", fd());
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fdatasync(fd());
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-fdatasync-error", fd());
     }
     void fsync() const
     {
-        check(::fsync(fd()), "fs-fsync-error", fd());
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        int rv;
+        do {
+            rv = ::fsync(fd());
+        } while (rv == -1 && errno == EINTR);
+        check(rv, "fs-fsync-error", fd());
     }
 };
 
@@ -1534,7 +1668,14 @@ void up_fs::fs::file::write_all(up::chunk::from_bulk_t&& chunks, off_t offset) c
 
 void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) const
 {
-    if (auto rv = ::posix_fadvise(_impl->fd(), offset, length, advice)) {
+    /* Version 4.05 of the documentation does not mention EINTR. However, the
+     * operation is potentially blocking, and so the specification might
+     * change in the future. */
+    int rv;
+    do {
+        rv = ::posix_fadvise(_impl->fd(), offset, length, advice);
+    } while (rv != 0 && rv == EINTR);
+    if (rv) {
         throw up::make_exception("fs-posix-fadvise-error")
             .with(_impl->fd(), offset, length, advice, up::errno_info(rv));
     }
@@ -1624,15 +1765,25 @@ public: // --- operations ---
     auto operator=(self&& rhs) & noexcept -> self& = delete;
     auto fill(const file::impl& source, std::size_t size, off_t offset) -> std::size_t
     {
-        ssize_t rv = ::splice(source.fd(), &offset,
-            _write.get(), nullptr, size, SPLICE_F_MOVE);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        ssize_t rv;
+        do {
+            rv = ::splice(source.fd(), &offset, _write.get(), nullptr, size, SPLICE_F_MOVE);
+        } while (rv == -1 && errno == EINTR);
         check(rv, "fs-splice-error", source.fd(), offset, size);
         return static_cast<std::size_t>(rv);
     }
     auto drain(std::size_t size, off_t offset) -> std::size_t
     {
-        ssize_t rv = ::splice(_read.get(), nullptr,
-            _file->fd(), &offset, size, SPLICE_F_MOVE);
+        /* Version 4.05 of the documentation does not mention EINTR. However,
+         * the operation is potentially blocking, and so the specification
+         * might change in the future. */
+        ssize_t rv;
+        do {
+            rv = ::splice(_read.get(), nullptr, _file->fd(), &offset, size, SPLICE_F_MOVE);
+        } while (rv == -1 && errno == EINTR);
         check(rv, "fs-splice-error", _file->fd(), size, offset);
         return  static_cast<std::size_t>(rv);
     }
