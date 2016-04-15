@@ -14,6 +14,13 @@ namespace up_string_view
     using std::experimental::basic_string_view;
     using std::experimental::string_view;
 
+    /**
+     * This function template is intended to be used with string-like types,
+     * that do not directly support string_view themselves (in particular
+     * std::string). However, there is a proposal for C++17 to add conversions
+     * from and to string_view to std::string, and that will most likely
+     * remove the need for this helper function.
+     */
     template <typename..., typename Type>
     auto to_string_view(Type&& value) -> string_view
     {
