@@ -72,10 +72,15 @@ namespace
         return ::syscall(SYS_renameat2, olddirfd, oldpath, newdirfd, newpath, flags);
     }
 
-
     auto syscall_memfd_create(const char* name, unsigned int flags)
     {
         return ::syscall(SYS_memfd_create, name, flags);
+    }
+
+    auto syscall_copy_file_range(int fd_in, loff_t* off_in, int fd_out, loff_t* off_out, size_t len, unsigned int flags) -> ssize_t
+    {
+        // XXX: replace "__NR_" with "SYS_"
+        return ::syscall(__NR_copy_file_range, fd_in, off_in, fd_out, off_out, len, flags);
     }
 
 
@@ -1224,11 +1229,7 @@ public:
 
 up_fs::fs::location::location(origin origin, up::shared_string pathname, bool follow)
     : _impl(std::make_shared<const impl>(origin::accessor::get_impl(std::move(origin)), std::move(pathname), follow))
-{
-    if (pathname.empty()) {
-        throw up::make_exception("fs-empty-pathname");
-    } // else: okay
-}
+{ }
 
 auto up_fs::fs::location::to_insight() const -> up::insight
 {
@@ -1664,6 +1665,16 @@ void up_fs::fs::file::write_all(up::chunk::from_bulk_t&& chunks, off_t offset) c
         chunks.drain(n);
         offset += n;
     } while (chunks.total());
+}
+
+auto up_fs::fs::file::copy_some(off_t offset, std::size_t length, file& other, off_t other_offset) const -> std::size_t
+{
+    ssize_t rv;
+    do {
+        rv = syscall_copy_file_range(_impl->fd(), &offset, other._impl->fd(), &other_offset, length, 0);
+    } while (rv == -1 && errno == EINTR);
+    check(rv, "fs-copy-error", _impl->fd(), offset, length, other._impl->fd(), other_offset);
+    return up::ints::caster(rv);
 }
 
 void up_fs::fs::file::posix_fadvise(off_t offset, off_t length, int advice) const

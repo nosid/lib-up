@@ -344,6 +344,8 @@ namespace up_fs
         auto write_some(up::chunk::from_bulk_t&& chunks, off_t offset) const -> std::size_t;
         void write_all(up::chunk::from chunk, off_t offset) const;
         void write_all(up::chunk::from_bulk_t&& chunks, off_t offset) const;
+        // currently limited to same mount
+        auto copy_some(off_t offset, std::size_t length, file& other, off_t other_offset) const -> std::size_t; // XXX:IMPL
         void posix_fadvise(off_t offset, off_t length, int advice) const;
         void linkto(const location& target) const;
         auto acquire_lock(bool exclusive, bool blocking = true) const -> lock;
