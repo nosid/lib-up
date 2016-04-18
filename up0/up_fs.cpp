@@ -1889,7 +1889,7 @@ void up_fs::fs::directory::fsync() const
     _impl->fsync();
 }
 
-auto up_fs::fs::directory::list() const & -> std::vector<directory_entry>
+auto up_fs::fs::directory::list() const& -> std::vector<directory_entry>
 {
     return scan_directory(_impl->unique_handle(false));
 }
@@ -1899,7 +1899,7 @@ auto up_fs::fs::directory::list() && -> std::vector<directory_entry>
     return scan_directory(_impl->unique_handle(_impl.unique()));
 }
 
-bool up_fs::fs::directory::list(std::function<bool(directory_entry)> visitor) const &
+bool up_fs::fs::directory::list(std::function<bool(directory_entry)> visitor) const&
 {
     return scan_directory(_impl->unique_handle(false), std::move(visitor));
 }

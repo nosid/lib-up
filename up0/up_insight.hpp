@@ -39,7 +39,7 @@ namespace up_insight
         auto type_info() const -> auto& { return _type_info; }
         auto value() const -> auto& { return _value; }
         auto nested() const -> auto& { return _nested; }
-        auto to_insight() const & -> auto& { return *this; }
+        auto to_insight() const& -> auto& { return *this; }
         auto to_insight() && -> insight&& { return std::move(*this); }
         void out(std::ostream& os) const;
     };

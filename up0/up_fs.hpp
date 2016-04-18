@@ -440,9 +440,9 @@ namespace up_fs
         auto statvfs() const -> statfs;
         void fdatasync() const;
         void fsync() const;
-        auto list() const & -> std::vector<directory_entry>;
+        auto list() const& -> std::vector<directory_entry>;
         auto list() && -> std::vector<directory_entry>;
-        bool list(std::function<bool(directory_entry)> visitor) const &;
+        bool list(std::function<bool(directory_entry)> visitor) const&;
         bool list(std::function<bool(directory_entry)> visitor) &&;
     };
 

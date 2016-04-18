@@ -68,7 +68,7 @@ namespace up_optional_string
         }
 
         // returns a proxy because it can't return a pointer
-        auto operator->() const & -> up::optional<value_type>
+        auto operator->() const& -> up::optional<value_type>
         {
             if (_is_null()) {
                 return up::nullopt;
@@ -84,7 +84,7 @@ namespace up_optional_string
                 return value_type(repr_type<false>(std::move(*this)));
             }
         }
-        auto operator*() const & -> value_type
+        auto operator*() const& -> value_type
         {
             return value_type(repr_type<false>(*this));
         }
@@ -93,7 +93,7 @@ namespace up_optional_string
             return value_type(repr_type<false>(std::move(*this)));
         }
         using base::operator bool;
-        auto value() const & -> value_type
+        auto value() const& -> value_type
         {
             if (_is_null()) {
                 throw up::make_throwable<up::bad_optional_access>("optional-string");
@@ -110,7 +110,7 @@ namespace up_optional_string
             }
         }
         template <typename..., typename Arg>
-        auto value_or(Arg&& arg) const & -> value_type
+        auto value_or(Arg&& arg) const& -> value_type
         {
             if (_is_null()) {
                 return static_cast<value_type>(std::forward<Arg>(arg));
@@ -128,7 +128,7 @@ namespace up_optional_string
             }
         }
 
-        auto repr() const & -> const repr_type<true>&
+        auto repr() const& -> const repr_type<true>&
         {
             return *this;
         }

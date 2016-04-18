@@ -574,7 +574,7 @@ namespace up_string
         {
             return {_data(), _size()};
         }
-        auto repr() const & -> const Repr&
+        auto repr() const& -> const Repr&
         {
             return *this;
         }
@@ -715,7 +715,7 @@ namespace up_string
         using base::operator string_view;
         using base::repr;
 
-        auto to_string() const & -> const self&
+        auto to_string() const& -> const self&
         {
             return *this;
         }
@@ -1146,7 +1146,7 @@ namespace up_string
         using base::operator string_view;
         using base::repr;
 
-        auto to_string() const & -> const self&
+        auto to_string() const& -> const self&
         {
             return *this;
         }

@@ -59,7 +59,7 @@ namespace up_ints
         { }
     public: // --- operations ---
         template <typename Result>
-        operator Result() const &&
+        operator Result() const&&
         {
             return cast<Result, Type>(_value);
         }
