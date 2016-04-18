@@ -117,7 +117,7 @@ namespace up_stream
 
     class stream::steady_patience final : public stream::patience
     {
-    public : // --- scope ---
+    public: // --- scope ---
         using self = steady_patience;
     private: // --- state ---
         up::steady_time_point& _now;
@@ -140,7 +140,7 @@ namespace up_stream
 
     class stream::deadline_patience final : public stream::patience
     {
-    public : // --- scope ---
+    public: // --- scope ---
         using self = deadline_patience;
         class impl;
         static void destroy(impl* ptr);
@@ -175,7 +175,7 @@ namespace up_stream
 
     class stream::infinite_patience final : public stream::patience
     {
-    public : // --- scope ---
+    public: // --- scope ---
         using self = infinite_patience;
     public: // --- life ---
         explicit infinite_patience() = default;
