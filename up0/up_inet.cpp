@@ -519,7 +519,7 @@ up_inet::ip::endpoint::endpoint(endpoint&& rhs) noexcept
         new (&_v6) ipv6::endpoint(std::move(rhs._v6));
         return;
     }
-    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
+    up::terminate("unexpected-tcp-endpoint-ip-address-version", _version);
 }
 
 up_inet::ip::endpoint::~endpoint() noexcept
@@ -532,7 +532,7 @@ up_inet::ip::endpoint::~endpoint() noexcept
         _v6.~endpoint();
         return;
     }
-    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(_version);
+    up::terminate("unexpected-tcp-endpoint-ip-address-version", _version);
 }
 
 auto up_inet::ip::endpoint::operator=(const self& rhs) & -> self&
@@ -555,7 +555,7 @@ auto up_inet::ip::endpoint::operator=(self&& rhs) & noexcept -> self&
     case ip::version::v6:
         return operator=(rhs._v6);
     }
-    throw up::make_exception("unexpected-tcp-endpoint-ip-address-version").with(rhs._version);
+    up::terminate("unexpected-tcp-endpoint-ip-address-version", rhs._version);
 }
 
 auto up_inet::ip::endpoint::operator=(const ipv4::endpoint& rhs) & -> self&

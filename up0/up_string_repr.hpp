@@ -314,9 +314,8 @@ namespace up_string_repr
         }
         auto capacity() const noexcept(!Nullable) -> size_type
         {
-            if (_is_null()) {
-                throw up::make_throwable("null-string-repr");
-            } else if (_sso._external._tag != tag_external) {
+            _check_not_null();
+            if (_sso._external._tag != tag_external) {
                 return inline_size;
             } else {
                 return _sso._external._ptr->capacity();
@@ -324,9 +323,8 @@ namespace up_string_repr
         }
         auto size() const noexcept(!Nullable) -> size_type
         {
-            if (_is_null()) {
-                throw up::make_throwable("null-string-repr");
-            } else if (_sso._external._tag != tag_external) {
+            _check_not_null();
+            if (_sso._external._tag != tag_external) {
                 return _sso._internal._tag;
             } else {
                 return _sso._external._ptr->size();
@@ -334,9 +332,8 @@ namespace up_string_repr
         }
         void set_size(size_type size) noexcept(!Nullable)
         {
-            if (_is_null()) {
-                throw up::make_throwable("null-string-repr");
-            } else if (_sso._external._tag != tag_external) {
+            _check_not_null();
+            if (_sso._external._tag != tag_external) {
                 _sso._internal._tag = up::ints::caster(size);
             } else {
                 _sso._external._ptr->set_size(size);
@@ -344,9 +341,8 @@ namespace up_string_repr
         }
         auto data() const noexcept(!Nullable) -> const char*
         {
-            if (_is_null()) {
-                throw up::make_throwable("null-string-repr");
-            } else if (_sso._external._tag != tag_external) {
+            _check_not_null();
+            if (_sso._external._tag != tag_external) {
                 return _sso._internal._data;
             } else {
                 return _sso._external._ptr->data();
@@ -354,9 +350,8 @@ namespace up_string_repr
         }
         auto data() noexcept(!Nullable) -> char*
         {
-            if (_is_null()) {
-                throw up::make_throwable("null-string-repr");
-            } else if (_sso._external._tag != tag_external) {
+            _check_not_null();
+            if (_sso._external._tag != tag_external) {
                 return _sso._internal._data;
             } else {
                 return _sso._external._ptr->data();
@@ -372,6 +367,12 @@ namespace up_string_repr
             return Nullable
                 && _sso._external._tag == tag_external
                 && _sso._external._ptr == nullptr;
+        }
+        void _check_not_null() const
+        {
+            if (_is_null()) {
+                throw up::make_throwable("null-string-repr");
+            } // else: nothing
         }
     };
 
