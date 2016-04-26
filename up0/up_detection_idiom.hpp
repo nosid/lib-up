@@ -8,9 +8,6 @@ namespace up_detection_idiom
      * proposed for C++17, but is neither supported by GCC-5 nor by Clang-3.8.
      */
 
-    template <typename...>
-    using void_t = void;
-
     template <typename AlwaysVoid, template <typename...> typename Op, typename... Args>
     struct detector final
     {
@@ -18,7 +15,7 @@ namespace up_detection_idiom
     };
 
     template <template <typename...> typename Op, typename... Args>
-    struct detector<void_t<Op<Args...>>, Op, Args...> final
+    struct detector<std::void_t<Op<Args...>>, Op, Args...> final
     {
         using value_t = std::true_type;
     };
