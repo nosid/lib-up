@@ -27,8 +27,7 @@ namespace up_widen
         typename Type,
         bool = std::is_integral<Result>::value && std::is_integral<Type>::value>
     class is_wider_integral final
-        : public std::integral_constant<
-        bool,
+        : public std::bool_constant<
         std::is_signed<Result>::value == std::is_signed<Type>::value
         && widest(std::numeric_limits<Result>::min()) <= widest(std::numeric_limits<Type>::min())
         && widest(std::numeric_limits<Result>::max()) >= widest(std::numeric_limits<Type>::max())>
@@ -36,7 +35,7 @@ namespace up_widen
 
     template <typename Result, typename Type>
     class is_wider_integral<Result, Type, false> final
-        : public std::integral_constant<bool, false>
+        : public std::bool_constant<false>
     { };
 
 

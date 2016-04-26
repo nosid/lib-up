@@ -79,7 +79,7 @@ namespace up_vlq
              * complicated. We calculate the required length, and use it to
              * encode the value in one (further) pass. */
             constexpr bool finish = N * bits >= std::numeric_limits<Integral>::digits;
-            return encode_aux<N>(value, std::integral_constant<bool, finish>{});
+            return encode_aux<N>(value, std::bool_constant<finish>{});
         }
         static auto decode(const Type* array, std::size_t size)
             -> std::tuple<Integral, std::size_t>
