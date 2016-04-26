@@ -10,16 +10,10 @@
 namespace up_variadic
 {
 
-    constexpr bool variadic_all()
+    template <typename... Args>
+    constexpr bool variadic_all(Args&&... args)
     {
-        return true;
-    }
-
-    template <typename Head, typename... Args>
-    constexpr bool variadic_all(Head&& head, Args&&... args)
-    {
-        return static_cast<bool>(std::forward<Head>(head))
-            && variadic_all(std::forward<Args>(args)...);
+        return (true && ... && static_cast<bool>(std::forward<Args>(args)));
     }
 
 }
