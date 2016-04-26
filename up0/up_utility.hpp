@@ -60,8 +60,8 @@ namespace up_utility
     {
     private: // --- scope ---
         using underlying_type = typename std::underlying_type_t<Enum>;
-        static_assert(std::is_unsigned<underlying_type>{}, "requires unsigned type");
-        static_assert(std::is_unsigned<Bits>{}, "requires unsigned type");
+        static_assert(std::is_unsigned<underlying_type>{});
+        static_assert(std::is_unsigned<Bits>{});
     private: // --- state ---
         Bits _bits;
     public: // --- life ---

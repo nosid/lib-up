@@ -27,7 +27,7 @@ namespace
     template <>
     struct raw_context<shm::md5> final
     {
-        static_assert(secure_hash_digest_size(shm::md5) == MD5_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::md5) == MD5_DIGEST_LENGTH);
         MD5_CTX _ctx;
         auto init() { return MD5_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return MD5_Update(&_ctx, data, size); }
@@ -37,7 +37,7 @@ namespace
     template <>
     struct raw_context<shm::sha1> final
     {
-        static_assert(secure_hash_digest_size(shm::sha1) == SHA_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::sha1) == SHA_DIGEST_LENGTH);
         SHA_CTX _ctx;
         auto init() { return SHA1_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return SHA1_Update(&_ctx, data, size); }
@@ -47,7 +47,7 @@ namespace
     template <>
     struct raw_context<shm::sha224> final
     {
-        static_assert(secure_hash_digest_size(shm::sha224) == SHA224_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::sha224) == SHA224_DIGEST_LENGTH);
         SHA256_CTX _ctx;
         auto init() { return SHA224_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return SHA224_Update(&_ctx, data, size); }
@@ -57,7 +57,7 @@ namespace
     template <>
     struct raw_context<shm::sha256> final
     {
-        static_assert(secure_hash_digest_size(shm::sha256) == SHA256_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::sha256) == SHA256_DIGEST_LENGTH);
         SHA256_CTX _ctx;
         auto init() { return SHA256_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return SHA256_Update(&_ctx, data, size); }
@@ -67,7 +67,7 @@ namespace
     template <>
     struct raw_context<shm::sha384> final
     {
-        static_assert(secure_hash_digest_size(shm::sha384) == SHA384_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::sha384) == SHA384_DIGEST_LENGTH);
         SHA512_CTX _ctx;
         auto init() { return SHA384_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return SHA384_Update(&_ctx, data, size); }
@@ -77,7 +77,7 @@ namespace
     template <>
     struct raw_context<shm::sha512> final
     {
-        static_assert(secure_hash_digest_size(shm::sha512) == SHA512_DIGEST_LENGTH, "digest-length-mismatch");
+        static_assert(secure_hash_digest_size(shm::sha512) == SHA512_DIGEST_LENGTH);
         SHA512_CTX _ctx;
         auto init() { return SHA512_Init(&_ctx); }
         auto update(const char* data, std::size_t size) { return SHA512_Update(&_ctx, data, size); }

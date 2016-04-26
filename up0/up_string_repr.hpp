@@ -14,9 +14,9 @@ namespace up_string_repr
     {
     public: // --- scope ---
         using size_type = std::size_t;
-        static_assert(std::is_same<size_type, up::string_view::size_type>::value, "type mismatch");
+        static_assert(std::is_same<size_type, up::string_view::size_type>::value);
         using traits_type = std::char_traits<char>;
-        static_assert(std::is_same<traits_type, up::string_view::traits_type>::value, "type mismatch");
+        static_assert(std::is_same<traits_type, up::string_view::traits_type>::value);
         class storage;
         template <bool Unique>
         class storage_deleter;
@@ -49,12 +49,12 @@ namespace up_string_repr
                 storage* _ptr;
             } _external;
         };
-        static_assert(std::is_standard_layout<sso>::value, "requires standard layout");
-        static_assert(sizeof(sso) == sso_size, "unexpected size mismatch");
-        static_assert(sizeof(typename sso::internal) == sizeof(typename sso::external), "unexpected size mismatch");
-        static_assert(offsetof(sso, _internal) == offsetof(sso, _external), "offset mismatch");
-        static_assert(offsetof(typename sso::internal, _tag) == offsetof(typename sso::external, _tag), "offset mismatch");
-        static_assert(offsetof(typename sso::internal, _data) == offsetof(typename sso::external, _dummy), "offset mismatch");
+        static_assert(std::is_standard_layout<sso>::value);
+        static_assert(sizeof(sso) == sso_size);
+        static_assert(sizeof(typename sso::internal) == sizeof(typename sso::external));
+        static_assert(offsetof(sso, _internal) == offsetof(sso, _external));
+        static_assert(offsetof(typename sso::internal, _tag) == offsetof(typename sso::external, _tag));
+        static_assert(offsetof(typename sso::internal, _data) == offsetof(typename sso::external, _dummy));
     };
 
 
@@ -77,9 +77,9 @@ namespace up_string_repr
         explicit storage(size_type n_refs, size_type capacity, size_type size) noexcept
             : _n_refs(n_refs), _capacity(capacity), _size(size)
         {
-            static_assert(noexcept(decltype(_n_refs)(n_refs)), "requires noexcept contructible");
-            static_assert(noexcept(decltype(_capacity)(capacity)), "requires noexcept contructible");
-            static_assert(noexcept(decltype(_size)(size)), "requires noexcept contructible");
+            static_assert(noexcept(decltype(_n_refs)(n_refs)));
+            static_assert(noexcept(decltype(_capacity)(capacity)));
+            static_assert(noexcept(decltype(_size)(size)));
         }
         storage(const self& rhs) = delete;
         storage(self&& rhs) noexcept = delete;
@@ -90,17 +90,17 @@ namespace up_string_repr
     public:
         void acquire() const noexcept
         {
-            static_assert(noexcept(_n_refs.fetch_add(1)), "requires noexcept");
+            static_assert(noexcept(_n_refs.fetch_add(1)));
             _n_refs.fetch_add(1);
         }
         bool release() const noexcept
         {
-            static_assert(noexcept(_n_refs.fetch_sub(1)), "requires noexcept");
+            static_assert(noexcept(_n_refs.fetch_sub(1)));
             return _n_refs.fetch_sub(1) == 1;
         }
         bool unique() const noexcept
         {
-            static_assert(noexcept(_n_refs.load()), "requires noexcept");
+            static_assert(noexcept(_n_refs.load()));
             return _n_refs.load() == 1;
         }
         auto capacity() const noexcept -> size_type
@@ -117,14 +117,14 @@ namespace up_string_repr
         }
         auto data() const noexcept -> const char*
         {
-            static_assert(std::is_standard_layout<self>::value, "requires standard layout");
-            static_assert(sizeof(self) == self_size, "size mismatch");
+            static_assert(std::is_standard_layout<self>::value);
+            static_assert(sizeof(self) == self_size);
             return static_cast<const char*>(static_cast<const void*>(this)) + self_size;
         }
         auto data() noexcept -> char*
         {
-            static_assert(std::is_standard_layout<self>::value, "requires standard layout");
-            static_assert(sizeof(self) == self_size, "size mismatch");
+            static_assert(std::is_standard_layout<self>::value);
+            static_assert(sizeof(self) == self_size);
             return static_cast<char*>(static_cast<void*>(this)) + self_size;
         }
     };
@@ -137,7 +137,7 @@ namespace up_string_repr
         void operator()(storage* ptr) const
         {
             if (Unique || ptr->release()) {
-                static_assert(std::is_standard_layout<storage>::value, "requires standard layout");
+                static_assert(std::is_standard_layout<storage>::value);
                 size_type size = sizeof(storage) + ptr->_capacity; // no overflow check required
                 ptr->~storage();
                 ::operator delete(static_cast<void*>(ptr), size);
@@ -152,12 +152,11 @@ namespace up_string_repr
     template <bool Unique>
     auto string_repr::make_storage(size_type capacity, size_type size) -> storage_ptr<Unique>
     {
-        static_assert(std::is_standard_layout<storage>::value, "requires standard layout");
+        static_assert(std::is_standard_layout<storage>::value);
         using sizes = up::ints::domain<size_type>::or_length_error;
         void* raw = ::operator new(sizes::add(sizeof(storage), capacity));
         return [raw](auto&&... args) {
-            static_assert(
-                noexcept(storage(std::forward<decltype(args)>(args)...)), "requires noexcept");
+            static_assert(noexcept(storage(std::forward<decltype(args)>(args)...)));
             return storage_ptr<Unique>(new (raw) storage(std::forward<decltype(args)>(args)...));
         }(size_type(1), capacity, size);
     }
@@ -201,7 +200,7 @@ namespace up_string_repr
         }
         explicit handle(std::nullptr_t) noexcept
         {
-            static_assert(tag_external > inline_size, "consistency check");
+            static_assert(tag_external > inline_size);
             _sso._external._tag = tag_external;
             _sso._external._ptr = nullptr;
         }
@@ -210,7 +209,7 @@ namespace up_string_repr
             if (capacity <= inline_size) {
                 _sso._internal._tag = up::ints::caster(size);
             } else {
-                static_assert(tag_external > inline_size, "consistency check");
+                static_assert(tag_external > inline_size);
                 _sso._external._tag = tag_external;
                 _sso._external._ptr = make_storage<Unique>(capacity, size).release();
             }

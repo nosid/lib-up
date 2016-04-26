@@ -21,7 +21,7 @@ namespace
     protected: // --- life ---
         explicit processor()
         {
-            static_assert(Z_NULL == 0, "Z_NULL is legacy null pointer constant");
+            static_assert(Z_NULL == 0);
             _z_stream.zalloc = nullptr;
             _z_stream.zfree = nullptr;
             _z_stream.opaque = nullptr;

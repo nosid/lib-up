@@ -28,8 +28,8 @@ namespace up_nts
             } _padded;
             std::array<char, handle_size> _data;
         };
-        static_assert(std::is_standard_layout<handle>::value, "requires standard layout");
-        static_assert(sizeof(handle) == handle_size, "unexpected size mismatch");
+        static_assert(std::is_standard_layout<handle>::value);
+        static_assert(sizeof(handle) == handle_size);
     private: // --- state ---
         handle _handle;
     public: // --- life ---

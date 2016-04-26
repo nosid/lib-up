@@ -49,7 +49,7 @@ namespace up_widen
         constexpr explicit widener(Type value) noexcept
             : _value(value)
         {
-            static_assert(noexcept(Type(value)), "requires noexcept");
+            static_assert(noexcept(Type(value)));
         }
     public: // --- operations ---
         template <
@@ -57,7 +57,7 @@ namespace up_widen
             typename = std::enable_if_t<is_wider_integral<Result, Type>::value>>
         constexpr operator Result() const noexcept
         {
-            static_assert(noexcept(Result{_value}), "requires noexcept");
+            static_assert(noexcept(Result{_value}));
             return {_value};
         }
     };
@@ -70,7 +70,7 @@ namespace up_widen
         template <typename..., typename Type>
         constexpr static auto widen(Type value) noexcept -> Result
         {
-            static_assert(noexcept(Result{value}), "requires noexcept");
+            static_assert(noexcept(Result{value}));
             return {value};
         }
     };
@@ -82,7 +82,7 @@ namespace up_widen
         template <typename..., typename Type>
         constexpr static auto widen(Type value) noexcept -> widener<Type>
         {
-            static_assert(noexcept(widener<Type>(value)), "requires noexcept");
+            static_assert(noexcept(widener<Type>(value)));
             return widener<Type>(value);
         }
     };

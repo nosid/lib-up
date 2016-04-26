@@ -38,7 +38,7 @@ namespace up_defer
         explicit defer(Callable&& callable)
             : _callable(std::forward<Callable>(callable))
         {
-            static_assert(std::is_nothrow_constructible<Callable, Callable&&>::value, "requires nothrow");
+            static_assert(std::is_nothrow_constructible<Callable, Callable&&>::value);
         }
         /// @private
         defer(const self& rhs) = delete;
@@ -52,13 +52,13 @@ namespace up_defer
             : _callable(std::forward<Callable>(rhs._callable))
             , _armed(rhs._armed)
         {
-            static_assert(std::is_nothrow_constructible<Callable, Callable&&>::value, "requires nothrow");
+            static_assert(std::is_nothrow_constructible<Callable, Callable&&>::value);
             rhs.disarm();
         }
         ~defer() noexcept
         {
             if (_armed) {
-                static_assert(noexcept(_callable()), "requires nothrow");
+                static_assert(noexcept(_callable()));
                 _callable();
             }
         }

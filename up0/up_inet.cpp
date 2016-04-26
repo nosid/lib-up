@@ -269,8 +269,7 @@ namespace
 }
 
 
-static_assert(sizeof(up_inet::ipv4::endpoint) == sizeof(in_addr),
-    "size mismatch: in_addr / ipv4::endpoint");
+static_assert(sizeof(up_inet::ipv4::endpoint) == sizeof(in_addr));
 
 class up_inet::ipv4::endpoint::accessor final
 {
@@ -341,8 +340,7 @@ auto up_inet::ipv4::endpoint::to_string() const -> up::unique_string
 }
 
 
-static_assert(sizeof(up_inet::ipv6::endpoint) == sizeof(in6_addr),
-    "size mismatch: in6_addr / ipv6::endpoint");
+static_assert(sizeof(up_inet::ipv6::endpoint) == sizeof(in6_addr));
 
 class up_inet::ipv6::endpoint::accessor final
 {
@@ -566,7 +564,7 @@ auto up_inet::ip::endpoint::operator=(const ipv4::endpoint& rhs) & -> self&
         return *this;
     case ip::version::v6:
         _v6.~endpoint();
-        static_assert(noexcept(ipv4::endpoint(rhs)), "requires noexcept");
+        static_assert(noexcept(ipv4::endpoint(rhs)));
         new (&_v4) ipv4::endpoint(rhs);
         return *this;
     }
@@ -578,7 +576,7 @@ auto up_inet::ip::endpoint::operator=(const ipv6::endpoint& rhs) & -> endpoint&
     switch (_version) {
     case ip::version::v4:
         _v4.~endpoint();
-        static_assert(noexcept(ipv6::endpoint(rhs)), "requires noexcept");
+        static_assert(noexcept(ipv6::endpoint(rhs)));
         new (&_v6) ipv6::endpoint(rhs);
         return *this;
     case ip::version::v6:

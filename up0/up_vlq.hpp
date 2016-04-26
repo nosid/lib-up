@@ -31,9 +31,9 @@ namespace up_vlq
     class basic_vlq final
     {
     private: // --- scope ---
-        static_assert(std::is_unsigned<Integral>{}, "requires unsigned type");
-        static_assert(std::is_unsigned<Type>{}, "requires unsigned type");
-        static_assert(bits < std::numeric_limits<Type>::digits, "requires high bit");
+        static_assert(std::is_unsigned<Integral>{});
+        static_assert(std::is_unsigned<Type>{});
+        static_assert(bits < std::numeric_limits<Type>::digits);
         using array = std::array<Type, (std::numeric_limits<Integral>::digits - 1) / bits + 1>;
         using tuple = std::tuple<std::size_t, array>;
         /* This function encodes the given value into exactly N bytes. N
@@ -108,10 +108,8 @@ namespace up_vlq
     class vlq final
     {
     private: // --- scope ---
-        static_assert(std::numeric_limits<unsigned char>::digits == 8,
-            "requires 8 bit char type");
-        static_assert(std::numeric_limits<unsigned char>::max() == 255,
-            "requires 8 bit char ");
+        static_assert(std::numeric_limits<unsigned char>::digits == 8);
+        static_assert(std::numeric_limits<unsigned char>::max() == 255);
     public:
         template <typename Integral>
         static auto encode(Integral value)

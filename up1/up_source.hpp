@@ -63,7 +63,7 @@ namespace up_source
             line_t line = up::widen(WORKAROUND_SOURCE_LINE())) noexcept
             : _label(label), _size(N), _file(file), _line(line)
         {
-            static_assert(N > 0, "invalid array for string literal");
+            static_assert(N > 0);
         }
         /**
          * Prevent unintended conversions with a deleted catch-all

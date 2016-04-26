@@ -61,8 +61,8 @@ namespace up_chunk
         template <typename Type>
         auto as() -> Type*
         {
-            static_assert(sizeof(Type) == Size, "size mismatch");
-            static_assert(std::is_trivially_destructible<Type>::value, "non-trivial type");
+            static_assert(sizeof(Type) == Size);
+            static_assert(std::is_trivially_destructible<Type>::value);
             auto chunks = _chunks();
             Type* result = static_cast<Type*>(_raw_storage());
             for (std::size_t i = 0, j = _count(), k = 0; i != j; ++i) {
@@ -91,7 +91,7 @@ namespace up_chunk
         template <typename Chunk>
         auto convert(Chunk&& chunk) -> into
         {
-            static_assert(std::is_convertible<Chunk&&, into>::value, "expect implicit conversion");
+            static_assert(std::is_convertible<Chunk&&, into>::value); // *implicit* conversion
             return std::forward<Chunk>(chunk);
         }
     private: // --- state ---
@@ -177,8 +177,8 @@ namespace up_chunk
         template <typename Type>
         auto as() -> Type*
         {
-            static_assert(sizeof(Type) == Size, "size mismatch");
-            static_assert(std::is_trivially_destructible<Type>::value, "non-trivial type");
+            static_assert(sizeof(Type) == Size);
+            static_assert(std::is_trivially_destructible<Type>::value);
             auto chunks = _chunks();
             Type* result = static_cast<Type*>(_raw_storage());
             for (std::size_t i = 0, j = _count(), k = 0; i != j; ++i) {
@@ -207,7 +207,7 @@ namespace up_chunk
         template <typename Chunk>
         auto convert(Chunk&& chunk) -> from
         {
-            static_assert(std::is_convertible<Chunk&&, from>::value, "expect implicit conversion");
+            static_assert(std::is_convertible<Chunk&&, from>::value); // *implicit* conversion
             return std::forward<Chunk>(chunk);
         }
     private: // --- state ---

@@ -133,7 +133,7 @@ namespace up_swap
     template <typename... Args>
     void swap_noexcept(Args&&... args) noexcept
     {
-        static_assert(noexcept(invoke_swap(std::forward<Args>(args)...)), "requires noexcept");
+        static_assert(noexcept(invoke_swap(std::forward<Args>(args)...)));
         invoke_swap(std::forward<Args>(args)...);
     }
 
